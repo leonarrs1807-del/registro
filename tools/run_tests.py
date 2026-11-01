@@ -29,8 +29,12 @@ if '--child' not in sys.argv:
     if code:
         details=f'Proceso de pruebas terminó con código {code}.\n'+output[-24000:]
         report('```text\n'+details+'\n```')
-        message=details.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
-        print('::error title=Diagnóstico del proceso de pruebas::'+message,flush=True)
+        # GitHub truncates each displayed annotation at about 4 KB. Put the
+        # native stack at the front and keep each piece independently readable.
+        pieces=[details[i:i+3000] for i in range(0,len(details),3000)]
+        for index,piece in reversed(list(enumerate(pieces,1))):
+            message=piece.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+            print(f'::error title=Diagnóstico del proceso ({index}/{len(pieces)})::'+message,flush=True)
     raise SystemExit(0 if code==0 else 1)
 
 root = Path(__file__).resolve().parent.parent
