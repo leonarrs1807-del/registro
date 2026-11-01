@@ -94,6 +94,9 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
         raw.protection.sheet=True;raw.protection.formatColumns=False;raw.protection.formatRows=False;raw.protection.sort=False;raw.protection.autoFilter=False
         for validation in raw.data_validations.dataValidation:
             validation.errorStyle='warning'
+            # Keep the level dropdown without interrupting numeric entry/paste.
+            # The summary flags invalid values; the atomic importer validates all.
+            validation.showErrorMessage=False
             validation.error='Seleccione un nivel o ingrese puntos de 0 al máximo del criterio.' if rubric else 'Seleccione Sí o No.'
         for row in range(2,summary.max_row+1):
             for col in (1,2,3,summary.max_column-1,summary.max_column):

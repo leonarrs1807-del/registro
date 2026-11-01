@@ -88,6 +88,7 @@ class ExcelFirstTests(unittest.TestCase):
         self.assertTrue(all(not checked[IND].column_dimensions[c].hidden for c in 'DEFG'))
         self.assertFalse(any(str(c.value).startswith('Puntos ') for c in checked[IND][3]))
         self.assertEqual(checked[IND]['D5'].number_format,'General')
+        self.assertTrue(all(not rule.showErrorMessage for rule in checked[EVALUAR].data_validations.dataValidation))
 
     def test_changed_hidden_identity_is_rejected_without_writes(self):
         wb=self.model();self.complete(wb);wb[IND]['I4']='I999';wb[EVALUAR]['D2']='AD';wb[EVALUAR]['E2']='A'
