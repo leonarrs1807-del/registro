@@ -1,6 +1,7 @@
 """Run the full suite and expose failures as GitHub Actions annotations."""
 from pathlib import Path
 import os
+import faulthandler
 import subprocess
 import sys
 import traceback
@@ -32,12 +33,12 @@ def run_child(batch):
     # the GUI process so Windows failures still include the active test/stack.
     try:
         completed=subprocess.run([sys.executable,'-X','faulthandler',str(Path(__file__).resolve()),'--child',*batch],
-            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',timeout=600)
+            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',timeout=180)
         output=completed.stdout;code=completed.returncode
     except subprocess.TimeoutExpired as exc:
         output=exc.stdout or b''
         if isinstance(output,bytes):output=output.decode('utf-8',errors='replace')
-        output+='\nLas pruebas no terminaron en 600 segundos.';code=1
+        output+='\nEl proceso de pruebas se bloqueó durante 180 segundos.';code=1
     sys.stdout.write(output);sys.stdout.flush()
     if code:
         details=f'Proceso de pruebas terminó con código {code}.\n'+output[-24000:]
@@ -59,15 +60,19 @@ if '--child' not in sys.argv:
         graphical=[name for name in ids if name.startswith(('tests.test_gui.','tests.test_vendedor.'))]
         backend=[name for name in ids if name not in graphical]
         batches=([backend] if backend else [])+[[name] for name in graphical]
-        success=True
+        success=True;executed=0
         for batch in batches:
             print('Proceso de pruebas:',batch[0] if len(batch)==1 else f'{len(batch)} pruebas de datos y licencias',flush=True)
-            if not run_child(batch):success=False
-        report(f'Comprobaciones incluidas: {len(ids)}. Resultado: '+('correcto.' if success else 'fallido.'))
+            executed+=len(batch)
+            if not run_child(batch):success=False;break
+        report(f'Comprobaciones procesadas: {executed} de {len(ids)}. Resultado: '+('correcto.' if success else 'fallido; se detuvo en el primer proceso con errores.'))
     else:success=run_child(names)
     raise SystemExit(0 if success else 1)
 
 try:
+    # Include a Python stack for hangs too, such as an unexpected native dialog.
+    # Successful runs still execute every case, each GUI in its own process.
+    faulthandler.dump_traceback_later(60,repeat=True)
     suite = load_suite(names)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 except BaseException:
@@ -76,6 +81,8 @@ except BaseException:
     message=details.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
     print('::error title=Ejecución de pruebas::'+message,flush=True)
     raise
+finally:
+    faulthandler.cancel_dump_traceback_later()
 report(f'Pruebas: {result.testsRun}; fallos: {len(result.failures)}; errores: {len(result.errors)}; omitidas: {len(result.skipped)}.')
 for case, details in result.failures + result.errors:
     report('```text\n'+str(case)+'\n'+details+'\n```')
