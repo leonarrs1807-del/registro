@@ -181,7 +181,7 @@ El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa a
 Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
 
 Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.''',
-'Cuenta, demo y compras': '''La edición personal 1.5 funciona sin demo ni activación comercial. El candado docente sigue protegiendo sus datos. Las funciones siguientes se conservaron para una futura edición comercial; no es necesario configurarlas ahora.
+'Cuenta, demo y compras': '''La edición comercial utiliza una cuenta local y una activación para una sola PC. El vendedor habilita los cursos comprados. En la edición personal no se solicita activación. El candado protege la edición de sus datos.
 
 1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
 2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.

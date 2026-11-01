@@ -253,6 +253,32 @@ class DesktopTests(unittest.TestCase):
         self.assertFalse(self.app.licencia_permite(other,show=False))
         self.assertEqual(service.status()['days'],30)
 
+    def test_import_purchase_after_demo_unlocks_only_the_bought_course(self):
+        from datetime import datetime,timedelta,timezone
+        import json
+        from licencias import OfflineLicensing,course_key
+        from licencias_emisor import create_keys,sign_request
+        from licencias_ui import AccountDialog
+        folder=app_storage.data_dir()/'compra-gui';folder.mkdir()
+        public=create_keys(folder/'privada.pem',folder/'publica.pem','ClaveVendedorTemporal123')
+        now=datetime.now(timezone.utc)
+        service=OfflineLicensing(folder,public,device='a'*64,clock=lambda:now,registry=False)
+        first=course_key(self.course_name,'Secundaria')
+        service.register('Docente de Prueba','prueba@example.com','comprador','ClaveCliente123',first)
+        other,other_name,_=db.obtener_cursos()[1];second=course_key(other_name,'Secundaria')
+        now+=timedelta(days=40)
+        self.app.licensing=service;self.app._license_required=True
+        self.assertFalse(self.app.licencia_permite(other,show=False))
+        request=service.request(self.app.catalogo_licencias())
+        document=sign_request(request,(folder/'privada.pem').read_bytes(),'ClaveVendedorTemporal123',[second],now=now)
+        file=folder/'compra.licencia';file.write_text(json.dumps(document))
+        dialog=AccountDialog(self.app)
+        with patch('tkinter.filedialog.askopenfilename',return_value=str(file)),patch('tkinter.messagebox.showinfo'):
+            dialog.activate()
+        self.assertTrue(self.app.licencia_permite(other,show=False))
+        self.assertFalse(self.app.licencia_permite(self.course,show=False))
+        self.assertFalse(self.errors)
+
     def test_points_ui_shows_normalized_total_without_publishing_early(self):
         import puntos
         block=puntos.create_block(self.app._db_path,self.course,self.comp,'3°','A','Ecuaciones',[self.cap])

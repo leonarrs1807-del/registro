@@ -20,10 +20,8 @@ if edition not in ('personal','comercial'):
 if edition=='comercial' and not public_key:
     raise ValueError('La edición comercial requiere la clave pública del vendedor antes de compilar.')
 if public_key:
-    from cryptography.hazmat.primitives.serialization import load_pem_public_key
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-    if not isinstance(load_pem_public_key(public_key), Ed25519PublicKey):
-        raise ValueError('license_public_key.pem debe contener únicamente la clave pública Ed25519 del vendedor.')
+    from licencias import public_key_id
+    public_key_id(public_key)
 # Embed the edition policy and public key in the executable's runtime hook.
 # Deleting a loose PEM file must not turn a commercial build into a free build.
 license_hook = root / 'build' / 'registro_license_hook.py'

@@ -6,7 +6,7 @@ import uuid
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     Encoding, PrivateFormat, PublicFormat, BestAvailableEncryption, load_pem_private_key)
-from licencias import canonical, validate_request, PRODUCT, VERSION
+from licencias import canonical, validate_request, public_key_id, PRODUCT, VERSION
 
 
 def create_keys(private_path, public_path, password):
@@ -49,10 +49,14 @@ def sign_request(request, private_pem, password, courses, *, expires=None, refer
         raise ValueError('La clave privada o su contraseña no son correctas.') from None
     if not isinstance(key, Ed25519PrivateKey):
         raise ValueError('Se requiere la clave privada Ed25519 del vendedor.')
+    issuer=public_key_id(key.public_key().public_bytes(Encoding.PEM,PublicFormat.SubjectPublicKeyInfo))
+    if request.get('issuer_id') and request['issuer_id']!=issuer:
+        raise ValueError('Esta clave privada no corresponde al vendedor del instalador del comprador. Elija su clave original.')
     payload = dict(product=PRODUCT, version=VERSION, license_id=str(uuid.uuid4()),
                    request_id=request['request_id'], account_id=request['account_id'],
                    name=request['name'], email=request['email'], device=request['device'],
                    courses=selected, issued_at=issued.isoformat(),
                    expires_at=expires_at.isoformat() if expires_at else None,
                    reference=reference.strip()[:200])
+    payload['issuer_id']=issuer
     return dict(payload=payload, signature=base64.b64encode(key.sign(canonical(payload))).decode('ascii'))

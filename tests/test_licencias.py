@@ -8,7 +8,7 @@ import unittest
 import sys
 import uuid
 from unittest.mock import patch
-from licencias import OfflineLicensing, course_key
+from licencias import OfflineLicensing, course_key,public_key_id
 from licencias_emisor import create_keys, sign_request
 import db
 from db_safety import connection, set_license_policy
@@ -61,6 +61,24 @@ class ActivationTests(unittest.TestCase):
         raw = self.service.path.read_bytes()
         self.assertNotIn(b'ClaveCliente123', raw)
         self.assertNotIn(b'docente@example.com', raw)
+
+    def test_request_identifies_installer_issuer_and_rejects_another_signing_key(self):
+        request=self.service.request(self.catalog)
+        self.assertEqual(request['issuer_id'],public_key_id(self.public))
+        create_keys(self.folder/'otro_priv.pem',self.folder/'otro_pub.pem','ClaveVendedorPrueba123')
+        with self.assertRaisesRegex(ValueError,'no corresponde al vendedor'):
+            sign_request(request,(self.folder/'otro_priv.pem').read_bytes(),'ClaveVendedorPrueba123',[self.course],now=self.now)
+        self.assertFalse(self.service.state['licenses'])
+
+    def test_build_public_key_rejects_private_or_mixed_key_files(self):
+        for invalid in (self.private,self.public+self.private,b'clave incorrecta'):
+            with self.subTest(size=len(invalid)),self.assertRaises(ValueError):public_key_id(invalid)
+
+    def test_legacy_request_can_still_be_signed_with_the_original_vendor_key(self):
+        request=self.service.request(self.catalog);request.pop('issuer_id')
+        document=sign_request(request,self.private,'ClaveVendedorPrueba123',[self.other],now=self.now)
+        self.service.import_license(document)
+        self.assertTrue(self.service.can_edit(self.other))
 
     def test_courses_can_be_bought_in_packages_after_demo(self):
         license1 = self.issue()

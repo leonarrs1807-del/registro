@@ -17,12 +17,14 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La edición personal 1.5 permite trabajar sin demo ni activación comercial.
+La edición comercial 1.6 permite vender cualquier selección de cursos, o todos,
+con una licencia vinculada a una cuenta y PC. La edición personal previa permite
+trabajar sin demo ni activación comercial.
 Si conserva la contraseña inicial, el primer arranque solicita configurar el
 perfil docente y una contraseña de al menos 8 caracteres. Las bases existentes
 conservan su usuario, contraseña y notas. El candado solicita autenticarse para
 editar y las contraseñas se guardan con PBKDF2 y sal aleatoria. Las funciones de
-licencias están conservadas para una futura edición comercial separada.
+licencias comerciales se describen en la guía del vendedor.
 
 ## Datos, migración y respaldos
 
@@ -134,9 +136,9 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Licencias comerciales offline (conservadas para una etapa posterior)
+## Activación comercial 1.6
 
-La versión 1.3 utiliza cuentas locales y una demo de **30 días con un solo curso
+La edición comercial utiliza cuentas locales y una demo de **30 días con un solo curso
 y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se
 permite consultar, guardar documentos y exportar; se bloquean las modificaciones.
 Los cursos no comprados también se conservan en modo de consulta. Los controles
@@ -150,8 +152,8 @@ varios cursos, o `*` para todos. La licencia puede ser permanente o tener una fe
 de vencimiento. Las compras adicionales agregan cursos. La firma Ed25519 liga
 cada licencia a la cuenta y equipo de esa solicitud; no basta copiarla a otra PC.
 
-**Configuración para retomar las ventas:** el repositorio no incluye claves
-del emisor. El instalador personal 1.5 funciona sin demo ni compras. Para compilar
+**Configuración de las ventas:** el repositorio no incluye la clave privada
+del emisor. El instalador personal 1.5 previo funciona sin demo ni compras. Para compilar
 una edición comercial se requiere incorporar la clave pública y definir
 `REGISTRO_EDITION=comercial`; la compilación rechaza una edición comercial sin clave pública. Para finalizar la edición comercial, genere sus claves
 con la herramienta separada **RegistroLicencias.exe**, conserve la privada cifrada
@@ -160,6 +162,18 @@ de compilar; al estar ignorada por Git se debe añadir explícitamente con
 `git add -f license_public_key.pem`. Es pública y se integra en el ejecutable con
 un runtime hook. Quitar un archivo PEM externo no desactiva la demo ni convierte
 el programa en una edición gratuita. La privada nunca se incluye en artefactos.
+
+El flujo **Registro Docente comercial - Windows** se ejecuta al actualizar la
+rama de mejoras. Si todavía falta la clave pública, informa que está pendiente
+y no publica un instalador comercial. Cuando está incorporada, valida que el
+archivo contenga únicamente una clave pública Ed25519, ejecuta todas las pruebas
+y verifica el ejecutable comercial en Windows con bases nuevas y anteriores.
+El artefacto para los clientes es **RegistroDocente-Comercial-Windows**.
+Las solicitudes nuevas identifican la clave del instalador; el emisor rechaza
+una clave privada de otro vendedor. La herramienta limpia los permisos de la
+venta anterior al abrir otra solicitud y permite seleccionar cualquier cantidad
+de cursos. La edición personal solo se compila si el propietario la elige
+expresamente en el flujo manual **Compilar Registro Docente - Windows**.
 
 La [guía del vendedor](docs/LEEME-VENDEDOR.txt) explica los pasos completos.
 RegistroLicencias se compila por separado con `RegistroLicencias.spec` y se

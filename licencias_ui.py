@@ -6,7 +6,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 import db
 from licencias import course_key
-from widgets import scroll_area, wrap_label
+from widgets import scroll_area, wrap_label,SafeDialog
 
 
 def paragraph(master, text):
@@ -16,7 +16,7 @@ def paragraph(master, text):
     return label
 
 
-class AccountDialog(ctk.CTkToplevel):
+class AccountDialog(SafeDialog):
     def __init__(self, app):
         super().__init__(app)
         self.app = app
@@ -132,7 +132,7 @@ class AccountDialog(ctk.CTkToplevel):
 class LicenseTools:
     def catalogo_licencias(self):
         with db.obtener_conexion() as conn:
-            return [dict(key=course_key(name, level), label=f'{level} · {name}')
+            return [dict(key=course_key(name, level), label=f'{level} · {name.removeprefix(level+" · ")}')
                     for name, level in conn.execute('SELECT nombre,nivel FROM Cursos ORDER BY nivel,nombre')]
 
     def clave_curso(self, course=None):

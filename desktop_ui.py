@@ -39,7 +39,7 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.5 — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.6 · {"Comercial" if self._license_required else "Personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)

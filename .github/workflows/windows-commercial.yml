@@ -1,0 +1,32 @@
+name: Registro Docente comercial - Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ['mejoras-escritorio']
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  public-key:
+    name: Comprobar clave pública del vendedor
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.key.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: key
+        shell: bash
+        run: |
+          if test -f license_public_key.pem; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'Pendiente: el vendedor debe generar sus claves en su PC y aportar únicamente license_public_key.pem. No se publica un instalador comercial sin esa clave.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+  commercial:
+    name: Compilar y verificar edición comercial
+    needs: public-key
+    if: needs.public-key.outputs.ready == 'true'
+    uses: ./.github/workflows/windows-build.yml
+    with:
+      edition: comercial

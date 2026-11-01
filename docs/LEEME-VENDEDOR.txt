@@ -1,8 +1,9 @@
-EDICION PERSONAL 1.5: las licencias están conservadas para una etapa posterior.
-Esta edición de trabajo no impone demo ni compras. Para vender se debe compilar
-una edición comercial con la clave pública y REGISTRO_EDITION=comercial.
+REGISTRO DOCENTE 1.6 - EDICION COMERCIAL DE LEONARDO ROQUE
+ACTIVACION MANUAL PARA UNA SOLA PC, SIN SERVIDOR
 
-REGISTRO DOCENTE - ACTIVACION MANUAL, SIN SERVIDOR
+El instalador comercial se compila con su clave pública incorporada. La edición
+personal 1.5 distribuida anteriormente no solicita activación y corresponde a
+la etapa de trabajo previa. Para vender entregue la EDICION COMERCIAL.
 
 PRIMERA CONFIGURACION
 1. Abra RegistroLicencias.exe (esta herramienta es solo para usted).
@@ -12,10 +13,15 @@ PRIMERA CONFIGURACION
    privada. Nunca los suba a GitHub, envíe por chat o entregue a compradores.
 4. Para terminar el instalador comercial, comparta únicamente
    license_public_key.pem (la clave PUBLICA). Debe incorporarse a la raíz del
-   código antes de compilar RegistroDocente.spec. El instalador de preparación
-   puede probarse, pero no acepta compras hasta incorporar esta clave pública.
+   código antes de compilar RegistroDocente.spec. El flujo Registro Docente
+   comercial - Windows verifica esta clave antes de publicar el instalador.
+   Sin ella, la compilación comercial queda pendiente y no publica un programa
+   comercial incompleto.
 5. El instalador definitivo contiene solo la clave pública. La contraseña de su
    clave privada no es una contraseña maestra para entrar al programa.
+6. Use el mismo par de claves en las actualizaciones. El programa comprueba que
+   la clave privada elegida para firmar corresponde al instalador del comprador.
+   Guarde copias de seguridad privadas del par y de su contraseña.
 
 COMO VENDER
 1. El comprador instala RegistroDocente-Setup.exe, crea su usuario y elige el
@@ -25,6 +31,7 @@ COMO VENDER
 4. Selecciona uno, dos, tres o cualquier cantidad de cursos, o el paquete completo.
    Cada licencia corresponde a una sola PC y cuenta. Puede fijar una fecha
    de vencimiento o dejarla vacía para una licencia permanente.
+   Al abrir otra solicitud se limpian los cursos, vigencia y referencia anteriores.
 5. Carga su clave privada, introduce su contraseña y guarda la licencia firmada.
 6. Entrega únicamente el archivo .licencia al cliente. Este lo importa en
    Licencia y cuenta de la misma computadora en la que creó la solicitud.
@@ -58,6 +65,14 @@ controles y automatiza ventas, pero también requiere mantenimiento.
 QUE ENTREGAR AL COMPRADOR
 - RegistroDocente-Setup.exe, compilado con SU clave pública.
 - Su licencia .licencia, cuando haya comprado.
+
+DESCARGAS
+- RegistroDocente-Comercial-Windows: instalador y aplicación para clientes.
+- RegistroLicencias-SoloVendedor: herramienta privada del vendedor; extraiga el
+  ZIP completo y abra dist/RegistroLicencias/RegistroLicencias.exe.
+- En GitHub, use el flujo Registro Docente comercial - Windows. La compilación
+  verifica el arranque comercial aunque el equipo intente seleccionar la edición
+  personal mediante una variable de entorno, y conserva notas de versiones previas.
 
 QUE NO ENTREGAR
 - RegistroLicencias.exe (uso del vendedor).

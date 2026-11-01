@@ -1,31 +1,45 @@
-name: Windows desktop installer
+name: Compilar Registro Docente - Windows
 on:
   workflow_dispatch:
-  push:
-    branches: ['mejoras-escritorio']
-    tags: ['v*']
+    inputs:
+      edition:
+        description: Edición del instalador
+        type: choice
+        options: [comercial, personal]
+        default: comercial
+  workflow_call:
+    inputs:
+      edition:
+        type: string
+        default: comercial
 permissions:
   contents: read
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      REGISTRO_EDITION: ${{ inputs.edition || 'comercial' }}
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements-build.txt
+      - name: Verify commercial public key
+        if: env.REGISTRO_EDITION == 'comercial'
+        run: python tools/verificar_comercial.py
       - run: python tools/run_tests.py
         env:
           PYTHONUTF8: '1'
       - run: python -m PyInstaller --noconfirm RegistroDocente.spec
       - name: Verify real executable and legacy migration
-        run: python tools/smoke_windows.py dist/RegistroDocente/RegistroDocente.exe
+        run: python tools/smoke_windows.py dist/RegistroDocente/RegistroDocente.exe ${{ inputs.edition == 'comercial' && '--commercial' || '' }}
       - name: Verify owner and include teacher guide
         shell: pwsh
         run: |
           $info = (Get-Item dist/RegistroDocente/RegistroDocente.exe).VersionInfo
-          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '1.5.0') { throw 'Propietario o versión incorrectos.' }
+          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '1.6.0') { throw 'Propietario o versión incorrectos.' }
           Copy-Item docs/GUIA-USO.txt dist/RegistroDocente/GUIA-USO.txt
       - name: Build installer
         shell: pwsh
@@ -36,7 +50,7 @@ jobs:
         run: python tools/smoke_windows.py --seller dist/RegistroLicencias/RegistroLicencias.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: RegistroDocente-Windows
+          name: ${{ inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
           path: |
             dist/installer/*.exe
             dist/RegistroDocente/**

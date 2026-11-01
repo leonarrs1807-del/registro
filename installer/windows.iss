@@ -1,6 +1,6 @@
 ; Build with Inno Setup 6 after PyInstaller, from the repository root.
 #define AppName "Registro Docente"
-#define AppVersion "1.5.0"
+#define AppVersion "1.6.0"
 [Setup]
 AppId={{B248D8D2-1C74-4E8B-A107-43F49F9CC8B2}
 AppName={#AppName}

@@ -24,6 +24,18 @@ def canonical(payload):
     return json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
 
 
+def public_key_id(pem):
+    """Validate a public-only Ed25519 PEM and return its stable fingerprint."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key, Encoding, PublicFormat
+    if not isinstance(pem,bytes) or len(pem)>2048 or not re.fullmatch(
+            rb'\s*-----BEGIN PUBLIC KEY-----\s+[A-Za-z0-9+/=\r\n]+-----END PUBLIC KEY-----\s*',pem):
+        raise ValueError('Se requiere únicamente license_public_key.pem, la clave pública Ed25519. No comparta la clave privada.')
+    key=load_pem_public_key(pem)
+    if not isinstance(key,Ed25519PublicKey):raise ValueError('La clave pública debe ser Ed25519.')
+    return hashlib.sha256(key.public_bytes(Encoding.Raw,PublicFormat.Raw)).hexdigest()
+
+
 def course_key(name, level):
     name = re.sub(r'\s*\(Primaria\)\s*$', '', name, flags=re.I)
     plain = ''.join(c for c in unicodedata.normalize('NFKD', name) if not unicodedata.combining(c))
@@ -94,6 +106,8 @@ def validate_request(request):
         uuid.UUID(request[field])
     if not re.fullmatch(r'[a-f0-9]{64}', request.get('device', '')):
         raise ValueError('Identificador de computadora no válido.')
+    if 'issuer_id' in request and (not isinstance(request['issuer_id'],str) or not re.fullmatch(r'[a-f0-9]{64}',request['issuer_id'])):
+        raise ValueError('La identificación del vendedor no es válida.')
     if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', request.get('email', '')) or not request.get('name', '').strip():
         raise ValueError('La solicitud no contiene un titular y correo válidos.')
     catalog = request.get('catalog', [])
@@ -102,6 +116,9 @@ def validate_request(request):
     for item in catalog:
         if not isinstance(item, dict) or not re.fullmatch(r'(primaria|secundaria):[a-z0-9-]+', item.get('key', '')):
             raise ValueError('Curso de la solicitud no válido.')
+        if not isinstance(item.get('label'),str) or not item['label'].strip():
+            raise ValueError('La solicitud contiene un curso sin nombre.')
+    if len({item['key'] for item in catalog})!=len(catalog):raise ValueError('La solicitud contiene cursos repetidos.')
     return request
 
 
@@ -249,9 +266,11 @@ class OfflineLicensing:
     def request(self, catalog):
         if not self.state:
             raise ValueError('Cree primero su cuenta.')
-        return validate_request(dict(product=PRODUCT, version=VERSION, request_id=str(uuid.uuid4()),
-                                     account_id=self.state['account_id'], name=self.state['name'],
-                                     email=self.state['email'], device=self.device, catalog=catalog))
+        request=dict(product=PRODUCT, version=VERSION, request_id=str(uuid.uuid4()),
+                     account_id=self.state['account_id'], name=self.state['name'],
+                     email=self.state['email'], device=self.device, catalog=catalog)
+        if self.public_key:request['issuer_id']=public_key_id(self.public_key)
+        return validate_request(request)
 
     def import_license(self, document):
         if not self.state:

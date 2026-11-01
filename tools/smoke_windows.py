@@ -5,7 +5,7 @@ import ctypes,os,sqlite3,subprocess,sys,tempfile,time
 from ctypes import wintypes
 
 
-def visible_application(pid,prefix='Registro Docente 1.5'):
+def visible_application(pid,prefix='Registro Docente 1.6'):
     user32=ctypes.windll.user32
     found=[]
     callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
@@ -25,8 +25,10 @@ def visible_application(pid,prefix='Registro Docente 1.5'):
     return bool(found)
 
 
-def run_case(executable,database,folder,expected_note=None):
+def run_case(executable,database,folder,expected_note=None,commercial=False):
     env={**os.environ,'REGISTRO_DATA_DIR':str(folder),'REGISTRO_DB_PATH':str(database)}
+    # The customer's environment must not disable a commercial executable.
+    if commercial:env['REGISTRO_EDITION']='personal'
     env.pop('PYTHONPATH',None)
     log=folder/'arranque.log'
     with log.open('w',encoding='utf-8') as stream:
@@ -36,11 +38,13 @@ def run_case(executable,database,folder,expected_note=None):
             while time.monotonic()<deadline:
                 if process.poll() is not None:raise RuntimeError('El ejecutable terminó al iniciar: '+log.read_text(errors='replace')[-3000:])
                 if visible_application(process.pid):
+                    if commercial and not visible_application(process.pid,'Registro Docente — Licencia y cuenta'):
+                        time.sleep(.2);continue
                     with closing(sqlite3.connect(database)) as conn:
                         assert conn.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
                         assert conn.execute("SELECT 1 FROM sqlite_master WHERE name='Historial_Notas'").fetchone()
                         if expected_note is not None:assert conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0]==expected_note
-                    print('PASS: ejecutable visible y base íntegra:',database.name,flush=True)
+                    print('PASS: ejecutable visible y base íntegra:',database.name,'activación comercial obligatoria' if commercial else 'edición personal',flush=True)
                     return
                 time.sleep(.2)
             raise RuntimeError('El ejecutable no mostró la ventana principal.')
@@ -69,9 +73,10 @@ def main():
                 except subprocess.TimeoutExpired:process.kill();process.wait()
         return
     exe=Path(sys.argv[1]).resolve()
+    commercial='--commercial' in sys.argv
     with tempfile.TemporaryDirectory(prefix='registro-windows-exe-') as folder:
         root=Path(folder);fresh=root/'nuevo';fresh.mkdir()
-        run_case(exe,fresh/'registro.db',fresh)
+        run_case(exe,fresh/'registro.db',fresh,commercial=commercial)
         legacy=root/'anterior';legacy.mkdir();path=legacy/'registro.db'
         os.environ['REGISTRO_DATA_DIR']=str(legacy);os.environ['REGISTRO_DB_PATH']=str(path)
         sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
@@ -82,7 +87,7 @@ def main():
         session=db.crear_o_actualizar_sesion_clase(None,course,comp,'3°','A','Prueba','',1,[(cap,'Criterio')],db_path=path)
         db.guardar_calificaciones_y_asistencia_sesion(session,[dict(estudiante_id=student,notas_por_capacidad={cap:12.5})],db_path=path)
         with closing(sqlite3.connect(path)) as conn,conn:conn.execute('DROP TABLE Docente_Config')
-        run_case(exe,path,legacy,12.5)
+        run_case(exe,path,legacy,12.5,commercial=commercial)
 
 
 if __name__=='__main__':
