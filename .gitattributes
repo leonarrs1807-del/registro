@@ -1,0 +1,2 @@
+# Preserve legacy CRLF Python files while checking actual trailing whitespace.
+*.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

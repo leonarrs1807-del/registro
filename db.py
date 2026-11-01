@@ -6,7 +6,11 @@ from typing import Any, Dict, List, Optional, Tuple
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-DB_PATH = Path(__file__).resolve().parent / "registro_evaluacion.db"
+from app_storage import database_path
+from app_security import hash_password, verify_password
+from db_safety import connection, atomic, valid_number, migrate, backed_up
+
+DB_PATH = database_path()
 
 # Catálogo oficial de 10 Áreas Curriculares de Secundaria (CNEB)
 CATALOGO_INICIAL: Dict[str, Dict[str, List[str]]] = {
@@ -175,10 +179,8 @@ CATALOGO_INICIAL: Dict[str, Dict[str, List[str]]] = {
 }
 
 
-def obtener_conexion(db_path: Path = DB_PATH) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+def obtener_conexion(db_path: Path = DB_PATH):
+    return connection(db_path)
 
 
 def nota_a_literal(nota: Optional[float]) -> str:
@@ -228,6 +230,8 @@ def sincronizar_codigos_por_seccion(db_path: Path = DB_PATH) -> None:
         conn.commit()
 
 
+@backed_up
+@atomic
 def inicializar_db(db_path: Path = DB_PATH) -> None:
     with obtener_conexion(db_path) as conn:
         cursor = conn.cursor()
@@ -479,6 +483,9 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
 
         conn.commit()
 
+    with obtener_conexion(db_path) as conn:
+        migrate(conn)
+
     sincronizar_codigos_por_seccion(db_path)
 
 
@@ -497,11 +504,11 @@ def obtener_docente_config(db_path: Path = DB_PATH) -> Dict[str, str]:
                 "institucion": "I.E. Secundaria",
                 "especialidad": "Secundaria",
                 "usuario": "docente",
-                "clave": "1234",
                 "tema_visual": "Oscuro Noche",
             }
         d = dict(row)
         d.setdefault("tema_visual", "Oscuro Noche")
+        d.pop("clave", None)  # Never return password hashes to widgets.
         return d
 
 
@@ -513,11 +520,19 @@ def guardar_docente_config(
     clave: str,
     db_path: Path = DB_PATH,
 ) -> None:
+    if not usuario.strip():
+        raise ValueError("El usuario es obligatorio.")
+    if clave and len(clave.strip()) < 8:
+        raise ValueError("La nueva contraseña debe tener al menos 8 caracteres.")
     with obtener_conexion(db_path) as conn:
+        current = conn.execute("SELECT clave, requiere_cambio_clave FROM Docente_Config WHERE id=1").fetchone()
+        if not clave and current[1]:
+            raise ValueError("Establezca una contraseña de al menos 8 caracteres.")
+        encoded = hash_password(clave) if clave else current[0]
         conn.execute(
             """
             UPDATE Docente_Config
-            SET nombres_docente = ?, institucion = ?, especialidad = ?, usuario = ?, clave = ?
+            SET nombres_docente = ?, institucion = ?, especialidad = ?, usuario = ?, clave = ?, requiere_cambio_clave = 0
             WHERE id = 1
             """,
             (
@@ -525,7 +540,7 @@ def guardar_docente_config(
                 institucion.strip(),
                 especialidad.strip(),
                 usuario.strip(),
-                clave.strip(),
+                encoded,
             ),
         )
         conn.commit()
@@ -538,11 +553,10 @@ def guardar_tema_visual_preferido(nombre_tema: str, db_path: Path = DB_PATH) -> 
 
 
 def verificar_credenciales_docente(usuario_ingresado: str, clave_ingresada: str, db_path: Path = DB_PATH) -> bool:
-    cfg = obtener_docente_config(db_path)
-    return (
-        usuario_ingresado.strip().lower() == cfg["usuario"].strip().lower()
-        and clave_ingresada.strip() == cfg["clave"].strip()
-    )
+    with obtener_conexion(db_path) as conn:
+        row = conn.execute("SELECT usuario, clave FROM Docente_Config WHERE id=1").fetchone()
+    return bool(row and usuario_ingresado.strip().casefold() == row[0].strip().casefold()
+                and verify_password(clave_ingresada, row[1]))
 
 
 # ==============================================================================
@@ -573,6 +587,7 @@ def crear_curso(nombre: str, db_path: Path = DB_PATH) -> int:
         conn.commit()
         return cid
 
+@backed_up
 def eliminar_curso(curso_id: int, db_path: Path = DB_PATH) -> None:
     with obtener_conexion(db_path) as conn:
         conn.execute("DELETE FROM Cursos WHERE id = ?", (curso_id,))
@@ -624,6 +639,7 @@ def crear_capacidad(competencia_id: int, nombre: str, db_path: Path = DB_PATH) -
 # ==============================================================================
 
 
+@atomic
 def agregar_estudiante(
     nombres: str,
     apellidos: str,
@@ -648,6 +664,7 @@ def agregar_estudiante(
     return nuevo_id
 
 
+@atomic
 def actualizar_datos_estudiante(
     id_estudiante: int,
     nombres: str,
@@ -677,6 +694,8 @@ def actualizar_datos_estudiante(
     sincronizar_codigos_por_seccion(db_path)
 
 
+@backed_up
+@atomic
 def eliminar_estudiante(id_estudiante: int, db_path: Path = DB_PATH) -> None:
     with obtener_conexion(db_path) as conn:
         conn.execute("DELETE FROM Estudiantes WHERE ID = ?", (id_estudiante,))
@@ -763,6 +782,7 @@ def generar_plantilla_excel_estudiantes(ruta_destino: str) -> None:
     wb.save(ruta_destino)
 
 
+@atomic
 def importar_estudiantes_desde_excel(
     ruta_archivo: str, grado_def: str = "3°", seccion_def: str = "A", db_path: Path = DB_PATH
 ) -> int:
@@ -795,11 +815,13 @@ def importar_estudiantes_desde_excel(
     insertados = 0
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
-        for fila in filas[inicio:]:
+        for row_number, fila in enumerate(filas[inicio:], inicio + 1):
             if not fila or all(c is None or str(c).strip() == "" for c in fila):
                 continue
             if idx_completo != -1 and idx_ape == -1 and idx_nom == -1:
                 comp = str(fila[idx_completo] or "").strip()
+                if not comp:
+                    raise ValueError(f"Fila {row_number}: falta el nombre completo.")
                 if "," in comp:
                     p = comp.split(",", 1)
                     ape, nom = p[0].strip(), p[1].strip()
@@ -811,11 +833,14 @@ def importar_estudiantes_desde_excel(
                 ape = str(fila[idx_ape]).strip() if idx_ape != -1 and idx_ape < len(fila) and fila[idx_ape] is not None else ""
                 nom = str(fila[idx_nom]).strip() if idx_nom != -1 and idx_nom < len(fila) and fila[idx_nom] is not None else ""
 
-            if not nom and not ape:
-                continue
+            if not nom or not ape:
+                raise ValueError(f"Fila {row_number}: se requieren nombres y apellidos.")
             gra = str(fila[idx_gra]).strip() if idx_gra != -1 and idx_gra < len(fila) and fila[idx_gra] is not None else grado_def
             sec = str(fila[idx_sec]).strip().upper() if idx_sec != -1 and idx_sec < len(fila) and fila[idx_sec] is not None else seccion_def
 
+            if cur.execute("SELECT 1 FROM Estudiantes WHERE Nombres=? AND Apellidos=? AND Grado=? AND Seccion=?",
+                           (nom, ape, gra or grado_def, sec or seccion_def)).fetchone():
+                raise ValueError(f"Estudiante duplicado: {ape}, {nom}.")
             cur.execute(
                 "INSERT INTO Estudiantes (Nombres, Apellidos, Grado, Seccion, Estado) VALUES (?, ?, ?, ?, 'ACTIVO')",
                 (nom or "-", ape or "-", gra or grado_def, sec or seccion_def),
@@ -862,6 +887,11 @@ def guardar_indicadores_instrumento_sesion(
     """
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
+        allowed = {r[0] for r in cur.execute("SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?", (sesion_id,))}
+        for cap_id, text, maximum in lista_indicadores:
+            if cap_id not in allowed or not text.strip():
+                raise ValueError("Indicador sin texto o con capacidad ajena a la sesión.")
+            valid_number(maximum, 0.000001, 20, "Puntaje máximo")
         cur.execute("UPDATE Sesiones_Clase SET tipo_instrumento = ? WHERE id = ?", (tipo_instrumento, sesion_id))
         cur.execute("DELETE FROM Instrumento_Indicadores WHERE sesion_id = ?", (sesion_id,))
         for cap_id, texto_ind, p_max in lista_indicadores:
@@ -1044,6 +1074,7 @@ def exportar_plantilla_rubrica_o_cotejo_excel(
     wb.save(ruta_destino)
 
 
+@atomic
 def importar_rubrica_o_cotejo_desde_excel(
     sesion_id: int, ruta_archivo: str, grado: str, seccion: str, db_path: Path = DB_PATH
 ) -> Tuple[int, int]:
@@ -1060,7 +1091,8 @@ def importar_rubrica_o_cotejo_desde_excel(
     # 1. Leer hoja de indicadores
     ws_ind = wb.worksheets[0]
     filas_ind = list(ws_ind.iter_rows(values_only=True))
-    if len(filas_ind) < 3: return (0, 0)
+    if len(filas_ind) < 3 or len(filas_ind[2]) < 3:
+        raise ValueError("La hoja de indicadores no tiene el formato de la plantilla.")
     
     header_fila = filas_ind[2]
     titulo_a1 = str(filas_ind[0][0]).upper() if filas_ind and filas_ind[0] else ""
@@ -1081,8 +1113,8 @@ def importar_rubrica_o_cotejo_desde_excel(
                 
                 with obtener_conexion(db_path) as conn:
                     conn.execute("UPDATE Sesion_Capacidades SET criterio_precisado = ? WHERE sesion_id = ? AND capacidad_id = ?", (criterio, sesion_id, cap_id))
-            except Exception:
-                pass
+            except (ValueError, TypeError, IndexError) as exc:
+                raise ValueError(f"Indicador inválido: {exc}") from exc
     else:
         for fila in filas_ind[3:]:
             if not fila or fila[0] is None:
@@ -1101,9 +1133,11 @@ def importar_rubrica_o_cotejo_desde_excel(
                     
                 with obtener_conexion(db_path) as conn:
                     conn.execute("UPDATE Sesion_Capacidades SET criterio_precisado = ? WHERE sesion_id = ? AND capacidad_id = ?", (criterio, sesion_id, cap_id))
-            except Exception:
-                pass
+            except (ValueError, TypeError, IndexError) as exc:
+                raise ValueError(f"Indicador inválido: {exc}") from exc
 
+    if not indicadores_lista:
+        raise ValueError("El archivo no contiene indicadores válidos.")
     if indicadores_lista:
         guardar_indicadores_instrumento_sesion(sesion_id, tipo_detectado, indicadores_lista, db_path)
 
@@ -1120,8 +1154,8 @@ def importar_rubrica_o_cotejo_desde_excel(
                     try:
                         cid = int(h_txt.split("[CAP_ID:")[1].split("]")[0].strip())
                         mapa_col_cap[c_idx] = cid
-                    except Exception:
-                        pass
+                    except (ValueError, IndexError) as exc:
+                        raise ValueError("Encabezado CAP_ID inválido en la segunda hoja.") from exc
 
             estudiantes_salon = {
                 e["Codigo_Unico"]: e["ID"]
@@ -1134,16 +1168,15 @@ def importar_rubrica_o_cotejo_desde_excel(
                 cod = str(f[0]).strip()
                 est_id = estudiantes_salon.get(cod)
                 if not est_id:
-                    continue
+                    raise ValueError(f"Código de estudiante desconocido: {cod}")
                 notas_cap: Dict[int, Optional[float]] = {}
                 for col_i, cap_id in mapa_col_cap.items():
                     if col_i < len(f) and f[col_i] is not None and str(f[col_i]).strip() != "":
                         try:
-                            val_f = float(str(f[col_i]).strip())
-                            if 0.0 <= val_f <= 20.0:
-                                notas_cap[cap_id] = val_f
-                        except ValueError:
-                            pass
+                            val_f = valid_number(str(f[col_i]).strip())
+                            notas_cap[cap_id] = val_f
+                        except ValueError as exc:
+                            raise ValueError(f"Código {cod}, columna {col_i+1}: {exc}") from exc
                 comentario = str(f[-1] or "").strip() if len(f) > 3 else ""
                 if notas_cap or comentario:
                     datos_para_guardar.append(
@@ -1167,6 +1200,7 @@ def importar_rubrica_o_cotejo_desde_excel(
 # ==============================================================================
 
 
+@atomic
 def crear_o_actualizar_sesion_clase(
     sesion_id: Optional[int],
     curso_id: int,
@@ -1181,9 +1215,19 @@ def crear_o_actualizar_sesion_clase(
     fecha_str: Optional[str] = None,
     db_path: Path = DB_PATH,
 ) -> int:
-    fecha_final = fecha_str or date.today().isoformat()
+    fecha_final = date.fromisoformat(fecha_str or date.today().isoformat()).isoformat()
+    peso_clase = valid_number(peso_clase, 0.000001, 1000000, "Peso")
+    if not titulo_tema.strip() or not grado.strip() or not seccion.strip():
+        raise ValueError("El título, grado y sección son obligatorios.")
+    if not capacidades_y_criterios or len({c[0] for c in capacidades_y_criterios}) != len(capacidades_y_criterios):
+        raise ValueError("Seleccione capacidades distintas para la sesión.")
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
+        if not cur.execute("SELECT 1 FROM Competencias WHERE id=? AND curso_id=?", (competencia_id, curso_id)).fetchone():
+            raise ValueError("La competencia no pertenece al curso.")
+        for cap_id, _ in capacidades_y_criterios:
+            if not cur.execute("SELECT 1 FROM Capacidades WHERE id=? AND competencia_id=?", (cap_id, competencia_id)).fetchone():
+                raise ValueError("La capacidad no pertenece a la competencia.")
         if sesion_id is None:
             cur.execute(
                 """
@@ -1207,10 +1251,16 @@ def crear_o_actualizar_sesion_clase(
             sid = cur.lastrowid
         else:
             sid = sesion_id
+            previous = cur.execute("SELECT curso_id, competencia_id, grado, seccion FROM Sesiones_Clase WHERE id=?", (sid,)).fetchone()
+            if not previous:
+                raise ValueError("La sesión ya no existe.")
+            evaluated = {r[0] for r in cur.execute("SELECT DISTINCT capacidad_id FROM Notas_Sesion_Capacidad WHERE sesion_id=? AND nota IS NOT NULL", (sid,))}
+            if evaluated and (tuple(previous) != (curso_id, competencia_id, grado.strip(), seccion.strip().upper()) or not evaluated <= {c[0] for c in capacidades_y_criterios}):
+                raise ValueError("La sesión tiene notas. No cambie su salón, competencia ni elimine capacidades calificadas; cree una nueva sesión.")
             cur.execute(
                 """
                 UPDATE Sesiones_Clase
-                SET competencia_id = ?, categoria = ?, titulo_tema = ?, proposito = ?, peso_clase = ?
+                SET competencia_id = ?, categoria = ?, titulo_tema = ?, proposito = ?, peso_clase = ?, curso_id = ?, grado = ?, seccion = ?, fecha = ?
                 WHERE id = ?
                 """,
                 (
@@ -1219,9 +1269,13 @@ def crear_o_actualizar_sesion_clase(
                     titulo_tema.strip(),
                     proposito.strip(),
                     float(peso_clase),
+                    curso_id, grado.strip(), seccion.strip().upper(), fecha_final,
                     sid,
                 ),
             )
+            selected_caps = [c[0] for c in capacidades_y_criterios]
+            placeholders = ",".join("?" for _ in selected_caps)
+            cur.execute(f"DELETE FROM Instrumento_Indicadores WHERE sesion_id=? AND capacidad_id NOT IN ({placeholders})", (sid, *selected_caps))
             cur.execute("DELETE FROM Sesion_Capacidades WHERE sesion_id = ?", (sid,))
 
         for cap_id, criterio in capacidades_y_criterios:
@@ -1237,6 +1291,7 @@ def crear_o_actualizar_sesion_clase(
 
 
 def actualizar_peso_actividad(sesion_id: int, nuevo_peso: float, db_path: Path = DB_PATH) -> None:
+    nuevo_peso = valid_number(nuevo_peso, 0.000001, 1000000, "Peso")
     with obtener_conexion(db_path) as conn:
         conn.execute(
             "UPDATE Sesiones_Clase SET peso_clase = ? WHERE id = ?",
@@ -1245,6 +1300,7 @@ def actualizar_peso_actividad(sesion_id: int, nuevo_peso: float, db_path: Path =
         conn.commit()
 
 
+@backed_up
 def eliminar_sesion_clase(sesion_id: int, db_path: Path = DB_PATH) -> None:
     with obtener_conexion(db_path) as conn:
         conn.execute("DELETE FROM Sesiones_Clase WHERE id = ?", (sesion_id,))
@@ -1295,15 +1351,25 @@ def obtener_sesiones_clase(
         return sesiones
 
 
+@atomic
 def guardar_calificaciones_y_asistencia_sesion(
     sesion_id: int,
     datos_estudiantes: List[Dict[str, Any]],
     db_path: Path = DB_PATH,
+    nuevo_peso: Optional[float] = None,
 ) -> None:
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
+        if nuevo_peso is not None:
+            actualizar_peso_actividad(sesion_id, nuevo_peso, db_path)
+        session = cur.execute("SELECT grado, seccion FROM Sesiones_Clase WHERE id=?", (sesion_id,)).fetchone()
+        if not session:
+            raise ValueError("La sesión no existe.")
+        allowed = {r[0] for r in cur.execute("SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?", (sesion_id,))}
         for item in datos_estudiantes:
             est_id = item["estudiante_id"]
+            if not cur.execute("SELECT 1 FROM Estudiantes WHERE ID=? AND Grado=? AND Seccion=?", (est_id, *session)).fetchone():
+                raise ValueError("El estudiante no pertenece al salón de la sesión.")
             asistio = 1 if item.get("asistio", True) else 0
             comentario = item.get("comentario", "").strip()
 
@@ -1319,6 +1385,10 @@ def guardar_calificaciones_y_asistencia_sesion(
 
             notas_cap: Dict[int, Optional[float]] = item.get("notas_por_capacidad", {})
             for cap_id, nota_val in notas_cap.items():
+                if cap_id not in allowed:
+                    raise ValueError("La capacidad no está incluida en la sesión.")
+                if nota_val is not None:
+                    nota_val = valid_number(nota_val)
                 cur.execute(
                     """
                     INSERT INTO Notas_Sesion_Capacidad (sesion_id, capacidad_id, estudiante_id, nota)
@@ -1524,6 +1594,9 @@ def guardar_pesos_rubros_curso(
     pct_practicas: float,
     db_path: Path = DB_PATH,
 ) -> None:
+    percentages = [valid_number(v, 0, 100, "Porcentaje") for v in (pct_clases, pct_examenes, pct_trabajos, pct_practicas)]
+    if abs(sum(percentages) - 100) > 0.000001:
+        raise ValueError("Los porcentajes deben sumar 100%.")
     with obtener_conexion(db_path) as conn:
         conn.execute(
             """
@@ -1588,6 +1661,8 @@ def obtener_estadisticas_frecuencia_evaluacion(
 def guardar_nota_manual_capacidad(
     estudiante_id: int, capacidad_id: int, nota_manual: Optional[float], db_path: Path = DB_PATH
 ) -> None:
+    if nota_manual is not None:
+        nota_manual = valid_number(nota_manual)
     with obtener_conexion(db_path) as conn:
         conn.execute(
             """
@@ -1925,6 +2000,7 @@ def exportar_matriz_completa_excel(
     wb.save(ruta_destino)
 
 
+@atomic
 def importar_matriz_notas_desde_excel(
     ruta_archivo: str, grado_def: str = "3°", seccion_def: str = "A", db_path: Path = DB_PATH
 ) -> Tuple[int, int]:
@@ -1932,7 +2008,7 @@ def importar_matriz_notas_desde_excel(
     ws = wb.active
     filas = list(ws.iter_rows(values_only=True))
     if len(filas) < 3:
-        return 0, 0
+        raise ValueError("La matriz no contiene encabezados y datos.")
 
     fila_header_idx = 2
     for r_idx in range(min(5, len(filas))):
@@ -1948,18 +2024,22 @@ def importar_matriz_notas_desde_excel(
             try:
                 parte = texto_h.split("[CAP_ID:")[1].split("]")[0].strip()
                 mapa_col_cap[col_i] = int(parte)
-            except Exception:
-                pass
+            except (ValueError, IndexError) as exc:
+                raise ValueError(f"Encabezado de capacidad inválido en columna {col_i+1}.") from exc
 
+    if not mapa_col_cap:
+        raise ValueError("No hay columnas [CAP_ID:...] en la matriz. Use la plantilla exportada.")
     est_procesados = 0
     notas_cargadas = 0
 
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
-        for fila in filas[fila_header_idx + 1 :]:
+        for row_number, fila in enumerate(filas[fila_header_idx + 1 :], fila_header_idx + 2):
             if not fila or all(c is None or str(c).strip() == "" for c in fila):
                 continue
 
+            if len(fila) < 6:
+                raise ValueError("La matriz necesita las seis columnas de identificación.")
             codigo = str(fila[0] or "").strip()
             apellidos = str(fila[1] or "").strip()
             nombres = str(fila[2] or "").strip()
@@ -1975,6 +2055,10 @@ def importar_matriz_notas_desde_excel(
                 row_est = cur.execute(
                     "SELECT ID FROM Estudiantes WHERE Codigo_Unico = ?", (codigo,)
                 ).fetchone()
+            if row_est:
+                identity = cur.execute("SELECT Apellidos, Nombres, Grado, Seccion FROM Estudiantes WHERE ID=?", (row_est[0],)).fetchone()
+                if tuple(identity) != (apellidos, nombres, grado, seccion):
+                    raise ValueError(f"Fila {row_number}: el código no coincide con el estudiante y salón. Exporte una matriz actualizada.")
             if not row_est:
                 row_est = cur.execute(
                     "SELECT ID FROM Estudiantes WHERE Apellidos = ? AND Nombres = ? AND Grado = ? AND Seccion = ?",
@@ -2001,7 +2085,7 @@ def importar_matriz_notas_desde_excel(
                     celda_val = fila[col_i]
                     if celda_val is not None and str(celda_val).strip() not in ("", "-", "FALTA", "⚠️ FALTA"):
                         try:
-                            nota_f = float(str(celda_val).replace("✎", "").strip())
+                            nota_f = valid_number(str(celda_val).replace("✎", "").strip())
                             if 0.0 <= nota_f <= 20.0:
                                 cur.execute(
                                     """
@@ -2013,8 +2097,8 @@ def importar_matriz_notas_desde_excel(
                                     (est_id, cap_id, nota_f),
                                 )
                                 notas_cargadas += 1
-                        except ValueError:
-                            pass
+                        except ValueError as exc:
+                            raise ValueError(f"Fila {row_number}, columna {col_i+1}: {exc}") from exc
 
         conn.commit()
 
@@ -2135,3 +2219,9 @@ def guardar_tamano_letra_preferido(tamano: str, db_path: Path = DB_PATH) -> None
     with obtener_conexion(db_path) as conn:
         conn.execute("UPDATE Docente_Config SET tamano_letra = ? WHERE id = 1", (tamano,))
         conn.commit()
+
+
+@atomic
+def actualizar_pesos_actividades(pesos, db_path: Path = DB_PATH):
+    for sid, value in pesos:
+        actualizar_peso_actividad(sid, value, db_path)
