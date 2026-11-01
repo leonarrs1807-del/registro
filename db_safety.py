@@ -62,7 +62,7 @@ def backed_up(func):
         path = Path(bound.arguments['db_path'])
         if path.exists() and str(path.resolve()) not in _connections.get():
             from app_storage import backup_database
-            backup_database(path, 'antes-' + func.__name__)
+            backup_database(path, 'antes-' + func.__name__, current=func.__name__ != 'inicializar_db')
         return func(*args, **kwargs)
     return wrapped
 

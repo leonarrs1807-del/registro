@@ -183,14 +183,16 @@ def obtener_conexion(db_path: Path = DB_PATH):
     return connection(db_path)
 
 
-def nota_a_literal(nota: Optional[float]) -> str:
+def nota_a_literal(nota: Optional[float], db_path: Path = DB_PATH) -> str:
     if nota is None:
         return "-"
-    if nota >= 17.5:
+    from escala import thresholds
+    b,a,ad=thresholds(db_path)
+    if nota >= ad:
         return "AD"
-    if nota >= 13.5:
+    if nota >= a:
         return "A"
-    if nota >= 10.5:
+    if nota >= b:
         return "B"
     return "C"
 
@@ -209,23 +211,23 @@ def sincronizar_codigos_por_seccion(db_path: Path = DB_PATH) -> None:
         cur = conn.cursor()
         cur.execute("UPDATE Estudiantes SET Codigo_Unico = 'TMP-' || ID")
         salones = cur.execute(
-            "SELECT DISTINCT Grado, Seccion FROM Estudiantes ORDER BY Grado ASC, Seccion ASC"
+            "SELECT DISTINCT Grado, Seccion, nivel FROM Estudiantes ORDER BY nivel, Grado ASC, Seccion ASC"
         ).fetchall()
-        for grado, seccion in salones:
+        for grado, seccion, nivel in salones:
             prefijo_g = _limpiar_grado_prefijo(str(grado))
             prefijo_s = re.sub(r"[^A-Za-z0-9]", "", str(seccion or "A")).upper() or "A"
             alumnos = cur.execute(
                 """
                 SELECT ID FROM Estudiantes
-                WHERE Grado = ? AND Seccion = ?
+                WHERE Grado = ? AND Seccion = ? AND nivel = ?
                 ORDER BY Apellidos ASC, Nombres ASC, ID ASC
                 """,
-                (grado, seccion),
+                (grado, seccion, nivel),
             ).fetchall()
             for idx, (est_id,) in enumerate(alumnos, start=1):
                 cur.execute(
                     "UPDATE Estudiantes SET Codigo_Unico = ? WHERE ID = ?",
-                    (f"{prefijo_g}{prefijo_s}{idx:02d}", est_id),
+                    (f"{'P' if nivel=='Primaria' else ''}{prefijo_g}{prefijo_s}{idx:02d}", est_id),
                 )
         conn.commit()
 
@@ -485,6 +487,8 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
 
     with obtener_conexion(db_path) as conn:
         migrate(conn)
+        from niveles import migrate_levels
+        migrate_levels(conn, CATALOGO_INICIAL)
 
     sincronizar_codigos_por_seccion(db_path)
 
@@ -566,9 +570,9 @@ def verificar_credenciales_docente(usuario_ingresado: str, clave_ingresada: str,
 
 def obtener_cursos(solo_activos: bool = False, db_path: Path = DB_PATH) -> List[Tuple[int, str, int]]:
     with obtener_conexion(db_path) as conn:
-        q = "SELECT id, nombre, activo FROM Cursos"
+        q = "SELECT id, nombre, activo FROM Cursos WHERE nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)"
         if solo_activos:
-            q += " WHERE activo = 1"
+            q += " AND activo = 1"
         q += " ORDER BY id ASC"
         return conn.execute(q).fetchall()
 def alternar_curso_activo(curso_id: int, db_path: Path = DB_PATH) -> None:
@@ -581,7 +585,10 @@ def alternar_curso_activo(curso_id: int, db_path: Path = DB_PATH) -> None:
 def crear_curso(nombre: str, db_path: Path = DB_PATH) -> int:
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("INSERT INTO Cursos (nombre) VALUES (?)", (nombre.strip(),))
+        from niveles import active_level
+        level=active_level(conn)
+        if level=="Primaria" and not nombre.startswith("Primaria · "):nombre="Primaria · "+nombre
+        cur.execute("INSERT INTO Cursos (nombre,nivel) VALUES (?,?)", (nombre.strip(),level))
         cid = cur.lastrowid
         cur.execute("INSERT OR IGNORE INTO Pesos_Rubros_Curso (curso_id) VALUES (?)", (cid,))
         conn.commit()
@@ -717,6 +724,7 @@ def obtener_estudiantes_filtrados(
         FROM Estudiantes
         WHERE 1=1
     """
+    query += " AND nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)"
     params: List[Any] = []
     if not incluir_retirados:
         query += " AND COALESCE(Estado, 'ACTIVO') = 'ACTIVO'"
@@ -748,11 +756,11 @@ def obtener_estudiantes_filtrados(
 
 
 def obtener_grados_y_secciones(db_path: Path = DB_PATH) -> Tuple[List[str], List[str]]:
-    grados_base = ["1°", "2°", "3°", "4°", "5°"]
+    grados_base = [f"{i}°" for i in range(1,7 if obtener_docente_config(db_path).get("nivel_educativo")=="Primaria" else 6)]
     secciones_base = ["A", "B", "C", "D", "E"]
     with obtener_conexion(db_path) as conn:
-        g_db = [r[0] for r in conn.execute("SELECT DISTINCT Grado FROM Estudiantes").fetchall() if r[0]]
-        s_db = [r[0] for r in conn.execute("SELECT DISTINCT Seccion FROM Estudiantes").fetchall() if r[0]]
+        g_db = [r[0] for r in conn.execute("SELECT DISTINCT Grado FROM Estudiantes WHERE nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)").fetchall() if r[0]]
+        s_db = [r[0] for r in conn.execute("SELECT DISTINCT Seccion FROM Estudiantes WHERE nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)").fetchall() if r[0]]
     return sorted(set(grados_base + g_db)), sorted(set(secciones_base + s_db))
 
 
@@ -838,7 +846,7 @@ def importar_estudiantes_desde_excel(
             gra = str(fila[idx_gra]).strip() if idx_gra != -1 and idx_gra < len(fila) and fila[idx_gra] is not None else grado_def
             sec = str(fila[idx_sec]).strip().upper() if idx_sec != -1 and idx_sec < len(fila) and fila[idx_sec] is not None else seccion_def
 
-            if cur.execute("SELECT 1 FROM Estudiantes WHERE Nombres=? AND Apellidos=? AND Grado=? AND Seccion=?",
+            if cur.execute("SELECT 1 FROM Estudiantes WHERE Nombres=? AND Apellidos=? AND Grado=? AND Seccion=? AND nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)",
                            (nom, ape, gra or grado_def, sec or seccion_def)).fetchone():
                 raise ValueError(f"Estudiante duplicado: {ape}, {nom}.")
             cur.execute(
@@ -1318,7 +1326,7 @@ def obtener_sesiones_clase(
     query = """
         SELECT s.id, s.curso_id, s.competencia_id, c.nombre AS competencia_nombre,
                s.grado, s.seccion, COALESCE(s.categoria, 'Clases') AS categoria,
-               s.titulo_tema, s.proposito, s.peso_clase,
+               s.titulo_tema, s.proposito, s.peso_clase, s.archivada,
                COALESCE(s.tipo_instrumento, 'Normal') AS tipo_instrumento, s.fecha
         FROM Sesiones_Clase s
         JOIN Competencias c ON s.competencia_id = c.id
@@ -1368,20 +1376,21 @@ def guardar_calificaciones_y_asistencia_sesion(
         allowed = {r[0] for r in cur.execute("SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?", (sesion_id,))}
         for item in datos_estudiantes:
             est_id = item["estudiante_id"]
-            if not cur.execute("SELECT 1 FROM Estudiantes WHERE ID=? AND Grado=? AND Seccion=?", (est_id, *session)).fetchone():
+            if not cur.execute("SELECT 1 FROM Estudiantes WHERE ID=? AND Grado=? AND Seccion=? AND nivel=(SELECT nivel FROM Sesiones_Clase WHERE id=?)", (est_id, *session, sesion_id)).fetchone():
                 raise ValueError("El estudiante no pertenece al salón de la sesión.")
             asistio = 1 if item.get("asistio", True) else 0
             comentario = item.get("comentario", "").strip()
 
-            cur.execute(
-                """
-                INSERT INTO Asistencia_Y_Comentarios_Clase (sesion_id, estudiante_id, asistio, comentario)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(sesion_id, estudiante_id)
-                DO UPDATE SET asistio = excluded.asistio, comentario = excluded.comentario
-                """,
-                (sesion_id, est_id, asistio, comentario),
-            )
+            if not item.get("preservar_asistencia",False):
+                cur.execute(
+                    """
+                    INSERT INTO Asistencia_Y_Comentarios_Clase (sesion_id, estudiante_id, asistio, comentario)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(sesion_id, estudiante_id)
+                    DO UPDATE SET asistio = excluded.asistio, comentario = excluded.comentario
+                    """,
+                    (sesion_id, est_id, asistio, comentario),
+                )
 
             notas_cap: Dict[int, Optional[float]] = item.get("notas_por_capacidad", {})
             for cap_id, nota_val in notas_cap.items():
@@ -1798,7 +1807,7 @@ def calcular_matriz_competencias_y_capacidades(
                 "es_manual_cap": es_manual_cap,
                 "notas_competencia": notas_competencia,
                 "promedio_general": promedio_general,
-                "literal_general": nota_a_literal(promedio_general),
+                "literal_general": nota_a_literal(promedio_general,db_path),
                 "faltan_capacidades": faltan_capacidades,
             }
         )
@@ -2053,7 +2062,7 @@ def importar_matriz_notas_desde_excel(
             row_est = None
             if codigo:
                 row_est = cur.execute(
-                    "SELECT ID FROM Estudiantes WHERE Codigo_Unico = ?", (codigo,)
+                    "SELECT ID FROM Estudiantes WHERE Codigo_Unico = ? AND nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)", (codigo,)
                 ).fetchone()
             if row_est:
                 identity = cur.execute("SELECT Apellidos, Nombres, Grado, Seccion FROM Estudiantes WHERE ID=?", (row_est[0],)).fetchone()
@@ -2061,7 +2070,7 @@ def importar_matriz_notas_desde_excel(
                     raise ValueError(f"Fila {row_number}: el código no coincide con el estudiante y salón. Exporte una matriz actualizada.")
             if not row_est:
                 row_est = cur.execute(
-                    "SELECT ID FROM Estudiantes WHERE Apellidos = ? AND Nombres = ? AND Grado = ? AND Seccion = ?",
+                    "SELECT ID FROM Estudiantes WHERE Apellidos = ? AND Nombres = ? AND Grado = ? AND Seccion = ? AND nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)",
                     (apellidos, nombres, grado, seccion),
                 ).fetchone()
 
@@ -2157,7 +2166,7 @@ def obtener_historial_vertical_estudiantes(
         placeholders_e = ",".join("?" * len(e_ids))
 
         notas_raw = conn.execute(
-            f'''SELECT nsc.sesion_id, nsc.estudiante_id, cap.nombre, nsc.nota
+            f'''SELECT nsc.sesion_id, nsc.estudiante_id, cap.id as capacidad_id, cap.nombre, nsc.nota
                 FROM Notas_Sesion_Capacidad nsc
                 JOIN Capacidades cap ON nsc.capacidad_id = cap.id
                 WHERE nsc.sesion_id IN ({placeholders_s}) AND nsc.estudiante_id IN ({placeholders_e})''',
@@ -2171,9 +2180,11 @@ def obtener_historial_vertical_estudiantes(
             (*s_ids, *e_ids)
         ).fetchall()
 
+    notas_detalle = {}
     mapa_notas: Dict[int, Dict[int, List[str]]] = {}
     for r in notas_raw:
         sid, eid, cap_nom, nota = r["sesion_id"], r["estudiante_id"], r["nombre"], r["nota"]
+        notas_detalle.setdefault((eid,sid), []).append({"id":r["capacidad_id"],"nombre":cap_nom,"nota":nota})
         if eid not in mapa_notas: mapa_notas[eid] = {}
         if sid not in mapa_notas[eid]: mapa_notas[eid][sid] = []
         mapa_notas[eid][sid].append(f"{cap_nom[:6]}: {nota if nota is not None else '--'}")
@@ -2203,6 +2214,8 @@ def obtener_historial_vertical_estudiantes(
             if True:
                 filas.append({
                     "estudiante_id": eid,
+                    "seccion": e["Seccion"],
+                    "notas_detalle": notas_detalle.get((eid,sid),[]),
                     "sesion_id": sid,
                     "codigo": e["Codigo_Unico"],
                     "alumno_nombre": f"{e['Apellidos']}, {e['Nombres']}",

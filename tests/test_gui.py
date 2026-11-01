@@ -150,3 +150,35 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(result, 3)
         self.assertEqual(len(db.obtener_estudiantes_filtrados()), 4)
         self.assertTrue(list((self.app._db_path.parent / 'backups').glob('*antes-importar.db')))
+
+    def test_native_grid_keeps_identity_columns_fixed(self):
+        self.assertEqual(tuple(self.app.planilla_nativa['displaycolumns'])[:1],('Asistencia',))
+        self.assertEqual(len(self.app.identidad_planilla.get_children()),1)
+        self.assertGreaterEqual(self.app.planilla_nativa.column('Cap 1','width'),180)
+
+    def test_undo_and_redo_do_not_write_until_confirmed(self):
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;item=tree.get_children()[0]
+        tree._update_value(item,4,'18')
+        self.app.deshacer_planilla();self.assertEqual(tree.item(item,'values')[4],'')
+        self.app.deshacer_planilla(True);self.assertEqual(tree.item(item,'values')[4],'18')
+        with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Notas_Sesion_Capacidad').fetchone()[0],0)
+
+    def test_primary_selector_includes_sixth_grade(self):
+        self.app.cambiar_nivel('Primaria')
+        self.assertIn('6°',self.app.combo_grado_global.cget('values'))
+        self.assertTrue(all('Primaria' in name for name in self.app.cursos_map))
+        self.app.cambiar_nivel('Secundaria');self.assertIn(self.course_name,self.app.cursos_map)
+
+    def test_draft_survives_restart_and_is_removed_after_save(self):
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;item=tree.get_children()[0];tree._update_value(item,4,'17')
+        self.app.autoguardar_borrador();file=self.app._borrador_path();self.assertTrue(file.exists())
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertFalse(file.exists())
+
+    def test_closed_period_blocks_writes(self):
+        self.app.periodo_cerrado()
+        with db.obtener_conexion() as conn:conn.execute('INSERT OR REPLACE INTO Estado_Periodo VALUES(1,1)')
+        self.app.edicion_desbloqueada=True
+        with patch('tkinter.messagebox.showinfo'):self.assertFalse(self.app.verificar_permiso_edicion())

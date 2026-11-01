@@ -18,7 +18,7 @@ public_key = key_file.read_bytes() if key_file.exists() else b''
 license_hook = root / 'build' / 'registro_license_hook.py'
 license_hook.parent.mkdir(parents=True, exist_ok=True)
 license_hook.write_text('import sys\nsys._registro_license_public_key = ' + repr(public_key) + '\n', encoding='utf-8')
-a = Analysis([str(root / 'main.py')], pathex=[str(root)], binaries=binaries, datas=datas,
+a = Analysis([str(root / 'launcher.py')], pathex=[str(root)], binaries=binaries, datas=datas,
              hiddenimports=['matplotlib.backends.backend_tkagg', 'cryptography.hazmat.primitives.asymmetric.ed25519'],
              hookspath=[], hooksconfig={}, runtime_hooks=[str(license_hook)], excludes=['pytest', 'tests'], noarchive=False)
 pyz = PYZ(a.pure)

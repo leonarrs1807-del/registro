@@ -13,7 +13,10 @@ import app_storage as storage
 from db_safety import history, undo_grade
 
 
-class DesktopTools:
+from mejoras_ui import ClassroomTools
+
+
+class DesktopTools(ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -32,7 +35,8 @@ class DesktopTools:
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.2 — {self._db_path.stem}')
+        self.iniciar_mejoras(menu)
 
     def destroy(self):
         # Tk timers outlive deleted child widgets unless explicitly cancelled.
@@ -66,7 +70,7 @@ class DesktopTools:
             if widget is getattr(self, 'entry_buscar_est', None):
                 return
             if widget is getattr(self, 'tab_calificar', None):
-                self._planilla_pendiente = True
+                self.marcar_planilla_pendiente()
                 return
             if widget in (getattr(self, 'tab_crear', None), getattr(self, 'tab_estudiantes', None), getattr(self, 'tab_graficos', None)):
                 self._formularios_pendientes.add(str(widget))
@@ -89,6 +93,8 @@ class DesktopTools:
 
     def marcar_planilla_pendiente(self):
         self._planilla_pendiente = True
+        if hasattr(self,'lbl_estado'):
+            self.lbl_estado.configure(text='Cambios pendientes · Notas todavía sin confirmar')
 
     def confirmar_descartar(self):
         tree = getattr(self, 'planilla_nativa', None)
@@ -100,6 +106,7 @@ class DesktopTools:
             return False
         self._planilla_pendiente = False
         self._formularios_pendientes.clear()
+        self._borrador_path().unlink(missing_ok=True)
         return True
 
     def cerrar_aplicacion(self):
