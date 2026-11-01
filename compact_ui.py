@@ -15,14 +15,17 @@ class CompactTools:
             if isinstance(widget,ctk.CTkFrame) and widget.cget('fg_color')!='transparent':
                 widget.configure(fg_color=card)
             elif isinstance(widget,ctk.CTkComboBox):
-                widget.configure(border_width=1,corner_radius=6,height=32,
+                widget.configure(border_width=1,corner_radius=6,height=36,
+                    font=ctk.CTkFont(size=15 if widget.master is self.barra_top else 14),
+                    dropdown_font=ctk.CTkFont(size=14),
                     fg_color=('#ffffff','#1e293b'),border_color=('#cbd5e1','#475569'),
                     button_color=('#f1f5f9','#334155'),button_hover_color=('#e2e8f0','#475569'),
                     dropdown_fg_color=('#ffffff','#1e293b'))
             elif isinstance(widget,ctk.CTkEntry):
-                widget.configure(border_width=1,corner_radius=6,border_color=('#cbd5e1','#475569'),height=32)
+                widget.configure(border_width=1,corner_radius=6,border_color=('#cbd5e1','#475569'),height=36)
             for child in widget.winfo_children():visit(child)
         visit(self)
+        self.fuentes_nativas()
 
     def crear_cabecera_compacta(self):
         self.barra_top=ctk.CTkFrame(self,corner_radius=8)
@@ -36,12 +39,12 @@ class CompactTools:
             return button
         action(0,'menu','Mostrar u ocultar el menú · Ctrl+B',lambda:self.tabview.toggle())
         self.combo_nivel=ctk.CTkComboBox(self.barra_top,values=['Primaria','Secundaria'],state='readonly',
-            width=110,height=32,command=self.cambiar_nivel)
+            width=126,height=36,command=self.cambiar_nivel)
         import db
         self.combo_nivel.set(db.obtener_docente_config().get('nivel_educativo','Secundaria'))
         self.combo_nivel.grid(row=0,column=1,padx=3,pady=6)
         Tooltip(self.combo_nivel,'Nivel educativo')
-        self.combo_curso_global=ctk.CTkComboBox(self.barra_top,state='readonly',width=240,height=32,command=self._al_cambiar_curso_global)
+        self.combo_curso_global=ctk.CTkComboBox(self.barra_top,state='readonly',width=260,height=36,command=self._al_cambiar_curso_global)
         self.combo_curso_global.grid(row=0,column=2,padx=3,pady=6)
         Tooltip(self.combo_curso_global,lambda:'Curso: '+self.combo_curso_global.get())
         self.combo_grado_global=ctk.CTkComboBox(self.barra_top,values=['1°','2°','3°','4°','5°'],width=58,height=32,
@@ -66,7 +69,7 @@ class CompactTools:
         narrow=width<680
         if narrow:self.combo_nivel.grid_remove()
         else:self.combo_nivel.grid()
-        desired=max(110,min(240,width-(380 if narrow else 500)))
+        desired=max(140,min(300,width-(400 if narrow else 520)))
         if abs(self.combo_curso_global.cget('width')-desired)>3:self.combo_curso_global.configure(width=desired)
 
     def menu_cabecera(self):
@@ -144,5 +147,12 @@ class CompactTools:
     def evaluar_desde_barra(self):
         activity=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
         if activity:
+            if 'Cotejo' not in self.calif_combo_modo_inst.get() and 'Rúbrica' not in self.calif_combo_modo_inst.get():
+                if not self.verificar_permiso_edicion():return
+                tree=self.planilla_nativa
+                if tree and tree.get_children() and activity['capacidades']:
+                    item=tree.get_children()[0];tree.selection_set(item)
+                    tree._start_entry_edit(item,'Cap 1',4,tree.item(item,'values')[4])
+                return
             kind='Rúbrica' if 'Rúbrica' in self.calif_combo_modo_inst.get() else 'Lista de Cotejo'
             self._abrir_dialogo_masivo_desde_nativa(activity,self._datos_estudiantes,kind)

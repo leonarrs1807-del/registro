@@ -50,8 +50,9 @@ class ViewTools:
         pane.bind('<ButtonRelease-1>',lambda e:self._guardar_ventana(),add='+')
 
     def fuentes_menu(self,menu):
+        from interfaz import pixel_scale
         font=tkfont.nametofont('TkMenuFont',root=self)
-        font.configure(size=12)
+        font.configure(family='Segoe UI',size=-round(14*pixel_scale(self)))
         menu.configure(font=font)
         end=menu.index('end')
         if end is not None:
@@ -83,4 +84,13 @@ class ViewTools:
         self.tabview.set('Instrucciones');self.tutorial.open(topic)
 
     def barra_acciones(self):
+        self.fuentes_nativas()
         self.after(100,self._ajustar_cabecera)
+
+    def fuentes_nativas(self):
+        from interfaz import pixel_scale
+        for name in ('TkDefaultFont','TkTextFont','TkMenuFont','TkHeadingFont','TkCaptionFont'):
+            tkfont.nametofont(name,root=self).configure(family='Segoe UI',size=-round(14*pixel_scale(self)))
+        if hasattr(self,'tutorial'):
+            self.tutorial.listing.configure(font=('Segoe UI',-round(14*pixel_scale(self))))
+            self.tutorial.text.configure(font=('Segoe UI',-round(15*pixel_scale(self))))

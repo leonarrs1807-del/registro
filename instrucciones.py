@@ -75,20 +75,82 @@ Las divisiones entre los paneles de trabajo se pueden arrastrar con el ratón. P
 
 Las barras de desplazamiento tienen flechas y un control móvil. La barra inferior desplaza las columnas de notas; la barra vertical desplaza los estudiantes. También puede ampliar una columna arrastrando el borde de su encabezado.
 
-Vista permite ajustar el tamaño de letra y el zoom. El menú ⋯ → Restablecer vista adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
+Vista permite ajustar el tamaño de letra y el zoom. Vista → Restablecer vista y paneles adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
+
+En Calificaciones, el panel derecho muestra la evaluación y las plantillas. Si la ventana es estrecha, pulse Evaluación y plantillas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
 
 Un clic derecho en una celda o encabezado permite leer el contenido completo.''',
 'Actividades e instrumentos': '''Actividades sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
 
-Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad; el texto no se muestra repetido en el formulario. Más… permite editar la descripción y exportar o importar instrumentos. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
+Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad. Escriba el título, elija la categoría y pulse Guardar actividad. Las plantillas de rúbrica y cotejo tienen botones visibles. Descripción abre el texto adicional de la actividad. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
 
 Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
 
-La rúbrica permite evaluar indicadores con su puntaje máximo. La lista de cotejo utiliza los niveles configurados por el instrumento. Evaluación masiva transfiere los resultados a la planilla; después debe guardarlos.
+La rúbrica permite evaluar indicadores con su puntaje máximo. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La evaluación dentro de la aplicación transfiere los resultados a la planilla; después debe pulsar Guardar notas.
 
 La biblioteca guarda criterios reutilizables; usarla en otra actividad no modifica evaluaciones antiguas. Duplicar actividad conserva la estructura y empieza sin notas.
 
 Archivar oculta una actividad del trabajo diario y conserva sus notas históricas. Para corregir una calificación, use la actividad original o el historial.''',
+'Rúbrica y cotejo paso a paso': '''1. PREPARE EL SALÓN Y LA ACTIVIDAD
+
+Seleccione nivel, curso, grado y sección en la cabecera. Abra el candado para editar. Registre los estudiantes antes de descargar el modelo: cada fila incluirá su código, nombre e identificador permanente.
+
+En Actividades elija la competencia, marque las capacidades, escriba el título y pulse Guardar actividad. Abra esa actividad en Calificaciones. El selector muestra su título, sin numeración interna.
+
+2. DESCARGUE EL MODELO CORRECTO
+
+En el panel derecho pulse Modelo de rúbrica o Modelo de cotejo. En una ventana estrecha pulse primero Evaluación y plantillas. Elija la carpeta donde guardar el XLSX.
+
+El modelo corresponde al curso, nivel, salón y capacidades de esa actividad. Si la actividad ya tiene indicadores del mismo tipo, el modelo los conserva.
+
+3. PERSONALICE LA HOJA 1
+
+En 1_Indicadores_Instrumento revise el criterio y el texto de cada indicador.
+• Rúbrica: describa lo observable en C, B, A y AD. Los textos iniciales son ejemplos y debe adaptarlos al grado y propósito. Defina el máximo de puntos de cada indicador.
+• Cotejo: escriba una conducta o evidencia verificable. Defina cuánto vale cumplir ese indicador. Se responde Sí o No, sin niveles intermedios.
+
+Cada máximo debe ser mayor que 0 y no superar 20. Puede usar máximos diferentes: por ejemplo, un indicador de 6 y otro de 4. Conserve las columnas CAP_ID e IND_ID.
+
+Para añadir o quitar indicadores, importe primero el instrumento vacío; abra Evaluar rúbrica/cotejo → Editar criterios, guarde y vuelva a descargar el modelo actualizado. Así coinciden las hojas 1 y 3.
+
+4. ELIJA CÓMO CALIFICAR EN EXCEL
+
+Opción A: en 2_Calificar_Estudiantes escriba directamente la nota final de cada capacidad, de 0 a 20. Deje la hoja 3 vacía para esa capacidad.
+
+Opción B: deje la hoja 2 vacía y complete 3_Evaluar_Indicadores.
+• Rúbrica: ingrese puntos entre 0 y el máximo de cada indicador.
+• Cotejo: seleccione Sí si cumple o No si no cumple.
+
+Puede usar opciones diferentes para capacidades distintas, pero no llenar ambas hojas para la misma capacidad. Complete todos los indicadores de una capacidad antes de importarla. Una capacidad completamente vacía conserva su nota anterior; escribir 0 sí registra un cero.
+
+Ejemplo de rúbrica: obtiene 6 de 10 y 8 de 10. La nota es (6 + 8) ÷ (10 + 10) × 20 = 14.
+Ejemplo de cotejo: máximos 6 y 4. Sí en el primero y No en el segundo: 6 ÷ 10 × 20 = 12. Dos No producen una nota real de 0.
+
+No cambie códigos, nombres ni EST_ID, ni copie notas de otro salón o actividad. Puede ordenar filas completas, conservando juntas las identidades y notas. Si cambia el alumnado, descargue un modelo actualizado.
+
+5. IMPORTE Y REVISE
+
+Guarde el libro como XLSX. En Calificaciones pulse Importar instrumento, seleccione el archivo y revise la vista previa. Confirme para aplicar. La aplicación crea un respaldo y valida el libro completo antes de escribir.
+
+Al confirmar se guardan los criterios y las notas completas del Excel. No necesita volver a pulsar Guardar notas para esas notas importadas. La asistencia se conserva; las notas y los comentarios vacíos tampoco borran valores anteriores. Un comentario escrito sí actualiza el comentario de ese estudiante.
+
+Si aparece un error, corrija la fila indicada y vuelva a importar. Fórmulas sin un resultado calculado deben recalcularse en Excel o sustituirse por valores.
+
+6. TAMBIÉN PUEDE EVALUAR AQUÍ
+
+Puede importar solo los criterios, dejando las hojas de notas vacías. Elija Rúbrica o Lista de Cotejo en Cómo evaluar y pulse Evaluar rúbrica/cotejo. Si el instrumento cargado es de otro tipo, importe el modelo correcto.
+
+Complete puntos o Sí/No. Pase el ratón por Indicador 1, 2… para leer su criterio completo. Edite los criterios si lo necesita. Pulse Calcular notas y pasar a planilla. Revise el resultado y pulse Guardar notas. Hasta entonces puede deshacer los cambios sin modificar la base.
+
+En Nota directa haga doble clic en una celda, escriba un valor de 0 a 20 y confirme con Enter. Puede usar decimales. Registre asistencia y comentarios en la misma planilla.
+
+7. LEA LOS COLORES Y GUARDE SU DOCUMENTO
+
+C tiene fondo rojo suave; B amarillo; A verde; AD azul. Cada celda muestra su propia nota y nivel, incluso si la fila está seleccionada. Vacío sigue pendiente.
+
+Configurar niveles permite ajustar en una sola ventana desde qué nota empiezan B, A y AD para el nivel educativo activo. Cambia la clasificación y conserva las notas numéricas.
+
+Guardar notas confirma en la base de trabajo. Use además Guardar archivo en la cabecera para elegir dónde conservar el documento completo .registro. Ese documento incluye estudiantes, actividades, notas e insignia.''',
 'Excel, Google Sheets y PDF': '''Exportar notas permite elegir Excel (.xlsx), CSV para Google Sheets, PDF o JSON y la carpeta donde se guardará.
 
 Para Google Sheets:
@@ -119,12 +181,12 @@ El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa a
 Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
 
 Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.''',
-'Cuenta, demo y compras': '''La edición personal 1.4 funciona sin demo ni activación comercial. El candado docente sigue protegiendo sus datos. Las funciones siguientes se conservaron para una futura edición comercial; no es necesario configurarlas ahora.
+'Cuenta, demo y compras': '''La edición personal 1.5 funciona sin demo ni activación comercial. El candado docente sigue protegiendo sus datos. Las funciones siguientes se conservaron para una futura edición comercial; no es necesario configurarlas ahora.
 
 1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
 2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
 3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
-4. Indique qué cursos quiere comprar o si desea el paquete completo. Después de verificar el pago, el vendedor entregará un archivo .licencia.
+4. Indique qué cursos quiere comprar: uno, dos, tres o cualquier selección personalizada; también puede elegir todos. El vendedor decide qué habilitar y la vigencia. Después de verificar el pago, entregará un archivo .licencia vinculado a una sola PC y cuenta.
 5. Use Importar licencia comprada en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
 
 Al vencer la demo puede seguir consultando, guardando documentos y exportando a Excel, Google Sheets o PDF. Sus datos no se borran. Para agregar o corregir notas necesita una licencia vigente del curso.
@@ -146,11 +208,11 @@ class Tutorial(ctk.CTkFrame):
         ctk.CTkLabel(self,text='Instrucciones · Guía paso a paso',font=ctk.CTkFont(size=20,weight='bold')).grid(row=0,column=0,sticky='w',padx=12,pady=10)
         pane=split(self,'tutorial');pane.grid(row=1,column=0,sticky='nsew',padx=8,pady=6)
         left=ctk.CTkFrame(pane);left.grid_rowconfigure(0,weight=1);left.grid_columnconfigure(0,weight=1)
-        listing=tk.Listbox(left,font=('Segoe UI',14),exportselection=False,width=23)
+        listing=tk.Listbox(left,font=('Segoe UI',-round(14*pixel_scale(self))),exportselection=False,width=23)
         listing.grid(row=0,column=0,sticky='nsew',padx=4,pady=4)
         side=scrollbar(left,'vertical',listing.yview);side.grid(row=0,column=1,sticky='ns');listing.configure(yscrollcommand=side.set)
         right=ctk.CTkFrame(pane);right.grid_columnconfigure(0,weight=1);right.grid_rowconfigure(0,weight=1)
-        self.text=tk.Text(right,wrap='word',font=('Segoe UI',14),padx=18,pady=14,relief='flat',background='#ffffff',foreground='#0f172a')
+        self.text=tk.Text(right,wrap='word',font=('Segoe UI',-round(15*pixel_scale(self))),padx=18,pady=14,relief='flat',background='#ffffff',foreground='#0f172a')
         self.text.grid(row=0,column=0,sticky='nsew')
         bar=scrollbar(right,'vertical',self.text.yview);bar.grid(row=0,column=1,sticky='ns');self.text.configure(yscrollcommand=bar.set)
         pane.add(left,width=round(250*pixel_scale(self)),minsize=round(150*pixel_scale(self)),stretch='never');pane.add(right,minsize=round(230*pixel_scale(self)),stretch='always')

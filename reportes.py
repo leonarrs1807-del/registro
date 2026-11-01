@@ -36,7 +36,9 @@ def logo_bytes(db_path):
 
 def decorate_workbook(path, logo=None):
     wb = openpyxl.load_workbook(path)
+    instrument_model='Registro_Meta' in wb.sheetnames
     for ws in wb:
+        if ws.sheet_state!='visible':continue
         ws.sheet_view.zoomScale = 110
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.orientation = 'landscape'
@@ -49,7 +51,7 @@ def decorate_workbook(path, logo=None):
             for cell in row:
                 if cell.value is not None:
                     cell.alignment = Alignment(horizontal=cell.alignment.horizontal or 'left', vertical='center', wrap_text=True)
-        if logo:
+        if logo and (not instrument_model or ws==wb.worksheets[0]):
             from openpyxl.drawing.image import Image as ExcelImage
             picture = ExcelImage(io.BytesIO(logo))
             factor=min(65/picture.width,65/picture.height);picture.width*=factor;picture.height*=factor
@@ -59,6 +61,7 @@ def decorate_workbook(path, logo=None):
             if isinstance(ws['A1'].value, str):
                 ws['A1'].alignment=Alignment(horizontal='left',vertical='center',wrap_text=True,indent=5)
     wb.save(path)
+    wb.close()
 
 
 def grade_rows(db_path, course, grade, section):

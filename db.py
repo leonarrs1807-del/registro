@@ -895,6 +895,8 @@ def guardar_indicadores_instrumento_sesion(
     Guarda los indicadores de Lista de Cotejo o Rúbrica para una actividad (`sesion_id`).
     `lista_indicadores`: tuplas `(capacidad_id, indicador_texto, puntaje_maximo)`.
     """
+    from instrumentos import instrument_kind
+    tipo_instrumento=instrument_kind(tipo_instrumento)
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
         allowed = {r[0] for r in cur.execute("SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?", (sesion_id,))}
@@ -917,292 +919,21 @@ def guardar_indicadores_instrumento_sesion(
 
 
 def exportar_plantilla_rubrica_o_cotejo_excel(
-    ruta_destino: str,
-    nombre_curso: str,
-    grado: str,
-    seccion: str,
-    titulo_actividad: str,
-    competencia_nombre: str,
-    capacidades_y_criterios: List[Tuple[int, str, str]],
-    tipo_instrumento: str = "Lista de Cotejo",
-    db_path: Path = DB_PATH,
+    ruta_destino: str, nombre_curso: str, grado: str, seccion: str, titulo_actividad: str,
+    competencia_nombre: str, capacidades_y_criterios: List[Tuple[int,str,str]],
+    tipo_instrumento: str = "Lista de Cotejo", db_path: Path = DB_PATH, *, sesion_id=None,
 ) -> None:
-    """
-    Crea un archivo Excel con las Competencias, Capacidades marcadas y Criterios Precisados:
-    - Hoja 1 (`Indicadores_Cotejo_Rubrica`): Donde el docente puede escribir o ajustar los Indicadores
-      de su Lista de Cotejo o los Descriptores de su Rúbrica para cada Capacidad marcada.
-    - Hoja 2 (`Evaluacion_Estudiantes`): Con la lista de estudiantes (`4A01`, `4A02`...) y las columnas
-      de esos indicadores/capacidades para evaluar en Excel si lo desea y luego subirlo al programa.
-    """
-    wb = openpyxl.Workbook()
-    ws_ind = wb.active
-    ws_ind.title = "1_Indicadores_Instrumento"
-
-    side_thin = Side(style="thin", color="475569")
-    borde = Border(left=side_thin, right=side_thin, top=side_thin, bottom=side_thin)
-
-    ws_ind.merge_cells("A1:F1")
-    c1 = ws_ind["A1"]
-    c1.value = f"PLANTILLA DE {tipo_instrumento.upper()} - {nombre_curso.upper()} ({grado} '{seccion}') - {titulo_actividad}"
-    c1.font = Font(color="FFFFFF", bold=True, size=12)
-    c1.fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
-    c1.alignment = Alignment(horizontal="center", vertical="center")
-    ws_ind.row_dimensions[1].height = 26
-
-    ws_ind.merge_cells("A2:G2")
-    c2 = ws_ind["A2"]
-    c2.value = f"Competencia seleccionada: {competencia_nombre}"
-    c2.font = Font(color="FFFFFF", bold=True, size=10)
-    c2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    c2.alignment = Alignment(horizontal="left", vertical="center")
-
-    if tipo_instrumento == "Rúbrica":
-        headers_ind = [
-            "CAP_ID",
-            "Capacidad / Desempeño precisado",
-            "Criterio de Evaluación",
-            "Inicio (C)",
-            "Proceso (B)",
-            "Logro esperado (A)",
-            "Logro destacado (AD)",
-        ]
-        ws_ind.append(headers_ind)
-        for col_i in range(1, 8):
-            cel = ws_ind.cell(row=3, column=col_i)
-            cel.fill = PatternFill(start_color="047857", end_color="047857", fill_type="solid")
-            cel.font = Font(color="FFFFFF", bold=True, size=9)
-            cel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            cel.border = borde
-        ws_ind.row_dimensions[3].height = 28
-
-        fila_actual = 4
-        for cap_id, cap_nom, crit_prec in capacidades_y_criterios:
-            criterio_base = crit_prec if crit_prec.strip() else f"Criterio: Desempeño en {cap_nom}"
-            ws_ind.append(
-                [
-                    cap_id,
-                    cap_nom,
-                    criterio_base,
-                    "No establece relaciones...",
-                    "Tiene dificultad para...",
-                    "Establece relaciones...",
-                    "Establece relaciones y argumenta...",
-                ]
-            )
-            for col_i in range(1, 8):
-                c = ws_ind.cell(row=fila_actual, column=col_i)
-                c.border = borde
-                c.alignment = Alignment(horizontal="left" if col_i >= 2 else "center", vertical="center", wrap_text=True)
-            ws_ind.row_dimensions[fila_actual].height = 80
-            fila_actual += 1
-
-        ws_ind.column_dimensions["A"].width = 10
-        ws_ind.column_dimensions["B"].width = 30
-        ws_ind.column_dimensions["C"].width = 30
-        ws_ind.column_dimensions["D"].width = 30
-        ws_ind.column_dimensions["E"].width = 30
-        ws_ind.column_dimensions["F"].width = 30
-        ws_ind.column_dimensions["G"].width = 30
-
-    else:
-        headers_ind = [
-            "CAP_ID",
-            "Capacidad Seleccionada",
-            "Criterio de Evaluación Precisado",
-            "Indicador de Lista de Cotejo (Escriba o modifique aquí)",
-            "Puntaje Máximo (0-20)",
-            "Tipo Instrumento",
-        ]
-        ws_ind.append(headers_ind)
-        for col_i in range(1, 7):
-            cel = ws_ind.cell(row=3, column=col_i)
-            cel.fill = PatternFill(start_color="047857", end_color="047857", fill_type="solid")
-            cel.font = Font(color="FFFFFF", bold=True, size=9)
-            cel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            cel.border = borde
-        ws_ind.row_dimensions[3].height = 28
-
-        peso_sugerido = round(20.0 / max(len(capacidades_y_criterios) * 2, 1), 2)
-        fila_actual = 4
-        for cap_id, cap_nom, crit_prec in capacidades_y_criterios:
-            criterio_base = crit_prec if crit_prec.strip() else f"Demuestra desempeño en: {cap_nom}"
-            for num_ind in (1, 2):
-                ws_ind.append(
-                    [
-                        cap_id,
-                        cap_nom,
-                        criterio_base,
-                        f"Indicador {num_ind} ({cap_nom[:28]}...): {criterio_base}",
-                        peso_sugerido,
-                        tipo_instrumento,
-                    ]
-                )
-                for col_i in range(1, 7):
-                    c = ws_ind.cell(row=fila_actual, column=col_i)
-                    c.border = borde
-                    c.alignment = Alignment(horizontal="left" if col_i in (2, 3, 4) else "center", vertical="center", wrap_text=True)
-                ws_ind.row_dimensions[fila_actual].height = 28
-                fila_actual += 1
-
-        ws_ind.column_dimensions["A"].width = 10
-        ws_ind.column_dimensions["B"].width = 34
-        ws_ind.column_dimensions["C"].width = 34
-        ws_ind.column_dimensions["D"].width = 48
-        ws_ind.column_dimensions["E"].width = 18
-        ws_ind.column_dimensions["F"].width = 18
-
-    # Hoja 2: Nómina de Estudiantes lista para calificar con este instrumento
-    ws_est = wb.create_sheet("2_Calificar_Estudiantes")
-    encabezados_est = ["Código", "Apellidos", "Nombres"]
-    for cap_id, cap_nom, crit_prec in capacidades_y_criterios:
-        encabezados_est.append(f"{cap_nom}\n({crit_prec or 'Nota 0-20'})\n[CAP_ID:{cap_id}]")
-    encabezados_est.append("Comentario de la Clase")
-    ws_est.append(encabezados_est)
-
-    for col_i in range(1, len(encabezados_est) + 1):
-        cel = ws_est.cell(row=1, column=col_i)
-        cel.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-        cel.font = Font(color="FFFFFF", bold=True, size=9)
-        cel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cel.border = borde
-    ws_est.row_dimensions[1].height = 42
-
-    estudiantes = obtener_estudiantes_filtrados(grado, seccion, "", incluir_retirados=False, db_path=db_path)
-    for est in estudiantes:
-        fila_e = [est["Codigo_Unico"], est["Apellidos"], est["Nombres"]]
-        for _ in capacidades_y_criterios:
-            fila_e.append("")
-        fila_e.append("")
-        ws_est.append(fila_e)
-
-    ws_est.column_dimensions["A"].width = 12
-    ws_est.column_dimensions["B"].width = 24
-    ws_est.column_dimensions["C"].width = 24
-    for i in range(4, len(encabezados_est) + 1):
-        ws_est.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 24
-
-    wb.save(ruta_destino)
+    from instrumentos_excel import export_template
+    export_template(ruta_destino,nombre_curso,grado,seccion,titulo_actividad,competencia_nombre,
+                    capacidades_y_criterios,tipo_instrumento,db_path,sesion_id)
 
 
 @atomic
 def importar_rubrica_o_cotejo_desde_excel(
-    sesion_id: int, ruta_archivo: str, grado: str, seccion: str, db_path: Path = DB_PATH
-) -> Tuple[int, int]:
-    """
-    Lee un archivo Excel de Lista de Cotejo o Rúbrica subido por el docente:
-    1. Extrae los Indicadores definidos en la hoja 1 y los asocia a cada Capacidad de la sesión.
-    2. Si la hoja 2 trae notas o comentarios de los alumnos para esta sesión, también los guarda.
-    Retorna `(indicadores_cargados, alumnos_calificados)`.
-    """
-    wb = openpyxl.load_workbook(ruta_archivo, data_only=True)
-    indicadores_lista: List[Tuple[int, str, float]] = []
-    tipo_detectado = "Lista de Cotejo"
-
-    # 1. Leer hoja de indicadores
-    ws_ind = wb.worksheets[0]
-    filas_ind = list(ws_ind.iter_rows(values_only=True))
-    if len(filas_ind) < 3 or len(filas_ind[2]) < 3:
-        raise ValueError("La hoja de indicadores no tiene el formato de la plantilla.")
-    
-    header_fila = filas_ind[2]
-    titulo_a1 = str(filas_ind[0][0]).upper() if filas_ind and filas_ind[0] else ""
-    es_rubrica = "RÚBRICA" in titulo_a1 or "RUBRICA" in titulo_a1 or "Inicio" in str(header_fila[2])
-    
-    if es_rubrica:
-        tipo_detectado = "Rúbrica"
-        for fila in filas_ind[3:]:
-            if not fila or fila[0] is None:
-                continue
-            try:
-                cap_id = int(str(fila[0]).strip())
-                criterio = str(fila[2] or "").strip() if len(fila) > 2 else ""
-                texto_ind = " | ".join([f"{n}: {fila[i]}" for i, n in zip(range(3, 7), ["C", "B", "A", "AD"]) if len(fila) > i and fila[i]])
-                if not texto_ind.replace(" | ", "").replace("C: ", "").replace("B: ", "").replace("A: ", "").replace("AD: ", "").strip() and criterio:
-                    texto_ind = criterio
-                indicadores_lista.append((cap_id, texto_ind, 20.0))
-                
-                with obtener_conexion(db_path) as conn:
-                    conn.execute("UPDATE Sesion_Capacidades SET criterio_precisado = ? WHERE sesion_id = ? AND capacidad_id = ?", (criterio, sesion_id, cap_id))
-            except (ValueError, TypeError, IndexError) as exc:
-                raise ValueError(f"Indicador inválido: {exc}") from exc
-    else:
-        for fila in filas_ind[3:]:
-            if not fila or fila[0] is None:
-                continue
-            try:
-                cap_id = int(str(fila[0]).strip())
-                criterio = str(fila[2] or "").strip() if len(fila) > 2 else ""
-                texto_ind = str(fila[3] or "").strip() if len(fila) > 3 else ""
-                if not texto_ind and criterio:
-                    texto_ind = criterio
-                puntaje = float(fila[4] if len(fila) > 4 and fila[4] is not None else 20.0)
-                if len(fila) > 5 and fila[5]:
-                    tipo_detectado = str(fila[5]).strip()
-                if texto_ind:
-                    indicadores_lista.append((cap_id, texto_ind, puntaje))
-                    
-                with obtener_conexion(db_path) as conn:
-                    conn.execute("UPDATE Sesion_Capacidades SET criterio_precisado = ? WHERE sesion_id = ? AND capacidad_id = ?", (criterio, sesion_id, cap_id))
-            except (ValueError, TypeError, IndexError) as exc:
-                raise ValueError(f"Indicador inválido: {exc}") from exc
-
-    if not indicadores_lista:
-        raise ValueError("El archivo no contiene indicadores válidos.")
-    if indicadores_lista:
-        guardar_indicadores_instrumento_sesion(sesion_id, tipo_detectado, indicadores_lista, db_path)
-
-    # 2. Si existe la segunda hoja con calificaciones de estudiantes, importarlas también
-    alumnos_calif = 0
-    if len(wb.worksheets) > 1:
-        ws_est = wb.worksheets[1]
-        filas_e = list(ws_est.iter_rows(values_only=True))
-        if len(filas_e) >= 2:
-            headers_e = [str(c or "") for c in filas_e[0]]
-            mapa_col_cap: Dict[int, int] = {}
-            for c_idx, h_txt in enumerate(headers_e):
-                if "[CAP_ID:" in h_txt:
-                    try:
-                        cid = int(h_txt.split("[CAP_ID:")[1].split("]")[0].strip())
-                        mapa_col_cap[c_idx] = cid
-                    except (ValueError, IndexError) as exc:
-                        raise ValueError("Encabezado CAP_ID inválido en la segunda hoja.") from exc
-
-            estudiantes_salon = {
-                e["Codigo_Unico"]: e["ID"]
-                for e in obtener_estudiantes_filtrados(grado, seccion, "", incluir_retirados=True, db_path=db_path)
-            }
-            datos_para_guardar: List[Dict[str, Any]] = []
-            for f in filas_e[1:]:
-                if not f or not f[0]:
-                    continue
-                cod = str(f[0]).strip()
-                est_id = estudiantes_salon.get(cod)
-                if not est_id:
-                    raise ValueError(f"Código de estudiante desconocido: {cod}")
-                notas_cap: Dict[int, Optional[float]] = {}
-                for col_i, cap_id in mapa_col_cap.items():
-                    if col_i < len(f) and f[col_i] is not None and str(f[col_i]).strip() != "":
-                        try:
-                            val_f = valid_number(str(f[col_i]).strip())
-                            notas_cap[cap_id] = val_f
-                        except ValueError as exc:
-                            raise ValueError(f"Código {cod}, columna {col_i+1}: {exc}") from exc
-                comentario = str(f[-1] or "").strip() if len(f) > 3 else ""
-                if notas_cap or comentario:
-                    datos_para_guardar.append(
-                        {
-                            "estudiante_id": est_id,
-                            "asistio": True,
-                            "comentario": comentario,
-                            "notas_por_capacidad": notas_cap,
-                        }
-                    )
-                    alumnos_calif += 1
-
-            if datos_para_guardar:
-                guardar_calificaciones_y_asistencia_sesion(sesion_id, datos_para_guardar, db_path)
-
-    return len(indicadores_lista), alumnos_calif
+    sesion_id: int,ruta_archivo: str,grado: str,seccion: str,db_path: Path = DB_PATH,
+) -> Tuple[int,int]:
+    from instrumentos_excel import import_template
+    return import_template(sesion_id,ruta_archivo,grado,seccion,db_path)
 
 
 # ==============================================================================
@@ -1393,6 +1124,10 @@ def guardar_calificaciones_y_asistencia_sesion(
                     """,
                     (sesion_id, est_id, asistio, comentario),
                 )
+
+            elif "comentario" in item and not item.get("preservar_comentario",False):
+                cur.execute("""INSERT INTO Asistencia_Y_Comentarios_Clase(sesion_id,estudiante_id,asistio,comentario)
+                    VALUES(?,?,1,?) ON CONFLICT(sesion_id,estudiante_id) DO UPDATE SET comentario=excluded.comentario""",(sesion_id,est_id,comentario))
 
             notas_cap: Dict[int, Optional[float]] = item.get("notas_por_capacidad", {})
             for cap_id, nota_val in notas_cap.items():

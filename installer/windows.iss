@@ -1,10 +1,15 @@
 ; Build with Inno Setup 6 after PyInstaller, from the repository root.
 #define AppName "Registro Docente"
-#define AppVersion "1.4.0"
+#define AppVersion "1.5.0"
 [Setup]
 AppId={{B248D8D2-1C74-4E8B-A107-43F49F9CC8B2}
 AppName={#AppName}
 AppVersion={#AppVersion}
+AppPublisher=Leonardo Roque
+AppCopyright=Leonardo Roque
+VersionInfoCompany=Leonardo Roque
+VersionInfoCopyright=Leonardo Roque
+DisableWelcomePage=no
 DefaultDirName={localappdata}\Programs\RegistroDocente
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
@@ -19,6 +24,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\RegistroDocente.exe
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+[Messages]
+spanish.WelcomeLabel2=Este programa pertenece a Leonardo Roque.%n%nEl asistente instalará [name/ver] en su computadora. Sus registros y respaldos se conservan al actualizar.
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; Flags: unchecked
 [Files]

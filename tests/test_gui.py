@@ -129,6 +129,14 @@ class DesktopTests(unittest.TestCase):
         db.guardar_calificaciones_y_asistencia_sesion(self.session, [dict(estudiante_id=self.student, notas_por_capacidad={self.cap: 13.2})])
         self.app.stats_combo_tipo.set('Dashboard Completo (Todos)')
         self.app.accion_generar_grafico_estadisticas()
+        self.app.fig_actual.canvas.draw()
+        renderer=self.app.fig_actual.canvas.get_renderer();width=self.app.fig_actual.bbox.width
+        for axis in self.app.fig_actual.axes:
+            for label in axis.get_yticklabels()+axis.get_xticklabels():
+                if label.get_visible() and label.get_text():
+                    bounds=label.get_window_extent(renderer)
+                    self.assertGreaterEqual(bounds.x0,-1)
+                    self.assertLessEqual(bounds.x1,width+1)
         out = app_storage.data_dir() / 'test.pdf'
         self.app.fig_actual.savefig(out)
         self.assertGreater(out.stat().st_size, 1000)
@@ -269,7 +277,81 @@ class DesktopTests(unittest.TestCase):
         self.assertFalse(self.app.caja_ref_rubrica.winfo_ismapped())
         with patch.object(self.app,'_texto_emergente') as popup:self.app.detalles_calificacion()
         self.assertIn('Resolver con sustento',popup.call_args.args[1])
+        self.app.alternar_herramientas();self.app.update_idletasks()
         self.assertTrue(self.app.btn_evaluar.winfo_ismapped())
+
+    def test_changing_evaluation_mode_keeps_pending_edits_and_reuses_grid(self):
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;item=tree.get_children()[0];tree._update_value(item,4,'18.75')
+        with patch.object(self.app,'confirmar_descartar',side_effect=AssertionError('No debe descartar')):
+            with patch.object(self.main,'obtener_estado_planilla_sesion',side_effect=AssertionError('No debe reconstruir')):
+                for mode in ['Rúbrica','Lista de Cotejo','Nota directa']:
+                    self.app.calif_combo_modo_inst.set(mode);self.app.dibujar_planilla_calificacion()
+                    self.assertIs(self.app.planilla_nativa,tree)
+                    self.assertEqual(tree.item(item,'values')[4],'18.75')
+                self.app.cambiar_tamano_letra('Personalizado (20)')
+                self.assertIs(self.app.planilla_nativa,tree)
+                self.assertEqual(tree.item(item,'values')[4],'18.75')
+        self.assertTrue(self.app._planilla_pendiente)
+        self.assertFalse(self.errors)
+
+    def test_selected_grade_cells_keep_independent_colors_and_allow_editing(self):
+        from grade_cells import PALETTE
+        from types import SimpleNamespace
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;item=tree.get_children()[0]
+        self.app.update_idletasks()
+        for value,level in [('0','C'),('11','B'),('15','A'),('19','AD')]:
+            tree.set(item,'Cap 1',value);tree.selection_set(item);tree.paint_grades()
+            label=next(l for l in tree._cell_pool if l.winfo_manager()=='place')
+            self.assertEqual(label.cget('background'),PALETTE[level][0])
+            self.assertIn(f'({level})',label.cget('text'))
+        x,y,w,h=tree.bbox(item,'Cap 1');tree.on_double_click(SimpleNamespace(x=x+w//2,y=y+h//2))
+        self.assertIsNotNone(tree._entry)
+        self.app.update();tree._entry.focus_force()
+        tree.paint_grades();tree._entry.delete(0,'end');tree._entry.insert(0,'12.75')
+        tree._entry.event_generate('<Return>');self.app.update()
+        from grade_cells import grade_number
+        self.assertEqual(grade_number(tree.set(item,'Cap 1')),12.75)
+        self.assertFalse(self.errors)
+
+    def test_activity_title_has_no_internal_id_prefix(self):
+        self.assertEqual(self.app.calif_combo_actividad.get(),'Prueba')
+
+    def test_student_description_wraps_when_opening_page(self):
+        self.app.tabview.set('Estudiantes');self.app.after(350,self.app.quit);self.app.mainloop()
+        def labels(widget):
+            for child in widget.winfo_children():
+                if isinstance(child,self.main.ctk.CTkLabel):yield child
+                yield from labels(child)
+        intro=next(w for w in labels(self.app.tab_estudiantes) if w.cget('text').startswith('El código'))
+        self.assertGreater(int(intro.cget('wraplength')),0)
+        self.assertLess(intro.winfo_width(),intro.master.winfo_width())
+        self.assertFalse(self.errors)
+
+    def test_mass_checklist_has_no_automatic_grade_and_counts_no_as_zero(self):
+        self.app.edicion_desbloqueada=True
+        act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
+        dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Lista de Cotejo')
+        self.assertTrue(all(c['cmb'].get()=='Sin evaluar' for c in dialog.controles[self.student]))
+        for control in dialog.controles[self.student]:control['cmb'].set('No')
+        dialog._aplicar_calculo()
+        tree=self.app.planilla_nativa;self.assertEqual(float(tree.item(tree.get_children()[0],'values')[4]),0)
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        with db.obtener_conexion() as conn:
+            self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0],0)
+
+    def test_editing_instrument_keeps_entered_answers(self):
+        self.app.edicion_desbloqueada=True
+        act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
+        dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Rúbrica')
+        dialog.controles[self.student][0]['ent'].insert(0,'12.75')
+        dialog.abrir_editor();self.app.update()
+        editor=next(w for w in dialog.winfo_children() if isinstance(w,self.main.DialogoEditarInstrumento))
+        editor.rows[0]['text'].insert('end',' Aclaración');editor.save()
+        reopened=next(w for w in self.app.winfo_children() if isinstance(w,self.main.DialogoEvaluarInstrumentoMasivo))
+        self.assertEqual(reopened.controles[self.student][0]['ent'].get(),'12.75')
+        self.assertFalse(self.errors)
 
     def test_personal_workspace_keeps_header_short_and_has_no_trial_banner(self):
         from interfaz import pixel_scale

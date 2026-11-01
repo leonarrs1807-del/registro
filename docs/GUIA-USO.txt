@@ -1,0 +1,225 @@
+REGISTRO DOCENTE 1.5
+Propietario: Leonardo Roque
+
+EMPEZAR Y GUARDAR
+
+1. Seleccione Primaria o Secundaria, el curso, grado y sección.
+2. Ingrese su usuario y contraseña con el candado para habilitar la edición.
+3. Registre o importe a sus estudiantes.
+4. Elija si evaluará actividades independientes o prácticas por tema.
+
+Hay dos formas distintas de guardar:
+• Guardar notas / Guardar puntos confirma los cambios en la base de trabajo del programa.
+• El icono Guardar (.registro), en la barra superior, abre una ventana para que usted elija la carpeta y el nombre del documento. Ese archivo contiene el periodo completo y puede abrirse otra vez en Registro Docente.
+
+Después de guardar un archivo se muestra su ubicación completa. Puede elegir Documentos, una memoria USB u otra carpeta. Exportar a Excel/PDF también le pide dónde guardar.
+
+Los respaldos automáticos protegen el trabajo diario y se crean en la carpeta de datos. Crear respaldo… permite elegir una copia adicional en la ubicación que usted decida.
+
+PRÁCTICAS Y PUNTITOS
+
+EJEMPLO: ECUACIONES, DOS PRÁCTICAS DE 20 MINUTOS
+
+1. Abra Puntos y pulse Nuevo tema.
+2. Escriba Ecuaciones. Seleccione la competencia y marque las capacidades a las que se asignará la nota global.
+3. Pulse Agregar práctica. Cree Práctica 1, duración 20 minutos, con dos ejercicios de 5 puntos cada uno. Su máximo será 10.
+4. Cree Práctica 2, también de 20 minutos. Puede usar tres ejercicios: 3, 3 y 4 puntos. Su máximo también será 10.
+5. Haga doble clic en cada celda para ingresar los puntos por ejercicio. Pulse Guardar puntos.
+
+Para un estudiante que obtuvo 6/10 en la primera práctica y 8/10 en la segunda:
+  Puntos obtenidos = 6 + 8 = 14
+  Máximo total = 10 + 10 = 20
+  Nota de examen = 14 ÷ 20 × 20 = 14/20
+
+Si las prácticas valieran 10 y 15 puntos, el máximo total sería 25. Un total de 20 puntos daría 20 ÷ 25 × 20 = 16/20. El programa suma puntos; no promedia las notas de cada práctica por separado.
+
+6. Al terminar el tema, pulse Crear nota / 20. Se genera una sola actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. No necesita tomar un examen físico.
+
+También puede llamar al bloque Competencia 2 · Periodo 1 y registrar allí prácticas de varios temas de esa misma competencia. Así obtiene una sola nota final que reúne todos esos temas.
+
+Importante:
+• Un campo vacío es un ejercicio pendiente, no equivale a cero. Para consolidar deben estar completos los estudiantes activos.
+• Escriba 0 si el estudiante obtuvo cero; el programa no lo inventa.
+• La nota global se asigna a las capacidades marcadas. Si desea calificaciones diferentes por capacidad, cree bloques separados.
+• Después de consolidar, el bloque queda protegido. Reabrir tema permite corregir puntos. Al volver a consolidar se actualiza la misma actividad; no se duplica el examen.
+• Incluir / excluir práctica conserva sus puntos, pero cambia el máximo usado en el acumulado. Debe reconsolidar para actualizar la nota publicada.
+• Los porcentajes del curso no cambian al agregar prácticas ni al consolidar.
+
+PORCENTAJES DEL PROMEDIO
+
+LOS PORCENTAJES SON PESOS QUE USTED ELIGE
+
+No se calculan a partir de los archivos que sube. Los valores 40, 25, 20 y 15 que aparecen inicialmente son una configuración de partida:
+  Clases: 40 %
+  Exámenes: 25 %
+  Trabajos: 20 %
+  Prácticas / Otros: 15 %
+
+Indican la importancia de cada rubro cuando se combinan calificaciones. Puede cambiarlos, pero la suma debe ser 100. Pulse Guardar porcentajes para aplicarlos.
+
+Dentro de un rubro, el Peso de una actividad indica si vale igual que otra (1), el doble (2), etc.
+
+El programa combina solamente los rubros que tienen notas para el estudiante y capacidad. Si solo tiene una nota de Exámenes, esa nota se usa completa; no se convierte automáticamente en el 25 % de 20.
+
+Ejemplo: Clases 16 con peso de rubro 40 y Exámenes 14 con peso de rubro 25; sin notas en los otros rubros:
+  (16 × 40 + 14 × 25) ÷ (40 + 25) = 15,23
+
+PRÁCTICAS ACUMULADAS EN LUGAR DE EXAMEN
+La nota consolidada de un tema ocupa el rubro Exámenes. Es una calificación acumulada, aunque no haya examen físico. Si ya hay otras notas de Exámenes, ambas intervienen según sus pesos. No se borran notas anteriores.
+
+Si desea evaluar un curso únicamente con acumulados de prácticas, puede configurar Exámenes 100 y los otros rubros 0. Esto afecta a TODO el curso, no solo a una competencia. Use primero Herramientas → Vista previa de nuevas ponderaciones para revisar los cambios.
+
+El gráfico Ponderaciones muestra los pesos guardados. Competencias y Capacidades muestran cantidades de actividades asignadas; esas cantidades no son porcentajes y no alteran los pesos.
+
+DIMENSIONES Y BARRAS
+
+La barra lateral muestra iconos. Pase el ratón sobre uno para ver su nombre. El botón de tres líneas de la cabecera (o Ctrl+B) despliega los nombres completos; otra pulsación los oculta. Se recuerda su preferencia. Al elegir una sección en una ventana estrecha, el menú vuelve a contraerse.
+
+Las divisiones entre los paneles de trabajo se pueden arrastrar con el ratón. Por ejemplo:
+• Amplíe el panel de nombres en Calificaciones.
+• Dé más espacio al formulario al crear una actividad.
+• Amplíe la lista de temas o la planilla de prácticas.
+
+Las barras de desplazamiento tienen flechas y un control móvil. La barra inferior desplaza las columnas de notas; la barra vertical desplaza los estudiantes. También puede ampliar una columna arrastrando el borde de su encabezado.
+
+Vista permite ajustar el tamaño de letra y el zoom. Vista → Restablecer vista y paneles adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
+
+En Calificaciones, el panel derecho muestra la evaluación y las plantillas. Si la ventana es estrecha, pulse Evaluación y plantillas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
+
+Un clic derecho en una celda o encabezado permite leer el contenido completo.
+
+ACTIVIDADES E INSTRUMENTOS
+
+Actividades sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
+
+Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad. Escriba el título, elija la categoría y pulse Guardar actividad. Las plantillas de rúbrica y cotejo tienen botones visibles. Descripción abre el texto adicional de la actividad. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
+
+Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
+
+La rúbrica permite evaluar indicadores con su puntaje máximo. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La evaluación dentro de la aplicación transfiere los resultados a la planilla; después debe pulsar Guardar notas.
+
+La biblioteca guarda criterios reutilizables; usarla en otra actividad no modifica evaluaciones antiguas. Duplicar actividad conserva la estructura y empieza sin notas.
+
+Archivar oculta una actividad del trabajo diario y conserva sus notas históricas. Para corregir una calificación, use la actividad original o el historial.
+
+RÚBRICA Y COTEJO PASO A PASO
+
+1. PREPARE EL SALÓN Y LA ACTIVIDAD
+
+Seleccione nivel, curso, grado y sección en la cabecera. Abra el candado para editar. Registre los estudiantes antes de descargar el modelo: cada fila incluirá su código, nombre e identificador permanente.
+
+En Actividades elija la competencia, marque las capacidades, escriba el título y pulse Guardar actividad. Abra esa actividad en Calificaciones. El selector muestra su título, sin numeración interna.
+
+2. DESCARGUE EL MODELO CORRECTO
+
+En el panel derecho pulse Modelo de rúbrica o Modelo de cotejo. En una ventana estrecha pulse primero Evaluación y plantillas. Elija la carpeta donde guardar el XLSX.
+
+El modelo corresponde al curso, nivel, salón y capacidades de esa actividad. Si la actividad ya tiene indicadores del mismo tipo, el modelo los conserva.
+
+3. PERSONALICE LA HOJA 1
+
+En 1_Indicadores_Instrumento revise el criterio y el texto de cada indicador.
+• Rúbrica: describa lo observable en C, B, A y AD. Los textos iniciales son ejemplos y debe adaptarlos al grado y propósito. Defina el máximo de puntos de cada indicador.
+• Cotejo: escriba una conducta o evidencia verificable. Defina cuánto vale cumplir ese indicador. Se responde Sí o No, sin niveles intermedios.
+
+Cada máximo debe ser mayor que 0 y no superar 20. Puede usar máximos diferentes: por ejemplo, un indicador de 6 y otro de 4. Conserve las columnas CAP_ID e IND_ID.
+
+Para añadir o quitar indicadores, importe primero el instrumento vacío; abra Evaluar rúbrica/cotejo → Editar criterios, guarde y vuelva a descargar el modelo actualizado. Así coinciden las hojas 1 y 3.
+
+4. ELIJA CÓMO CALIFICAR EN EXCEL
+
+Opción A: en 2_Calificar_Estudiantes escriba directamente la nota final de cada capacidad, de 0 a 20. Deje la hoja 3 vacía para esa capacidad.
+
+Opción B: deje la hoja 2 vacía y complete 3_Evaluar_Indicadores.
+• Rúbrica: ingrese puntos entre 0 y el máximo de cada indicador.
+• Cotejo: seleccione Sí si cumple o No si no cumple.
+
+Puede usar opciones diferentes para capacidades distintas, pero no llenar ambas hojas para la misma capacidad. Complete todos los indicadores de una capacidad antes de importarla. Una capacidad completamente vacía conserva su nota anterior; escribir 0 sí registra un cero.
+
+Ejemplo de rúbrica: obtiene 6 de 10 y 8 de 10. La nota es (6 + 8) ÷ (10 + 10) × 20 = 14.
+Ejemplo de cotejo: máximos 6 y 4. Sí en el primero y No en el segundo: 6 ÷ 10 × 20 = 12. Dos No producen una nota real de 0.
+
+No cambie códigos, nombres ni EST_ID, ni copie notas de otro salón o actividad. Puede ordenar filas completas, conservando juntas las identidades y notas. Si cambia el alumnado, descargue un modelo actualizado.
+
+5. IMPORTE Y REVISE
+
+Guarde el libro como XLSX. En Calificaciones pulse Importar instrumento, seleccione el archivo y revise la vista previa. Confirme para aplicar. La aplicación crea un respaldo y valida el libro completo antes de escribir.
+
+Al confirmar se guardan los criterios y las notas completas del Excel. No necesita volver a pulsar Guardar notas para esas notas importadas. La asistencia se conserva; las notas y los comentarios vacíos tampoco borran valores anteriores. Un comentario escrito sí actualiza el comentario de ese estudiante.
+
+Si aparece un error, corrija la fila indicada y vuelva a importar. Fórmulas sin un resultado calculado deben recalcularse en Excel o sustituirse por valores.
+
+6. TAMBIÉN PUEDE EVALUAR AQUÍ
+
+Puede importar solo los criterios, dejando las hojas de notas vacías. Elija Rúbrica o Lista de Cotejo en Cómo evaluar y pulse Evaluar rúbrica/cotejo. Si el instrumento cargado es de otro tipo, importe el modelo correcto.
+
+Complete puntos o Sí/No. Pase el ratón por Indicador 1, 2… para leer su criterio completo. Edite los criterios si lo necesita. Pulse Calcular notas y pasar a planilla. Revise el resultado y pulse Guardar notas. Hasta entonces puede deshacer los cambios sin modificar la base.
+
+En Nota directa haga doble clic en una celda, escriba un valor de 0 a 20 y confirme con Enter. Puede usar decimales. Registre asistencia y comentarios en la misma planilla.
+
+7. LEA LOS COLORES Y GUARDE SU DOCUMENTO
+
+C tiene fondo rojo suave; B amarillo; A verde; AD azul. Cada celda muestra su propia nota y nivel, incluso si la fila está seleccionada. Vacío sigue pendiente.
+
+Configurar niveles permite ajustar en una sola ventana desde qué nota empiezan B, A y AD para el nivel educativo activo. Cambia la clasificación y conserva las notas numéricas.
+
+Guardar notas confirma en la base de trabajo. Use además Guardar archivo en la cabecera para elegir dónde conservar el documento completo .registro. Ese documento incluye estudiantes, actividades, notas e insignia.
+
+EXCEL, GOOGLE SHEETS Y PDF
+
+Exportar notas permite elegir Excel (.xlsx), CSV para Google Sheets, PDF o JSON y la carpeta donde se guardará.
+
+Para Google Sheets:
+1. Exporte el libro de notas a XLSX.
+2. En Google Sheets abra Archivo → Importar → Subir.
+3. Edite las notas y conserve las columnas de identificación.
+4. Descargue como XLSX o CSV.
+5. En el programa use Archivo → Importar notas de Google Sheets.
+
+Los identificadores permanentes evitan mover notas entre estudiantes. Las plantillas de matriz o instrumentos se importan mediante sus botones específicos. No cambie los encabezados CAP_ID de las plantillas.
+
+CSV y JSON contienen datos sin imágenes. Los reportes XLSX y PDF pueden incluir la insignia.
+
+Para conservar TODA la información del periodo y volver a abrirla aquí, utilice un documento .registro, no una hoja de cálculo.
+
+INSIGNIA Y PERFIL DOCENTE
+
+Cargar insignia del colegio acepta PNG y JPEG. La imagen se conserva dentro de la base de datos y viaja en los respaldos y documentos internos.
+
+Al exportar un reporte compatible se le pregunta si desea incluirla. Puede obtener reportes con o sin insignia sin cambiar el archivo original.
+
+Configurar docente permite actualizar nombre, institución y contraseña. Dejar vacía la nueva contraseña conserva la existente. El candado protege la edición y la aplicación inicia bloqueada.
+
+AÑOS, NIVELES Y SEGURIDAD
+
+Primaria y Secundaria conservan cursos y estudiantes separados. Primaria incluye seis grados. Los datos previos se mantienen en Secundaria hasta que usted seleccione otro nivel.
+
+Cada año y periodo puede tener un documento independiente. Crear periodo copia currículo y alumnado, pero no notas ni prácticas del periodo anterior.
+
+Crear respaldo… guarda una copia verificada en la carpeta que elija. Restaurar reemplaza los datos activos después de guardar una copia de seguridad. La aplicación se reinicia para abrir el resultado.
+
+El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa antes de confirmar; el historial permite recuperar cambios ya guardados bajo sus condiciones de seguridad.
+
+Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
+
+Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.
+
+CUENTA, DEMO Y COMPRAS
+
+La edición personal 1.5 funciona sin demo ni activación comercial. El candado docente sigue protegiendo sus datos. Las funciones siguientes se conservaron para una futura edición comercial; no es necesario configurarlas ahora.
+
+1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
+2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
+3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
+4. Indique qué cursos quiere comprar: uno, dos, tres o cualquier selección personalizada; también puede elegir todos. El vendedor decide qué habilitar y la vigencia. Después de verificar el pago, entregará un archivo .licencia vinculado a una sola PC y cuenta.
+5. Use Importar licencia comprada en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
+
+Al vencer la demo puede seguir consultando, guardando documentos y exportando a Excel, Google Sheets o PDF. Sus datos no se borran. Para agregar o corregir notas necesita una licencia vigente del curso.
+
+Copiar una licencia a otra computadora o cuenta no permite activarla. El archivo .registro tampoco lleva activación. Respalde su cuenta con el botón correspondiente; la protección de Windows solo permite restaurarla en el mismo equipo y usuario de Windows.
+
+No cambie la fecha para ampliar la demo: se comprueba que no retroceda. Si el reloj quedó mal, corríjalo. Al cambiar de computadora, solicite una nueva licencia y traslade sus datos escolares con un documento .registro.
+
+Sin servidor, las ventas y los cambios de equipo los gestiona el vendedor manualmente. No hay recuperación automática de contraseña, verificación de correo, revocación remota ni sincronización en Drive. Un formateo o una modificación deliberada del programa pueden eludir controles locales; ninguna protección offline es infalible.
+
+EDICIÓN DE PREPARACIÓN: si Licencia y cuenta indica que falta la clave pública, solicite al vendedor el instalador comercial definitivo antes de comprar una activación.

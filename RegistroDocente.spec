@@ -35,5 +35,6 @@ a = Analysis([str(root / 'launcher.py')], pathex=[str(root)], binaries=binaries,
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='RegistroDocente',
           debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
-          console=False, disable_windowed_traceback=False)
+          console=False, disable_windowed_traceback=False,
+          version=str(root / 'installer' / 'version_info.txt') if sys.platform=='win32' else None)
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='RegistroDocente')

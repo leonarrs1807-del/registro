@@ -57,7 +57,10 @@ class ClassroomTools:
     def _fuentes_legibles(self,widget):
         try:
             font=widget.cget('font')
-            if isinstance(font,ctk.CTkFont) and font.cget('size')<13:font.configure(size=13)
+            if isinstance(font,ctk.CTkFont) and font.cget('size')<14:font.configure(size=14)
+            if isinstance(widget,ctk.CTkLabel) and len(str(widget.cget('text')))>36:
+                from widgets import wrap_label
+                wrap_label(widget)
         except (ValueError,tk.TclError,AttributeError):pass
         for child in widget.winfo_children():self._fuentes_legibles(child)
 
@@ -97,6 +100,7 @@ class ClassroomTools:
     def cambiar_zoom(self,factor,save=True):
         self._zoom=factor;ctk.set_widget_scaling(factor)
         self.cambiar_interfaz_visual(self.tema_actual_nombre)
+        self.fuentes_nativas()
         if save:self._guardar_ventana()
 
     def cargar_insignia(self):
@@ -369,15 +373,8 @@ class ClassroomTools:
 
     def configurar_escala(self):
         if not self.verificar_permiso_edicion():return
-        from escala import thresholds,save_thresholds
-        current=thresholds(self._db_path);values=[]
-        for name,value in zip(('B','A','AD'),current):
-            item=simpledialog.askfloat('Escala de logro',f'Nota mínima para {name}:',initialvalue=value,minvalue=0,maxvalue=20)
-            if item is None:return
-            values.append(item)
-        if not messagebox.askyesno('Confirmar escala','Cambiarán los niveles de logro mostrados para el nivel educativo activo. Las notas numéricas y ponderaciones se conservarán. ¿Aplicar?'):return
-        storage.backup_database(self._db_path,'antes-cambiar-escala');save_thresholds(self._db_path,values)
-        self.recargar_matriz_completa()
+        from dialogs_ui import ScaleDialog
+        ScaleDialog(self)
 
     def reporte_individual(self):
         import db

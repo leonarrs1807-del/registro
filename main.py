@@ -10,6 +10,8 @@ from db_safety import valid_number
 from desktop_ui import DesktopTools
 from widgets import scroll_area, wrap_label, Tooltip
 from ui_icons import icon
+from grade_cells import GradeTreeview
+from instrumentos import normalized_grade
 from interfaz import PageBook, split, grade_panels, pixel_scale, scrollbar, flow_toolbar
 from db import actualizar_pesos_actividades
 
@@ -275,46 +277,10 @@ class DialogoDesbloquearCandado(ctk.CTkToplevel):
             messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
 
 
-class DialogoEditarInstrumento(ctk.CTkToplevel):
-    def __init__(self, master, sesion_id, indicadores, callback):
-        super().__init__(master)
-        self.title("✏️ Editar Criterios de Evaluación")
-        self.geometry("900x500")
-        self.transient(master)
-        self.grab_set()
-        
-        self.sesion_id = sesion_id
-        self.indicadores = indicadores
-        self.callback = callback
-        
-        f = ctk.CTkScrollableFrame(self)
-        f.pack(padx=10, pady=10, fill="both", expand=True)
-        
-        self.entries = []
-        for i, ind in enumerate(self.indicadores):
-            cap_nom = ind.get('capacidad_nombre', f"Capacidad {ind['capacidad_id']}")
-            ctk.CTkLabel(f, text=cap_nom, font=ctk.CTkFont(weight="bold")).grid(row=i*2, column=0, sticky="w", pady=(10, 0))
-            ent = ctk.CTkEntry(f, width=800)
-            ent.insert(0, ind['indicador_texto'])
-            ent.grid(row=i*2+1, column=0, pady=5)
-            self.entries.append((ind, ent))
-            
-        btn = ctk.CTkButton(self, text="💾 Guardar Cambios", command=self.guardar)
-        btn.pack(pady=10)
-        
-    def guardar(self):
-        nuevos = []
-        tipo = self.indicadores[0]['tipo'] if self.indicadores else 'Lista de Cotejo'
-        for ind, ent in self.entries:
-            nuevos.append((ind['capacidad_id'], ent.get(), ind['puntaje_maximo']))
-        from db import guardar_indicadores_instrumento_sesion
-        try:
-            guardar_indicadores_instrumento_sesion(self.sesion_id, tipo, nuevos)
-        except ValueError as exc:
-            messagebox.showwarning("Criterios", str(exc), parent=self)
-            return
-        self.destroy()
-        self.callback()
+from dialogs_ui import InstrumentEditor
+
+class DialogoEditarInstrumento(InstrumentEditor):
+    pass
 
 class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
     def __init__(
@@ -331,7 +297,8 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
         self.tipo_inst = tipo_inst
 
         self.title(f"📋 Evaluación Masiva — {tipo_inst}")
-        self.geometry("1200x700")
+        from dialogs_ui import fit_dialog
+        fit_dialog(self,master,1200,720)
         self.transient(master)
         self.grab_set()
 
@@ -340,36 +307,34 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
             sugeridos: List[Tuple[int, str, float]] = []
             for c in self.sesion["capacidades"]:
                 crit = c["criterio_precisado"] or f"Desempeño en {c['capacidad_nombre']}"
-                sugeridos.append((c["capacidad_id"], f"{crit}", 10.0))
+                if tipo_inst=="Rúbrica":
+                    from instrumentos_excel import DESCRIPTORS,LEVELS
+                    text=crit+"\n"+" | ".join(f"{level}: {description}" for level,description in zip(LEVELS,DESCRIPTORS))
+                    sugeridos.append((c["capacidad_id"],text,20))
+                else:
+                    sugeridos.extend([(c["capacidad_id"],crit+f" · evidencia {i}",10) for i in (1,2)])
             guardar_indicadores_instrumento_sesion(self.sesion["id"], tipo_inst, sugeridos)
             self.indicadores_db = obtener_indicadores_instrumento_sesion(self.sesion["id"])
 
+        self.app._loaded_instrument_kind=self.indicadores_db[0]["tipo"]
+        self.app._loaded_ind_count=len(self.indicadores_db)
+        self.app.actualizar_herramientas_evaluacion()
+        reference="\n\n".join(i['capacidad_nombre']+"\n"+i['indicador_texto'] for i in self.indicadores_db)
+        self.app.caja_ref_rubrica.configure(state="normal");self.app.caja_ref_rubrica.delete("1.0","end");self.app.caja_ref_rubrica.insert("1.0",reference);self.app.caja_ref_rubrica.configure(state="disabled")
         ctk.CTkLabel(
             self,
             text=f"📋 Evaluación {tipo_inst}: {self.sesion['titulo_tema']}",
             font=ctk.CTkFont(size=15, weight="bold"),
         ).pack(padx=16, pady=(12, 2), anchor="w")
 
-        f_matriz = ctk.CTkScrollableFrame(self, corner_radius=8)
+        f_matriz = scroll_area(self, corner_radius=8, horizontal=True, min_width=240+160*len(self.indicadores_db), auto_hide=True)
         f_matriz.pack(padx=16, pady=6, fill="both", expand=True)
 
         ctk.CTkLabel(f_matriz, text="Estudiante", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=5, pady=5)
-        for col, ind in enumerate(self.indicadores_db, start=1):
-            c_nom_corto = ind.get('capacidad_nombre', 'Cap').split()[0]
-            if "brica" in tipo_inst:
-                txt_mostrar = f"[{c_nom_corto}]\n{ind['indicador_texto'].replace(' | ', '  |  ')}"
-                ancho_wrap = 350
-            else:
-                txt_mostrar = f"[{c_nom_corto}]\n{ind['indicador_texto']}"
-                ancho_wrap = 200
-                
-            ctk.CTkLabel(
-                f_matriz, 
-                text=txt_mostrar, 
-                font=ctk.CTkFont(size=11, weight="bold"),
-                wraplength=ancho_wrap,
-                justify="center"
-            ).grid(row=0, column=col, padx=8, pady=5)
+        for col,ind in enumerate(self.indicadores_db,1):
+            header=ctk.CTkLabel(f_matriz,text=f"Indicador {col}\nMáximo: {ind['puntaje_maximo']:g}",font=ctk.CTkFont(size=14,weight="bold"),width=150,wraplength=150)
+            header.grid(row=0,column=col,padx=6,pady=10)
+            Tooltip(header,ind['capacidad_nombre']+"\n"+ind['indicador_texto'])
 
         self.controles = {}
         for row, fila_est in enumerate(self.filas_estudiantes, start=1):
@@ -380,30 +345,19 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
             else:
                 nombre = fila_est.get("nombre", "")
                 
-            ctk.CTkLabel(f_matriz, text=nombre[:25]).grid(row=row, column=0, sticky="w", padx=5)
+            ctk.CTkLabel(f_matriz, text=nombre, width=220,wraplength=220,justify="left",font=ctk.CTkFont(size=14)).grid(row=row, column=0, sticky="w", padx=5)
             
             self.controles[est_id] = []
             for col, ind in enumerate(self.indicadores_db, start=1):
                 if "brica" in tipo_inst:
-                    ent = ctk.CTkEntry(f_matriz, width=60, justify="center")
+                    ent = ctk.CTkEntry(f_matriz, width=90, height=36, font=ctk.CTkFont(size=15), justify="center")
                     ent.grid(row=row, column=col, padx=5, pady=2)
                     self.controles[est_id].append({"cap_id": ind["capacidad_id"], "ent": ent, "tipo": "R", "maximo": ind["puntaje_maximo"]})
                 else:
-                    cmb = ctk.CTkComboBox(f_matriz, values=["Sobresale (18)", "Logra (15)", "Proceso (12)", "No logra (08)", "No hace (05)"], width=130)
-                    cmb.set("Logra (15)")
+                    cmb = ctk.CTkComboBox(f_matriz, values=["Sin evaluar", "Sí", "No"],state="readonly", width=145,height=36,font=ctk.CTkFont(size=14),dropdown_font=ctk.CTkFont(size=14))
+                    cmb.set("Sin evaluar")
                     cmb.grid(row=row, column=col, padx=5, pady=2)
                     
-                    def bind_key(c=cmb):
-                        def _on_k(e):
-                            char = e.char.lower() if e.char else ""
-                            if char == 's': c.set("Sobresale (18)"); return "break"
-                            elif char == 'l': c.set("Logra (15)"); return "break"
-                            elif char == 'p': c.set("Proceso (12)"); return "break"
-                            elif char == 'n': c.set("No logra (08)"); return "break"
-                        if hasattr(c, "_entry"):
-                            c._entry.bind("<KeyPress>", _on_k)
-                            c._entry.bind("<KeyRelease>", _on_k)
-                    bind_key()
                     self.controles[est_id].append({"cap_id": ind["capacidad_id"], "cmb": cmb, "tipo": "C", "maximo": ind["puntaje_maximo"]})
 
         f_bot = ctk.CTkFrame(self, fg_color="transparent")
@@ -423,9 +377,17 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
     def abrir_editor(self):
         if not self.app.verificar_permiso_edicion():
             return
-        def reload():
+        entered={sid:[c['ent'].get() if c['tipo']=='R' else c['cmb'].get() for c in controls] for sid,controls in self.controles.items()}
+        def reload(origins):
             self.destroy()
-            DialogoEvaluarInstrumentoMasivo(self.app, self.sesion, self.filas_estudiantes, self.tipo_inst)
+            dialog=DialogoEvaluarInstrumentoMasivo(self.app, self.sesion, self.filas_estudiantes, self.tipo_inst)
+            for sid,controls in dialog.controles.items():
+                previous=entered.get(sid,[])
+                for control,origin in zip(controls,origins):
+                    if origin is None or origin>=len(previous):continue
+                    value=previous[origin]
+                    if control['tipo']=='R':control['ent'].insert(0,value)
+                    else:control['cmb'].set(value)
         DialogoEditarInstrumento(self, self.sesion["id"], self.indicadores_db, reload)
 
     def _aplicar_calculo(self) -> None:
@@ -439,23 +401,15 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
                 for control in self.controles.get(est_id, []):
                     if control["tipo"] == "R":
                         raw = control["ent"].get().strip()
-                        if not raw:
-                            raise ValueError("Complete todos los indicadores; un campo vacío no equivale a cero.")
-                        value = valid_number(raw, 0, control["maximo"], "Puntaje del indicador")
+                        value=raw if raw else None
                     else:
-                        options = {"Sobresale (18)": 18, "Logra (15)": 15, "Proceso (12)": 12, "No logra (08)": 8, "No hace (05)": 5}
-                        text = control["cmb"].get()
-                        if text not in options:
-                            raise ValueError("Seleccione un nivel válido para cada indicador.")
-                        value = options[text]
+                        value = control["cmb"].get()
+                        if value=="Sin evaluar":value=None
                     by_cap.setdefault(control["cap_id"], []).append((value, control["maximo"]))
                 for cap_id, values in by_cap.items():
-                    if self.tipo_inst == "Rúbrica":
-                        # Normalize by the total maximum instead of clipping totals at 20.
-                        grade = 20 * sum(v for v, _ in values) / sum(m for _, m in values)
-                    else:
-                        grade = sum(v for v, _ in values) / len(values)
-                    calculated[(est_id, cap_id)] = round(grade, 1)
+                    if not any(v is not None and str(v).strip() for v,_ in values):continue
+                    calculated[(est_id,cap_id)]=normalized_grade(self.tipo_inst,values)
+            if not calculated:raise ValueError("No hay respuestas completas. Escriba puntos o seleccione Sí/No antes de calcular.")
         except ValueError as exc:
             messagebox.showwarning("Evaluación incompleta", str(exc), parent=self)
             return
@@ -472,7 +426,7 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
         self.destroy()
 
 
-class PlanillaNativaTreeview(ttk.Treeview):
+class PlanillaNativaTreeview(GradeTreeview):
     def __init__(self, master: Any, **kwargs: Any) -> None:
         super().__init__(master, **kwargs)
         self.bind("<Double-1>", self.on_double_click)
@@ -570,7 +524,7 @@ class PlanillaNativaTreeview(ttk.Treeview):
             if new_val:
                 try:
                     num = valid_number(new_val.replace(",", "."))
-                    new_val = f"{num:.1f} ({nota_a_literal(num)})"
+                    new_val = f"{str(num).removesuffix('.0')} ({nota_a_literal(num)})"
                 except ValueError:
                     messagebox.showwarning("Nota inválida", "Ingrese una nota entre 0 y 20.")
                     return False
@@ -764,7 +718,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tamano_letra_actual = tamano
         guardar_tamano_letra_preferido(tamano)
         self.cambiar_interfaz_visual(self.tema_actual_nombre)
-        self.dibujar_planilla_calificacion(forzar=True)
+        self.dibujar_planilla_calificacion()
+        if self.planilla_nativa:self.planilla_nativa.queue_colors()
 
     def cambiar_interfaz_visual(self, nombre_tema: str) -> None:
         if nombre_tema not in TEMAS_INTERFAZ:
@@ -793,7 +748,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_size = max(16, int(match.group(1)) if match else 18)
         f_size = round(f_size * getattr(self, "_zoom", 1))
         import tkinter.font as tkfont
-        table_font=tkfont.Font(root=self,family="Segoe UI",size=f_size)
+        native_size=-round(f_size*self._get_window_scaling())
+        table_font=tkfont.Font(root=self,family="Segoe UI",size=native_size)
         r_height=table_font.metrics("linespace")+round(8*self._get_window_scaling())
                 
         estilo.configure(
@@ -802,14 +758,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             foreground=cfg_t["tree_fg"],
             fieldbackground=cfg_t["tree_bg"],
             rowheight=r_height,
-            font=("Segoe UI", f_size),
+            font=("Segoe UI", native_size),
             borderwidth=1,
         )
         estilo.configure(
             "Treeview.Heading",
             background=cfg_t["tree_head_bg"],
             foreground=cfg_t["tree_head_fg"],
-            font=("Segoe UI", f_size - 1, "bold"),
+            font=("Segoe UI", -round((f_size-1)*self._get_window_scaling()), "bold"),
             relief="raised",
         )
         estilo.map(
@@ -819,7 +775,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
         # Configure alternating row colors for subtle grid
         stripe_color = "#334155" if "Oscuro" in nombre_tema else "#f3f4f6"
-        estilo.configure("Treeview", rowheight=r_height, font=("Segoe UI", f_size))
+        estilo.configure("Treeview", rowheight=r_height, font=("Segoe UI", native_size))
         estilo.map("Treeview", background=[("selected", cfg_t["tree_sel"])])
         self.stripe_color = stripe_color
         
@@ -1013,18 +969,18 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         pane.add(panel_izq,width=round(300*pixel_scale(self)),minsize=round(240*pixel_scale(self)),stretch="never")
 
         ctk.CTkLabel(
-            panel_izq, text="Código por Sección y Lista (Ej. 4A01)", font=ctk.CTkFont(size=15, weight="bold")
+            panel_izq, text="Estudiantes", font=ctk.CTkFont(size=15, weight="bold")
         ).pack(padx=14, pady=(12, 2), anchor="w")
         ctk.CTkLabel(
             panel_izq,
-            text="El código se asigna según su Grado, Sección y orden en lista\n(4A01, 4A02...). Las notas jamás se corren entre alumnos.",
+            text="El código se asigna automáticamente. Identifica a cada estudiante en sus reportes.",
             font=ctk.CTkFont(size=11),
             justify="left",
-        ).pack(padx=14, pady=(0, 8), anchor="w")
+        ).pack(padx=14, pady=(0, 8), fill="x", anchor="w")
 
         ctk.CTkButton(
             panel_izq,
-            text="📥 Subir Excel de Estudiantes (.xlsx)",
+            text="Importar estudiantes",
             height=36,
             fg_color="#15803d",
             hover_color="#166534",
@@ -1034,7 +990,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             panel_izq,
-            text="📄 Descargar Plantilla Excel de Estudiantes",
+            text="Modelo de estudiantes",
             height=30,
             fg_color="transparent",
             border_width=1,
@@ -1069,12 +1025,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.est_combo_estado.grid(row=1, column=2, padx=(4, 0), sticky="ew")
 
         ctk.CTkButton(
-            panel_izq, text="+ Registrar Nuevo Estudiante", command=self.accion_guardar_estudiante
+            panel_izq, text="Registrar estudiante", command=self.accion_guardar_estudiante
         ).pack(padx=14, pady=(8, 5), fill="x")
 
         self.btn_est_actualizar = ctk.CTkButton(
             panel_izq,
-            text="Guardar Cambios / Estado (Activo/Retirado)",
+            text="Guardar cambios",
             fg_color="#0f766e",
             state="disabled",
             command=self.accion_actualizar_estudiante,
@@ -1183,6 +1139,13 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_limpiar_formulario_actividad,
         ).grid(row=0, column=1)
 
+        template_actions=ctk.CTkFrame(f_head,fg_color="transparent")
+        template_actions.grid(row=1,column=0,columnspan=2,sticky="ew",pady=8)
+        template_actions.grid_columnconfigure(0,weight=1)
+        for i,(label,kind) in enumerate([("Plantilla de rúbrica","Rúbrica"),("Plantilla de cotejo","Lista de Cotejo")]):
+            ctk.CTkButton(template_actions,text=label,height=36,font=ctk.CTkFont(size=14),
+                command=lambda k=kind:self.accion_exportar_plantilla_instrumento(k)).grid(row=i,column=0,sticky="ew",pady=3)
+
         f_datos1 = ctk.CTkFrame(panel_form, fg_color="transparent")
         f_datos1.grid(row=1, column=0, padx=14, pady=2, sticky="ew")
         f_datos1.grid_columnconfigure((0, 1), weight=1)
@@ -1259,10 +1222,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.btn_actualizar_act=ctk.CTkButton(f_btns_c,text="Actualizar",height=34,state="disabled",
             command=self.accion_actualizar_actividad_existente)
         self.btn_actualizar_act.grid(row=0,column=1,sticky="ew",padx=4)
-        more=ctk.CTkButton(f_btns_c,text="Más…",height=30,width=90,fg_color="transparent",
-            text_color=("#475569","#cbd5e1"),border_width=1)
-        more.configure(command=lambda:self.menu_instrumento_actividad(more))
-        more.grid(row=1,column=0,sticky="w",pady=(8,0))
+        ctk.CTkButton(f_btns_c,text="Descripción",height=34,command=lambda:self.editar_texto_actividad(self.crear_txt_proposito,"Descripción de la actividad")).grid(row=1,column=0,sticky="ew",padx=(0,4),pady=6)
+        ctk.CTkButton(f_btns_c,text="Importar instrumento",height=34,command=self.accion_importar_rubrica_cotejo_excel).grid(row=1,column=1,sticky="ew",padx=4,pady=6)
 
         panel_lista = ctk.CTkFrame(pane, corner_radius=10)
         pane.add(panel_lista,minsize=round(260*pixel_scale(self)),stretch="always")
@@ -1329,40 +1290,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # PESTAÑA 4: INGRESAR / EDITAR NOTAS (MODO NORMAL O CON LISTA DE COTEJO / RÚBRICA)
     # --------------------------------------------------------------------------
     def _construir_tab_calificar_actividad(self) -> None:
-        self.tab_calificar.grid_columnconfigure(0,weight=1)
-        self.tab_calificar.grid_rowconfigure(1,weight=1)
-        bar=ctk.CTkFrame(self.tab_calificar,fg_color="transparent")
-        bar.grid(row=0,column=0,sticky="ew",padx=8,pady=6)
-        bar.grid_columnconfigure(1,weight=1)
-        ctk.CTkLabel(bar,text="Calificaciones",font=ctk.CTkFont(size=18,weight="bold")).grid(row=0,column=0,sticky="w",padx=(0,12),pady=4)
-        self.calif_combo_actividad=ctk.CTkComboBox(bar,width=230,height=32,state="readonly",command=self._al_cambiar_actividad_en_calificar)
-        self.calif_combo_actividad.grid(row=0,column=1,sticky="ew",padx=4)
-        Tooltip(self.calif_combo_actividad,lambda:self.calif_combo_actividad.get())
-        ctk.CTkButton(bar,text="Guardar notas",width=120,height=32,fg_color="#2563eb",
-            command=self.accion_guardar_planilla_calificacion_completa).grid(row=0,column=2,padx=(8,0))
-        tools=ctk.CTkFrame(bar,fg_color="transparent")
-        tools.grid(row=1,column=0,columnspan=3,sticky="ew",pady=(6,0))
-        self.calif_combo_modo_inst=ctk.CTkComboBox(tools,values=["Directa","Cotejo","Rúbrica"],state="readonly",width=120,height=30,
-            command=lambda _:self.dibujar_planilla_calificacion())
-        self.calif_combo_modo_inst.set("Directa");self.calif_combo_modo_inst.grid(row=0,column=0,padx=(0,6))
-        Tooltip(self.calif_combo_modo_inst,"Forma de evaluación")
-        self.btn_evaluar=ctk.CTkButton(tools,text="Evaluar",width=85,height=30,command=self.evaluar_desde_barra)
-        self.btn_evaluar.grid(row=0,column=1,padx=4);self.btn_evaluar.grid_remove()
-        ctk.CTkButton(tools,text="Detalles",width=80,height=30,fg_color="transparent",border_width=1,
-            text_color=("#475569","#cbd5e1"),command=self.detalles_calificacion).grid(row=0,column=2,padx=4)
-        self.calif_combo_orden=ctk.CTkComboBox(tools,values=["Apellidos (A-Z)","Código (Ej. 4A01)","Apellidos (Z-A)","Nombres (A-Z)"],
-            state="readonly",width=145,height=30,command=lambda _:self.dibujar_planilla_calificacion())
-        self.calif_combo_orden.set("Apellidos (A-Z)");self.calif_combo_orden.grid(row=0,column=3,padx=4)
-        more=ctk.CTkButton(tools,text="",image=icon("more",master=self),width=32,height=30,fg_color="transparent",hover_color=("#e2e8f0","#334155"))
-        more.configure(command=lambda:self.menu_calificacion(more));more.grid(row=0,column=4,padx=4)
-        Tooltip(more,"Asistencia, peso e instrumentos")
-        self.calif_entry_peso=ctk.CTkEntry(bar)
-        self.lbl_detalle_actividad_calificar=ctk.CTkLabel(bar,text="")
-        self.caja_ref_rubrica=ctk.CTkTextbox(bar,wrap="word")
-        self.f_tabla_planilla=ctk.CTkFrame(self.tab_calificar,corner_radius=8)
-        self.f_tabla_planilla.grid(row=1,column=0,sticky="nsew",padx=8,pady=(0,8))
-        self.f_tabla_planilla.grid_columnconfigure(0,weight=1);self.f_tabla_planilla.grid_rowconfigure(1,weight=1)
-        self.planilla_nativa=None
+        self.crear_panel_calificaciones()
 
     # --------------------------------------------------------------------------
     # PESTAÑA 5: BUSCADOR GENERAL (MUESTRA LA NOTA PUESTA EN CADA CLASE SIN PROMEDIAR)
@@ -1376,7 +1304,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_filtros.grid_columnconfigure((0, 1, 2, 3, 4, 5, 6), weight=1)
 
         ctk.CTkLabel(
-            f_filtros, text="👤 Buscar Alumno o Código (Ej. 4A01):", font=ctk.CTkFont(size=12, weight="bold")
+            f_filtros, text="Alumno", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=0, padx=8, pady=(8, 2), sticky="w")
         self.busc_entry_alumno = ctk.CTkEntry(
             f_filtros, placeholder_text="Escriba apellido, nombre o código 4A01..."
@@ -1385,7 +1313,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_entry_alumno.bind("<KeyRelease>", lambda _e: self.recargar_buscador_alumnos())
 
         ctk.CTkLabel(
-            f_filtros, text="🎯 Filtrar Clases de Competencia:", font=ctk.CTkFont(size=12, weight="bold")
+            f_filtros, text="Competencia", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=1, padx=6, pady=(8, 2), sticky="w")
         self.busc_combo_comp = ctk.CTkComboBox(
             f_filtros,
@@ -1397,7 +1325,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_combo_comp.grid(row=1, column=1, padx=6, pady=(0, 8), sticky="ew")
 
         ctk.CTkLabel(
-            f_filtros, text="📂 Categoría de Actividades:", font=ctk.CTkFont(size=12, weight="bold")
+            f_filtros, text="Tipo", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=2, padx=6, pady=(8, 2), sticky="w")
         self.busc_combo_cat = ctk.CTkComboBox(
             f_filtros,
@@ -1409,7 +1337,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_combo_cat.grid(row=1, column=2, padx=6, pady=(0, 8), sticky="ew")
 
         ctk.CTkLabel(
-            f_filtros, text="🏫 Alcance de Sección:", font=ctk.CTkFont(size=12, weight="bold")
+            f_filtros, text="Alcance", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=3, padx=6, pady=(8, 2), sticky="w")
         self.busc_combo_alcance = ctk.CTkComboBox(
             f_filtros,
@@ -1421,7 +1349,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_combo_alcance.grid(row=1, column=3, padx=6, pady=(0, 8), sticky="ew")
 
         ctk.CTkLabel(
-            f_filtros, text="🔃 Ordenar Alumnos por:", font=ctk.CTkFont(size=12, weight="bold")
+            f_filtros, text="Orden", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=4, padx=6, pady=(8, 2), sticky="w")
         self.busc_combo_orden = ctk.CTkComboBox(
             f_filtros,
@@ -1455,7 +1383,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_filtros,
-            text="📝 Ir a Editar las Notas de esa Clase",
+            text="Abrir calificaciones",
             height=32,
             fg_color="#1d4ed8",
             font=ctk.CTkFont(weight="bold"),
@@ -1464,7 +1392,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_filtros,
-            text="📥 Exportar Reporte de Estudiante",
+            text="Exportar estudiante",
             height=32,
             fg_color="#10b981",
             hover_color="#059669",
@@ -1495,6 +1423,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_txt_comentario_detalle.grid(row=1, column=0, sticky="ew")
         
         self.tree_buscador_alumnos.bind("<<TreeviewSelect>>", self._al_seleccionar_fila_buscador)
+        flow_toolbar(f_filtros)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 6: PORCENTAJES (%) + VER Y MODIFICAR PESOS DE CADA ITEM POR CATEGORÍA + GRÁFICOS
@@ -1603,9 +1532,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.graficos_hosts = []
         for title in ("Ponderaciones", "Competencias", "Capacidades"):
             tab = self.graficos_tabs.add(title)
-            host = scroll_area(tab)
+            host = scroll_area(tab, horizontal=True, min_width=480, auto_hide=True)
             host.pack(fill="both", expand=True)
             self.graficos_hosts.append(host)
+            host.bind("<Configure>",lambda event,i=len(self.graficos_hosts)-1:self._programar_grafico(i),add="+")
         self.figuras_porcentajes = []
 
     # --------------------------------------------------------------------------
@@ -1672,7 +1602,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_tree_m.grid_columnconfigure(0, weight=1)
         f_tree_m.grid_rowconfigure(0, weight=1)
 
-        self.tree_matriz = ttk.Treeview(f_tree_m, show="headings", selectmode="browse")
+        self.tree_matriz = GradeTreeview(f_tree_m, show="headings", selectmode="browse")
         scroll_x = scrollbar(f_tree_m, orient="horizontal", command=self.tree_matriz.xview)
         scroll_y = scrollbar(f_tree_m, orient="vertical", command=self.tree_matriz.yview)
         self.tree_matriz.configure(xscrollcommand=scroll_x.set, yscrollcommand=scroll_y.set)
@@ -1708,9 +1638,18 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ctk.CTkButton(f_btns, text="📊 Generar Gráficos", fg_color="#1d4ed8", font=ctk.CTkFont(weight="bold"), command=self.accion_generar_grafico_estadisticas).pack(side="left", padx=10)
         ctk.CTkButton(f_btns, text="📥 Exportar Reporte a PDF", fg_color="#b91c1c", hover_color="#991b1b", font=ctk.CTkFont(weight="bold"), command=self.accion_exportar_reporte_pdf).pack(side="left", padx=10)
 
-        self.f_grafico = scroll_area(self.tab_estadisticas, corner_radius=8, fg_color="white")
+        self.f_grafico = scroll_area(self.tab_estadisticas, corner_radius=8, fg_color="white", horizontal=True, min_width=600, auto_hide=True)
         self.f_grafico.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         flow_toolbar(f_controles)
+        self.f_grafico.bind('<Configure>',self._programar_estadisticas,add='+')
+
+    def _programar_estadisticas(self,event=None):
+        if getattr(self,'_closing_ui',False) or not hasattr(self,'fig_actual') or self.tabview.get()!='Estadísticas':return
+        width=max(600,self.f_grafico.winfo_width()/pixel_scale(self))
+        if abs(width-getattr(self,'_stats_plot_width',0))<50:return
+        job=getattr(self,'_stats_resize_job',None)
+        if job:self.after_cancel(job)
+        self._stats_resize_job=self.after(220,self.accion_generar_grafico_estadisticas)
 
     def accion_generar_grafico_estadisticas(self) -> None:
         curso_id = self.obtener_curso_activo_id()
@@ -1747,20 +1686,32 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             ctk.CTkLabel(self.f_grafico, text="No hay datos suficientes.", text_color="black").pack(pady=40)
             return
 
+        self._stats_resize_job=None
         is_dash = "Dashboard" in tipo
         if hasattr(self, "fig_actual"):
             plt.close(self.fig_actual)
-        fig = plt.figure(figsize=(12, 8) if is_dash else (10, 5), dpi=100*pixel_scale(self))
+        plot_width=max(600,self.f_grafico.winfo_width()/pixel_scale(self))
+        self._stats_plot_width=plot_width
+        cap_count=len({i['id'] for row in filas for i in row.get('notas_detalle',[]) if i['nota'] is not None})
+        plot_height=((900 if plot_width<950 else 620)+max(180,cap_count*66+60)) if is_dash else max(360,cap_count*66+100) if "Capacidades" in tipo else max(360,min(520,plot_width*.52))
+        fig = plt.figure(figsize=(plot_width/100,plot_height/100), dpi=100*pixel_scale(self),layout="constrained")
+        fig.set_layout_engine("constrained",w_pad=.15,h_pad=.15,hspace=.1,wspace=.12)
         
         # Info for PDF export
         curso_nom = self.combo_curso_global.get()
         sec_info = "Todas las Secciones" if tipo == "Comparativa de Secciones" else f"'{seccion}'"
         info_txt = f"Reporte de {curso_nom} | {grado} {sec_info}\nFiltro: {comp_str} | {est_nombre}"
-        fig.suptitle(info_txt, fontsize=12, fontweight="bold")
+        import textwrap
+        fig.suptitle("\n".join(textwrap.fill(line,max(45,int(plot_width/8))) for line in info_txt.splitlines()),fontsize=12,fontweight="bold")
         
         axes = []
         if is_dash:
-            axes = [fig.add_subplot(221), fig.add_subplot(222), fig.add_subplot(223), fig.add_subplot(224)]
+            if plot_width<950:
+                layout=fig.add_gridspec(4,1,height_ratios=[260,260,240,max(180,cap_count*66+60)])
+                axes=[fig.add_subplot(layout[i,0]) for i in range(4)]
+            else:
+                layout=fig.add_gridspec(3,2,height_ratios=[260,240,max(180,cap_count*66+60)])
+                axes=[fig.add_subplot(layout[0,0]),fig.add_subplot(layout[0,1]),fig.add_subplot(layout[1,:]),fig.add_subplot(layout[2,:])]
             tipos_a_graficar = ["Histograma", "Barras", "Polígono", "Capacidades"]
         else:
             axes = [fig.add_subplot(111)]
@@ -1769,7 +1720,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for i, ax_tipo in enumerate(tipos_a_graficar):
             ax = axes[i]
             if "Histograma" in ax_tipo:
-                notas = [float(f["promedio"]) for f in filas if f["promedio"]]
+                notas = [float(f["promedio"]) for f in filas if f["promedio"] is not None]
                 ax.hist(notas, bins=range(0, 22, 2), color="#3b82f6", edgecolor="black")
                 ax.set_title("Histograma de Notas Numéricas")
                 ax.set_xlabel("Rango de Notas (0-20)")
@@ -1777,27 +1728,27 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 ax.set_xticks(range(0, 21, 2))
                 
             elif "Barras" in ax_tipo:
-                notas = [float(f["promedio"]) for f in filas if f["promedio"]]
+                notas = [float(f["promedio"]) for f in filas if f["promedio"] is not None]
                 from escala import thresholds
                 from db import DB_PATH
                 b_min,a_min,ad_min=thresholds(DB_PATH)
-                labels={"C":f"C (<{b_min:g})","B":f"B ({b_min:g}–<{a_min:g})","A":f"A ({a_min:g}–<{ad_min:g})","AD":f"AD ({ad_min:g}–20)"}
+                labels={"C":f"C\n<{b_min:g}","B":f"B\n{b_min:g}–<{a_min:g}","A":f"A\n{a_min:g}–<{ad_min:g}","AD":f"AD\n{ad_min:g}–20"}
                 rangos={label:0 for label in labels.values()}
                 for n in notas:rangos[labels[nota_a_literal(n)]]+=1
-                ax.bar(rangos.keys(), rangos.values(), color=["#ef4444", "#f59e0b", "#3b82f6", "#10b981"])
+                ax.bar(rangos.keys(), rangos.values(), color=["#ef4444", "#f59e0b", "#22c55e", "#3b82f6"])
                 ax.set_title("Distribución de Notas Literales")
                 ax.set_ylabel("Frecuencia")
                 
             elif "Polígono" in ax_tipo:
                 if est_filtro:
-                    datos = [(f["fecha"], float(f["promedio"])) for f in filas if f["promedio"]]
+                    datos = [(f["fecha"], float(f["promedio"])) for f in filas if f["promedio"] is not None]
                     datos.sort(key=lambda x: x[0])
                     ax.plot([d[0] for d in datos], [d[1] for d in datos], marker="o", color="#8b5cf6")
                     ax.set_title(f"Evolución de {est_filtro}")
                 else:
                     fechas = {}
                     for f in filas:
-                        if f["promedio"]: fechas.setdefault(f["fecha"], []).append(float(f["promedio"]))
+                        if f["promedio"] is not None: fechas.setdefault(f["fecha"], []).append(float(f["promedio"]))
                     fechas_ordenadas = sorted(fechas.keys())
                     if fechas_ordenadas:
                         promedios = [sum(fechas[k])/len(fechas[k]) for k in fechas_ordenadas]
@@ -1819,18 +1770,18 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                     ax.set_title("No hay notas por capacidad")
                 else:
                     ids=list(cap_notas)
-                    labels=[textwrap.fill(cap_names[i],42) for i in ids]
+                    labels=[textwrap.fill(cap_names[i],max(18,int(min(280,plot_width*.38)/6.5))) for i in ids]
                     vals=[sum(cap_notas[i])/len(cap_notas[i]) for i in ids]
                     ax.barh(range(len(ids)),vals,color="#2563eb")
                     ax.set_yticks(range(len(ids)),labels,fontsize=9)
                     ax.invert_yaxis();ax.set_xlim(0,20);ax.set_xlabel("Nota promedio por actividad")
                     ax.set_title("Promedios por capacidad")
-                    fig.set_size_inches(12,max(8 if is_dash else 4,len(ids)*(.85 if is_dash else .55)))
+
 
             elif "Comparativa" in ax_tipo:
                 sec_comp_notas = {}
                 for f in filas:
-                    if f["promedio"]:
+                    if f["promedio"] is not None:
                         cod = f.get("seccion", "")
                         if cod:
                             s = cod
@@ -1865,10 +1816,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                     ax.set_title("Comparativa por Sección y Competencia")
                     ax.set_ylim(0, 20)
             
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        from matplotlib.ticker import MaxNLocator
+        for axis,kind in zip(axes,tipos_a_graficar):
+            if "Histograma" in kind or "Barras" in kind:axis.yaxis.set_major_locator(MaxNLocator(integer=True))
         canvas = FigureCanvasTkAgg(fig, master=self.f_grafico)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        canvas.get_tk_widget().pack(fill="x", expand=False)
         
         self.fig_actual = fig
 
@@ -2361,9 +2314,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             ind_cant, alum_cant = resultado
             inds = obtener_indicadores_instrumento_sesion(sesion_id)
             if inds and "Rúbrica" in inds[0]["tipo"]:
-                self.calif_combo_modo_inst.set("📝 Evaluar con Rúbrica")
+                self.calif_combo_modo_inst.set("Rúbrica")
             else:
-                self.calif_combo_modo_inst.set("Cotejo")
+                self.calif_combo_modo_inst.set("Lista de Cotejo")
             self.recargar_tabla_actividades_creadas()
             self.dibujar_planilla_calificacion(forzar=True)
             self.recargar_buscador_alumnos()
@@ -2372,7 +2325,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 "Rúbrica / Lista de Cotejo Cargada",
                 f"Se cargaron {ind_cant} indicador(es) de evaluación para esta clase"
                 + (f" y las notas de {alum_cant} estudiante(s)." if alum_cant > 0 else ".")
-                + "\n\nEn la Pestaña 4 puede evaluar por indicadores con el botón '📋 Evaluar Indicadores' o seguir trabajando de forma normal.",
+                + "\n\nLas notas importadas ya están guardadas. Para evaluar aquí, pulse Evaluar rúbrica/cotejo y después Guardar notas.",
             )
         except Exception as e:
             messagebox.showerror("Error al cargar instrumento", f"Detalle: {e}")
@@ -2474,7 +2427,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for i, s in enumerate(todas_sesiones, start=1):
             if s.get("archivada"):continue
             self.actividades_creadas_map[s["id"]] = s
-            etiqueta = f"#{s['id']} · {s['titulo_tema']}"
+            etiqueta = s['titulo_tema']
+            if etiqueta in self.combo_calif_etiqueta_a_id:
+                etiqueta += f" · {s['fecha']} · {s['categoria']} ({s['id']})"
             opciones_combo_calif.append(etiqueta)
             self.combo_calif_etiqueta_a_id[etiqueta] = s["id"]
 
@@ -2606,34 +2561,40 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             act = self.actividades_creadas_map[sid]
             t_inst = act.get("tipo_instrumento", "Normal")
             if "Cotejo" in t_inst:
-                self.calif_combo_modo_inst.set("Cotejo")
+                self.calif_combo_modo_inst.set("Lista de Cotejo")
             elif "brica" in t_inst:
                 self.calif_combo_modo_inst.set("Rúbrica")
             else:
-                self.calif_combo_modo_inst.set("Directa")
+                self.calif_combo_modo_inst.set("Nota directa")
         self.dibujar_planilla_calificacion(forzar=True)
 
     def dibujar_planilla_calificacion(self, forzar: bool = False) -> None:
-        if getattr(self, "_planilla_pendiente", False) and not self.confirmar_descartar():
-            previous = getattr(self, "_ultimo_estado_planilla", None)
+        modo_str=self.calif_combo_modo_inst.get()
+        orden_elegido=self.calif_combo_orden.get()
+        estado_actual=(self.id_actividad_calificando,modo_str,orden_elegido)
+        context=(self.id_actividad_calificando,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get(),orden_elegido)
+        tree=getattr(self,'planilla_nativa',None)
+        if not forzar and tree and tree.winfo_exists() and context==getattr(self,'_table_context',None):
+            # Choosing the assessment tool must preserve edited grades and scroll position.
+            self._ultimo_estado_planilla=estado_actual
+            self.actualizar_herramientas_evaluacion()
+            return
+        if getattr(self,"_planilla_pendiente",False) and not self.confirmar_descartar():
+            previous=getattr(self,"_ultimo_estado_planilla",None)
             if previous:
-                self.calif_combo_modo_inst.set(previous[1])
-                self.calif_combo_orden.set(previous[2])
+                self.calif_combo_modo_inst.set(previous[1]);self.calif_combo_orden.set(previous[2])
             return
-        modo_str = self.calif_combo_modo_inst.get() if hasattr(self, "calif_combo_modo_inst") else ""
-        orden_elegido = self.calif_combo_orden.get() if hasattr(self, "calif_combo_orden") else ""
-        estado_actual = (self.id_actividad_calificando, modo_str, orden_elegido)
-        
-        if not forzar and getattr(self, "_ultimo_estado_planilla", None) == estado_actual:
-            return
-        self._ultimo_estado_planilla = estado_actual
+        self._ultimo_estado_planilla=estado_actual
+        self._table_context=context
 
         for w in self.f_tabla_planilla.winfo_children():
             w.destroy()
         self.planilla_nativa = None
         self.widgets_planilla_calificacion.clear()
         self._datos_estudiantes=[]
-        self.btn_evaluar.grid_remove()
+        self._loaded_instrument_kind=None;self._loaded_ind_count=0
+        self.actualizar_herramientas_evaluacion()
+        self.btn_evaluar.configure(state="disabled")
         self.caja_ref_rubrica.configure(state="normal");self.caja_ref_rubrica.delete("1.0","end");self.caja_ref_rubrica.configure(state="disabled")
 
         if self.id_actividad_calificando is None or self.id_actividad_calificando not in getattr(self, "actividades_creadas_map", {}):
@@ -2648,6 +2609,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         usar_instrumento = "Cotejo" in modo_str or "Rúbrica" in modo_str
 
         indicadores_subidos = obtener_indicadores_instrumento_sesion(act["id"])
+        self._loaded_instrument_kind=indicadores_subidos[0]["tipo"] if indicadores_subidos else None
+        self._loaded_ind_count=len(indicadores_subidos)
 
         info_inst = f"   |   📌 Instrumento activo ({len(indicadores_subidos)} indicadores cargados)" if indicadores_subidos else ""
         self.lbl_detalle_actividad_calificar.configure(
@@ -2684,6 +2647,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.f_tabla_planilla.grid_rowconfigure(0, weight=1)
         
         tree,identity,pane=grade_panels(self.f_tabla_planilla,headers,PlanillaNativaTreeview)
+        tree.set_grade_columns([f"Cap {i}" for i in range(1,len(act["capacidades"])+1)])
         tree.on_edit_complete=self.marcar_planilla_pendiente
         self.identidad_planilla=identity;self.planilla_nativa=tree
         self.restaurar_divisor("nombres_notas")
@@ -2715,7 +2679,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             for cap_info in act["capacidades"]:
                 nota = notas_map.get((est_id, cap_info["capacidad_id"]))
                 if nota is not None:
-                    row.append(f"{nota:.1f}".rstrip("0").rstrip("."))
+                    row.append(str(nota).removesuffix(".0"))
                 else:
                     row.append("")
             row.append(comentario.replace("\n", " ") if comentario else "")
@@ -2726,11 +2690,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._undo=[];self._redo=[]
         self._datos_estudiantes = estudiantes
         self._capacidades_actividad = act["capacidades"]
-        if usar_instrumento:self.btn_evaluar.grid()
+        self.actualizar_herramientas_evaluacion()
 
     def _abrir_dialogo_masivo_desde_nativa(self, act, estudiantes, tipo_inst):
         if not self.verificar_permiso_edicion():
             return
+        loaded=getattr(self,"_loaded_instrument_kind",None)
+        if loaded and loaded!=tipo_inst:
+            messagebox.showinfo("Instrumento diferente",f"Esta actividad tiene {loaded}. Importe un modelo de {tipo_inst} antes de evaluarla con esa opción.");return
         DialogoEvaluarInstrumentoMasivo(self, act, estudiantes, tipo_inst)
 
     def accion_marcar_asistencia_todos(self) -> None:
@@ -3072,24 +3039,46 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         import matplotlib.pyplot as plt
         weights = obtener_pesos_rubros_curso(course)
         comps, caps = obtener_estadisticas_frecuencia_evaluacion(course, self.combo_grado_global.get(), self.combo_seccion_global.get())
-        state=(course,self.combo_grado_global.get(),self.combo_seccion_global.get(),tuple(weights.items()),tuple(comps),tuple(caps))
+        state=(course,self.combo_grado_global.get(),self.combo_seccion_global.get(),tuple(weights.items()),tuple(comps),tuple(caps),pixel_scale(self))
         if getattr(self,"_graph_state",None)==state:return
         self._graph_state=state
+        self._plot_data=(weights,comps,caps)
+        self._plot_widths={}
         for fig in getattr(self,"figuras_porcentajes",[]):plt.close(fig)
         self.figuras_porcentajes = [category_figure(weights), frequency_figure(comps, "Actividades por competencia"), frequency_figure([(name, count) for name,count,_ in caps], "Actividades por capacidad")]
         for host in self.graficos_hosts:
             for child in host.winfo_children():child.destroy()
         self._render_current_plot()
 
-    def _render_current_plot(self):
-        if not getattr(self,"figuras_porcentajes",[]):return
+    def _programar_grafico(self,index):
+        if getattr(self,"_closing_ui",False) or not getattr(self,"_plot_data",None):return
+        current=("Ponderaciones","Competencias","Capacidades").index(self.graficos_tabs.get())
+        if index!=current:return
+        width=max(480,self.graficos_hosts[index].winfo_width()/pixel_scale(self))
+        if abs(width-getattr(self,"_plot_widths",{}).get(index,0))<45:return
+        pending=getattr(self,"_plot_resize_job",None)
+        if pending:self.after_cancel(pending)
+        self._plot_resize_job=self.after(180,lambda:self._render_current_plot(resize=True))
+
+    def _render_current_plot(self,resize=False):
+        if not getattr(self,"figuras_porcentajes",[]) or not getattr(self,"_plot_data",None):return
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from graficos import category_figure,frequency_figure
         index=("Ponderaciones","Competencias","Capacidades").index(self.graficos_tabs.get())
         host=self.graficos_hosts[index]
-        if host.winfo_children():return
-        self.figuras_porcentajes[index].set_dpi(100*pixel_scale(self))
-        canvas=FigureCanvasTkAgg(self.figuras_porcentajes[index],master=host)
-        canvas.draw();canvas.get_tk_widget().pack(fill="x",expand=True)
+        width=max(480,host.winfo_width()/pixel_scale(self))
+        if host.winfo_children() and not resize:return
+        for child in host.winfo_children():child.destroy()
+        weights,comps,caps=self._plot_data
+        if index==0:figure=category_figure(weights,width)
+        elif index==1:figure=frequency_figure(comps,"Actividades por competencia",width)
+        else:figure=frequency_figure([(name,count) for name,count,_ in caps],"Actividades por capacidad",width)
+        import matplotlib.pyplot as plt
+        plt.close(self.figuras_porcentajes[index]);self.figuras_porcentajes[index]=figure
+        self._plot_widths[index]=width
+        figure.set_dpi(100*pixel_scale(self))
+        canvas=FigureCanvasTkAgg(figure,master=host)
+        canvas.draw();canvas.get_tk_widget().pack(fill="x",expand=False)
 
 
     # ==========================================================================
@@ -3143,6 +3132,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             ]
         )
 
+        self.tree_matriz.set_grade_columns([c for c in cols if "_Cap" in c or c.startswith("PROM")])
         self.tree_matriz.configure(columns=cols)
         for col_id, texto_h, ancho in encabezados_cfg:
             self.tree_matriz.heading(col_id, text=texto_h)

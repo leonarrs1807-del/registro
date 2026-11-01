@@ -16,10 +16,11 @@ from db_safety import history, undo_grade
 from mejoras_ui import ClassroomTools
 from vista import ViewTools
 from compact_ui import CompactTools
+from evaluation_ui import EvaluationTools
 from licencias_ui import LicenseTools
 
 
-class DesktopTools(CompactTools,ViewTools,LicenseTools,ClassroomTools):
+class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -38,7 +39,7 @@ class DesktopTools(CompactTools,ViewTools,LicenseTools,ClassroomTools):
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.4 — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.5 — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
@@ -242,9 +243,11 @@ class DesktopTools(CompactTools,ViewTools,LicenseTools,ClassroomTools):
                 summary = f'Indicadores: {result[0]}. Estudiantes con calificaciones: {result[1]}.'
             window = tk.Toplevel(self)
             window.title('Vista previa de importación')
-            window.geometry('1000x550')
+            width=min(1100,int(self.winfo_screenwidth()*.94));height=min(650,int(self.winfo_screenheight()*.85))
+            window.geometry(f'{width}x{height}')
             window.transient(self)
-            tk.Label(window, text=f'{summary}\nRevise las primeras 150 filas de cada hoja antes de confirmar.').pack(pady=10)
+            tk.Label(window, text=f'{summary}\nRevise las primeras 150 filas de cada hoja antes de confirmar.',
+                     wraplength=width-40,justify='left').pack(fill='x',padx=15,pady=10)
             frame = ttk.Frame(window)
             frame.pack(fill='both', expand=True)
             tree = ttk.Treeview(frame, columns=('hoja', 'fila', 'contenido'), show='headings')
@@ -259,6 +262,7 @@ class DesktopTools(CompactTools,ViewTools,LicenseTools,ClassroomTools):
             wb = openpyxl.load_workbook(workbook, read_only=True, data_only=True)
             try:
                 for sheet in wb:
+                    if sheet.sheet_state!='visible':continue
                     for rownum, row in enumerate(sheet.iter_rows(max_row=150, values_only=True), 1):
                         tree.insert('', 'end', values=(sheet.title, rownum, ' | '.join('' if c is None else str(c) for c in row)))
             finally:

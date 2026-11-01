@@ -4,6 +4,7 @@ from tkinter import ttk
 import customtkinter as ctk
 from widgets import scroll_area, wrap_label, Tooltip
 from ui_icons import icon
+from grade_cells import GradeTreeview
 
 
 def pixel_scale(widget):
@@ -168,7 +169,7 @@ def grade_panels(master,headers,tree_class,key="nombres_notas"):
     pane.add(left,width=round(min(330*scale,max(190*scale,available*.34))),minsize=round(140*scale),stretch='never');pane.add(right,minsize=round(180*scale),stretch='always')
     tree=tree_class(right,columns=headers,show='headings',displaycolumns=headers[3:])
     tree.grid(row=0,column=0,sticky='nsew')
-    identity=ttk.Treeview(left,columns=('codigo','alumno'),show='headings',selectmode='browse')
+    identity=GradeTreeview(left,columns=('codigo','alumno'),show='headings',selectmode='browse')
     scale=pixel_scale(master)
     identity.heading('codigo',text='Código');identity.heading('alumno',text='Apellidos y nombres')
     identity.column('codigo',width=round(75*scale),minwidth=round(45*scale),stretch=False)

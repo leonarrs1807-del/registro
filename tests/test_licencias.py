@@ -77,6 +77,14 @@ class ActivationTests(unittest.TestCase):
         self.now += timedelta(days=1000)
         self.assertTrue(self.service.can_edit('secundaria:otra-area'))
 
+    def test_custom_three_course_package_enables_exactly_that_selection(self):
+        keys=[self.course,self.other,'secundaria:comunicacion','primaria:personal-social','secundaria:ingles']
+        catalog=[dict(key=key,label=key) for key in keys]
+        chosen=[self.other,'secundaria:comunicacion','secundaria:ingles']
+        document=sign_request(self.service.request(catalog),self.private,'ClaveVendedorPrueba123',chosen,now=self.now)
+        self.service.import_license(document);self.now+=timedelta(days=40)
+        self.assertEqual([key for key in keys if self.service.can_edit(key)],[key for key in keys if key in chosen])
+
     def test_license_for_another_computer_or_account_is_rejected(self):
         license1 = self.issue()
         for name, device in [('otro-equipo','b'*64),('otra-cuenta','a'*64)]:

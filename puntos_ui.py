@@ -155,6 +155,7 @@ class PointsPanel(ctk.CTkFrame):
         self.grid_view=tree;self.identity=identity;self.exercises=active
         identity.configure(columns=('codigo','alumno','nota'))
         identity.heading('codigo',text='Código');identity.heading('alumno',text='Estudiante')
+        identity.set_grade_columns(('nota',))
         identity.heading('nota',text='Nota / 20');identity.column('nota',width=round(72*pixel_scale(tree)),minwidth=round(60*pixel_scale(tree)),stretch=False)
         identity.column('codigo',width=round(60*pixel_scale(tree)),minwidth=round(45*pixel_scale(tree)),stretch=False)
         identity.column('alumno',width=round(190*pixel_scale(tree)),minwidth=round(100*pixel_scale(tree)),stretch=True)

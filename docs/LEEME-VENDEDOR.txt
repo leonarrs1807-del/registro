@@ -1,8 +1,8 @@
-EDICION PERSONAL 1.4: las licencias están conservadas para una etapa posterior.
+EDICION PERSONAL 1.5: las licencias están conservadas para una etapa posterior.
 Esta edición de trabajo no impone demo ni compras. Para vender se debe compilar
 una edición comercial con la clave pública y REGISTRO_EDITION=comercial.
 
-REGISTRO DOCENTE 1.3 - ACTIVACION MANUAL, SIN SERVIDOR
+REGISTRO DOCENTE - ACTIVACION MANUAL, SIN SERVIDOR
 
 PRIMERA CONFIGURACION
 1. Abra RegistroLicencias.exe (esta herramienta es solo para usted).
@@ -22,7 +22,8 @@ COMO VENDER
    único curso y nivel de su demo de 30 días. La demo incluye grados/secciones.
 2. En Licencia y cuenta guarda una solicitud .solicitud y se la envía.
 3. Usted comprueba el pago y abre esa solicitud en RegistroLicencias.exe.
-4. Selecciona los cursos comprados o el paquete completo. Puede fijar una fecha
+4. Selecciona uno, dos, tres o cualquier cantidad de cursos, o el paquete completo.
+   Cada licencia corresponde a una sola PC y cuenta. Puede fijar una fecha
    de vencimiento o dejarla vacía para una licencia permanente.
 5. Carga su clave privada, introduce su contraseña y guarda la licencia firmada.
 6. Entrega únicamente el archivo .licencia al cliente. Este lo importa en

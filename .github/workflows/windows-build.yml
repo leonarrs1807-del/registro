@@ -19,6 +19,12 @@ jobs:
       - run: python -m PyInstaller --noconfirm RegistroDocente.spec
       - name: Verify real executable and legacy migration
         run: python tools/smoke_windows.py dist/RegistroDocente/RegistroDocente.exe
+      - name: Verify owner and include teacher guide
+        shell: pwsh
+        run: |
+          $info = (Get-Item dist/RegistroDocente/RegistroDocente.exe).VersionInfo
+          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '1.5.0') { throw 'Propietario o versión incorrectos.' }
+          Copy-Item docs/GUIA-USO.txt dist/RegistroDocente/GUIA-USO.txt
       - name: Build installer
         shell: pwsh
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\windows.iss'

@@ -17,7 +17,7 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La edición personal 1.4 permite trabajar sin demo ni activación comercial.
+La edición personal 1.5 permite trabajar sin demo ni activación comercial.
 Si conserva la contraseña inicial, el primer arranque solicita configurar el
 perfil docente y una contraseña de al menos 8 caracteres. Las bases existentes
 conservan su usuario, contraseña y notas. El candado solicita autenticarse para
@@ -151,7 +151,7 @@ de vencimiento. Las compras adicionales agregan cursos. La firma Ed25519 liga
 cada licencia a la cuenta y equipo de esa solicitud; no basta copiarla a otra PC.
 
 **Configuración para retomar las ventas:** el repositorio no incluye claves
-del emisor. El instalador personal 1.4 funciona sin demo ni compras. Para compilar
+del emisor. El instalador personal 1.5 funciona sin demo ni compras. Para compilar
 una edición comercial se requiere incorporar la clave pública y definir
 `REGISTRO_EDITION=comercial`; la compilación rechaza una edición comercial sin clave pública. Para finalizar la edición comercial, genere sus claves
 con la herramienta separada **RegistroLicencias.exe**, conserve la privada cifrada
@@ -295,7 +295,40 @@ permiten elegir ubicación. **Instrucciones** incorpora tutoriales con ejemplos 
 prácticas, porcentajes, formatos, seguridad, cuenta y compras. Los pesos los elige
 el docente: los valores iniciales no se deducen de los archivos importados.
 
-## Versión 1.4: espacio de trabajo compacto
+## Versión 1.5: evaluación visible, modelos y lectura
+
+El instalador y las propiedades del ejecutable identifican a **Leonardo Roque**
+como propietario. La edición sigue siendo personal mientras se prepara la
+comercialización.
+
+Calificaciones conserva el menú lateral de iconos. Muestra un panel derecho con
+Nota directa, Rúbrica, Cotejo, modelos Excel, importación, asistencia, peso y
+criterios. En ventanas estrechas se abre con **Evaluación y plantillas**. Cambiar
+el modo reutiliza la tabla y conserva las notas pendientes. Los títulos de
+actividades omiten la numeración interna. Cada nota tiene fondo suave C rojo,
+B amarillo, A verde o AD azul, incluso al seleccionar la fila. Los menús y
+diálogos usan fuentes ajustadas al zoom y a la escala de Windows.
+
+Los modelos incluyen criterios/indicadores, notas finales por capacidad,
+respuestas por indicador e instrucciones. Rúbrica usa puntos y máximos; cotejo
+usa **Sí/No** ponderado por el máximo de cada indicador. Ambos calculan
+`suma obtenida / suma de máximos × 20`. Puede completar notas finales O
+indicadores para una misma capacidad. Vacío conserva la nota anterior; cero se
+guarda como una nota. La importación conserva la asistencia y los comentarios
+vacíos; valida nombres, códigos, IDs, curso, nivel, salón y actividad antes de
+aplicar criterios y notas en una transacción. Incluye vista previa y respaldo.
+
+**Ayuda → Rúbrica y cotejo paso a paso** explica el recorrido completo con
+ejemplos. El instalador también contiene `GUIA-USO.txt`. Los gráficos ajustan
+ancho, alto y texto a sus datos y al espacio disponible; los paneles permiten
+desplazar gráficos largos. La escala C/B/A/AD se configura en una sola ventana.
+
+La herramienta del vendedor permite seleccionar uno, dos, tres o cualquier
+conjunto de cursos, o todos. Las licencias comerciales firmadas corresponden a
+una cuenta y PC, requieren la clave pública del propietario al compilar, y se
+mantienen separadas de los registros escolares.
+
+## Versión 1.4: espacio de trabajo compacto (antecedente)
 
 Esta entrega es una **edición personal de trabajo**, sin demo, límite de cursos
 ni solicitud de cuenta comercial. Conserva el candado docente y las contraseñas
