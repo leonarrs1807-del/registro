@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.7
+REGISTRO DOCENTE 1.8
 
 EMPEZAR Y GUARDAR
 
@@ -83,7 +83,7 @@ Las barras de desplazamiento tienen flechas y un control móvil. La barra inferi
 
 Configuración → General permite ajustar el tamaño de letra, el zoom y la apariencia. Restablecer distribución adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
 
-En Calificaciones, el panel derecho muestra la evaluación y las plantillas. Si la ventana es estrecha, pulse Evaluación y plantillas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
+En Calificaciones, Herramientas reúne el método de evaluación, las plantillas y el diseño. Criterios y Resultados y asistencia cambian la vista principal. Pulse Herramientas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
 
 Un clic derecho en una celda o encabezado permite leer el contenido completo.
 
@@ -95,7 +95,7 @@ Seleccione una competencia y marque las capacidades. El botón Criterio… abre 
 
 Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
 
-La rúbrica permite evaluar cada criterio con sus cuatro niveles y puntajes. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La evaluación dentro de la aplicación transfiere los resultados a la planilla; después debe pulsar Guardar notas.
+La rúbrica permite evaluar cada criterio con sus cuatro niveles y puntajes. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La vista Criterios registra todas las respuestas y calcula las notas por capacidad. Pulse Guardar notas para confirmarlas.
 
 La biblioteca guarda criterios reutilizables; usarla en otra actividad no modifica evaluaciones antiguas. Duplicar actividad conserva la estructura y empieza sin notas.
 
@@ -103,63 +103,59 @@ Archivar oculta una actividad del trabajo diario y conserva sus notas histórica
 
 RÚBRICA Y COTEJO PASO A PASO
 
-1. PREPARE EL SALÓN Y LA ACTIVIDAD
+1. PREPARE LA ACTIVIDAD
 
-Seleccione nivel, curso, grado y sección en la cabecera. Abra el candado para editar. Registre los estudiantes antes de descargar un modelo Excel.
+Seleccione nivel, curso, grado y sección. Registre los estudiantes. En Actividades elija la competencia, marque las capacidades, escriba el tema y guarde. Abra esa actividad en Calificaciones.
 
-En Actividades elija la competencia, marque las capacidades, escriba el título y pulse Guardar actividad. Abra esa actividad en Calificaciones. Los selectores muestran títulos sin numeración interna.
+2. EMPIECE DIRECTAMENTE CON EXCEL
 
-2. DISEÑE LA EVALUACIÓN EN CALIFICACIONES
+En Herramientas elija Rúbrica o Lista de Cotejo y pulse Plantilla Excel. Puede descargarla desde el principio, sin diseñar antes un instrumento en el programa.
 
-En Cómo evaluar elija Nota directa, Rúbrica o Lista de Cotejo. Si la ventana es estrecha, abra Evaluación y plantillas.
+Elija cuántos criterios o indicadores necesita por capacidad: uno, dos, tres o más. Si ya tiene un instrumento, puede descargarlo tal como está o crear una plantilla nueva para completar en Excel. La plantilla lleva el tema y las capacidades de la actividad elegida.
 
-Para rúbrica o cotejo pulse Diseñar instrumento. Seleccione una capacidad. Puede añadir criterios observables, editar sus textos y quitar filas. Los cambios de otras capacidades se conservan al pasar de una a otra.
+En la hoja 1 escriba sus criterios y descriptores de la sesión. La plantilla nueva deja los descriptores en blanco para que los adapte a su propósito; conserva el criterio precisado que haya escrito en la actividad. En rúbrica cada criterio ocupa un bloque de dos filas: arriba los descriptores C/B/A/AD y abajo sus puntos. AD debe valer el máximo; C < B < A < AD. En cotejo cada fila describe una evidencia observable con su máximo.
 
-Rúbrica: escriba un descriptor observable para C, B, A y AD en sus casillas. Defina el máximo y los puntos de cada nivel: C < B < A < AD; AD vale el máximo. Los textos iniciales son ejemplos para adaptar a su actividad.
+Para cambiar la cantidad de criterios, descargue otra plantilla eligiendo la cantidad que necesita. Conserve las columnas ocultas, los encabezados y las identidades del alumnado.
 
-Cotejo: cada criterio describe una evidencia verificable. Sí aporta sus puntos máximos y No aporta cero. Puede dar mayor importancia a una evidencia usando un máximo mayor. Cada máximo debe ser mayor que 0 y no superar 20.
+3. UNA RESPUESTA POR CRITERIO
 
-Pulse Guardar instrumento. Esto guarda los criterios; las notas anteriores se conservan hasta que vuelva a evaluar y aplicar.
+En 2_Evaluar_Criterios cada estudiante tiene una columna por criterio. Si una capacidad tiene dos criterios, complete sus dos columnas.
 
-3. EVALÚE ESTUDIANTES EN LA APLICACIÓN
+Rúbrica: seleccione C, B, A o AD según la evidencia. También puede escribir puntos entre cero y el máximo de ese criterio. Sin evidencia vale cero; una celda vacía sigue pendiente.
 
-Pulse Evaluar estudiantes. A la izquierda elija un estudiante; a la derecha seleccione la capacidad. En la rúbrica marque la casilla C, B, A o AD que describe su evidencia. En el cotejo marque Sí o No. Use Anterior y Siguiente para avanzar.
+Cotejo: seleccione Sí o No para cada evidencia. Sí aporta el máximo del criterio y No aporta cero.
 
-Sin evidencia en una rúbrica registra cero. Dejar pendiente conserva el criterio sin evaluar. Una capacidad necesita todos sus criterios para calcular su nota; las respuestas incompletas pueden guardarse para continuarlas después.
+La hoja 3_Notas_Capacidades muestra el resultado calculado. Allí no se escribe una nota única para reemplazar las respuestas de los criterios.
 
-La nota se calcula como puntos obtenidos ÷ puntos máximos × 20. Por ejemplo, 6/10 y 8/10 dan 14/20. En cotejo, máximos 6 y 4 con Sí y No dan 12/20; dos No dan una nota real de 0.
+Ejemplo: una capacidad tiene dos criterios de 10 puntos. Un estudiante obtiene 6 en el primero y 8 en el segundo. Su nota es (6 + 8) ÷ (10 + 10) × 20 = 14/20. Si los máximos son 6 y 4 y en cotejo responde Sí y No, la nota es 6 ÷ 10 × 20 = 12/20.
 
-Pulse Aplicar a la planilla, revise las notas y pulse Guardar notas. También se guardan las respuestas de cada criterio; aparecerán al reabrir la evaluación. Deshacer y los borradores conservan las respuestas y sus notas.
+Todos los criterios de una capacidad deben estar completos para importar su nota. Una capacidad completamente vacía conserva su nota anterior; un cero es una nota real.
 
-Si cambia descriptores o puntajes, revise y aplique de nuevo antes de guardar nuevas notas. Cambiar el máximo mantiene la proporción de los puntos numéricos ya registrados; los niveles elegidos se conservan. Las notas publicadas no cambian por editar el instrumento.
+4. IMPORTE EL ARCHIVO
 
-4. TAMBIÉN PUEDE USAR EXCEL
+Guarde como XLSX y pulse Importar Excel en Calificaciones. Revise las casillas del instrumento y la pestaña Cambios de notas. Al confirmar se crea un respaldo y se guardan los criterios, las respuestas y las notas calculadas. Cancelar conserva los datos actuales.
 
-Después de diseñar, pulse Descargar plantilla Excel. El modelo corresponde al curso, nivel, salón y capacidades de esa actividad.
+La aplicación calcula las notas desde las respuestas de cada criterio, aunque Excel todavía no haya guardado los resultados de las fórmulas del resumen. Las fórmulas que usted escriba en las respuestas sí deben tener un resultado calculado.
 
-Hoja 1: ajuste los criterios, descriptores y puntajes en sus columnas. Las columnas de identificación están ocultas; consérvelas. Para añadir o quitar criterios, use Editar instrumento en la aplicación y descargue un modelo nuevo.
+Puede importar solo el instrumento dejando las respuestas vacías y evaluar después aquí. Las asistencias y los comentarios vacíos se conservan. Las plantillas de versiones anteriores siguen siendo compatibles.
 
-Elija una forma de calificar por capacidad:
-• Hoja 2: escriba la nota final de la capacidad, de 0 a 20; deje sus criterios de la hoja 3 vacíos.
-• Hoja 3: seleccione C, B, A, AD o Sin evidencia en rúbrica; Sí o No en cotejo. La rúbrica también admite puntos numéricos entre 0 y el máximo. Deje la hoja 2 vacía para esa capacidad.
+5. TAMBIÉN PUEDE DISEÑAR Y EVALUAR AQUÍ
 
-Puede usar formas diferentes para capacidades distintas. Complete todos los criterios de una capacidad antes de importarla. Las capacidades totalmente vacías conservan su nota anterior. No cambie nombres, códigos, encabezados ni columnas ocultas. Puede ordenar filas completas, manteniendo juntas identidades y notas.
+Diseñar/Editar abre el editor por capacidades. Añada los criterios que necesite, redacte los cuatro descriptores y ajuste los puntos. Guardar instrumento conserva las notas anteriores hasta que vuelva a evaluar.
 
-5. IMPORTE Y REVISE
+En la pantalla principal, Criterios muestra cada criterio de la capacidad. Seleccione el estudiante y la capacidad; marque un nivel o Sí/No en cada fila. Use el selector de estudiantes o Anterior/Siguiente para avanzar.
 
-Guarde como XLSX y pulse Importar evaluación Excel. La vista previa muestra el instrumento con sus casillas y una pestaña Cambios de notas con los valores anteriores y nuevos. Cancelar conserva los datos actuales. Al confirmar se crea un respaldo y se guardan los criterios, las respuestas y las notas completas del libro.
+Resultados y asistencia muestra las notas calculadas por capacidad y permite registrar asistencia y comentarios. Con rúbrica o cotejo, pulsar una nota abre sus criterios para evaluarlos. Con Nota directa puede ingresar una nota final de cero a veinte.
 
-Las notas importadas ya quedan guardadas. La asistencia se conserva; las notas y los comentarios vacíos no borran datos existentes. Si importa solo criterios, puede evaluar después en la aplicación.
+Pulse Guardar notas para confirmar tanto las respuestas como las notas calculadas. Hasta entonces puede deshacer y recuperar borradores. Recalcular resultados aplica el instrumento actual a las respuestas registradas, útil si cambió sus puntajes.
 
-Si hay un error, corrija la fila indicada. Las fórmulas deben tener un resultado calculado en Excel o sustituirse por valores. Un error rechaza la importación completa.
+Si deja una capacidad incompleta, se muestra pendiente de completar; su nota anterior publicada se conserva hasta una evaluación completa. Una evaluación nueva no toma vacíos como ceros.
 
-6. LEA LOS NIVELES Y GUARDE SU DOCUMENTO
+6. CONFIGURACIÓN Y DOCUMENTOS
 
-C tiene fondo rojo suave; B amarillo; A verde; AD azul. Configuración → General → Configurar escala de logro permite cambiar los límites de cada nivel sin alterar las notas numéricas.
+Los límites de C, B, A y AD se ajustan únicamente desde Configuración → General → Configurar escala de logro. Las notas numéricas se conservan.
 
-En Nota directa haga doble clic en una nota, escriba de 0 a 20 y confirme con Enter. Registre asistencia y comentarios en la planilla y pulse Guardar notas.
-
-Use además el icono Guardar de la cabecera para elegir dónde conservar el documento completo .registro. Incluye estudiantes, actividades, instrumentos, respuestas, notas e insignia.
+Use también el icono Guardar de la cabecera para elegir dónde guardar el documento completo .registro: incluye estudiantes, actividades, instrumentos, respuestas, notas e insignia.
 
 EXCEL, GOOGLE SHEETS Y PDF
 
@@ -202,13 +198,15 @@ Un documento de notas no es una licencia de uso. La cuenta y activación se guar
 
 CUENTA, DEMO Y COMPRAS
 
+Abra Configuración → Licencia. En la edición comercial encontrará Importar licencia (.licencia) y Mi cuenta y cursos. En la revisión personal para Leonardo se explica por qué la activación aún está deshabilitada: falta incorporar la clave pública del vendedor al instalador comercial.
+
 La edición comercial utiliza una cuenta local y una activación para una sola PC. El vendedor habilita los cursos comprados. En la edición personal no se solicita activación. El candado protege la edición de sus datos.
 
 1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
 2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
 3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
 4. Indique qué cursos quiere comprar: uno, dos, tres o cualquier selección personalizada; también puede elegir todos. El vendedor decide qué habilitar y la vigencia. Después de verificar el pago, entregará un archivo .licencia vinculado a una sola PC y cuenta.
-5. Use Importar licencia comprada en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
+5. En Configuración → Licencia pulse Importar licencia (.licencia) en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
 
 Al vencer la demo puede seguir consultando, guardando documentos y exportando a Excel, Google Sheets o PDF. Sus datos no se borran. Para agregar o corregir notas necesita una licencia vigente del curso.
 

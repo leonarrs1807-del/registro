@@ -21,10 +21,9 @@ def fit(window,root,width=1150,height=760):
 
 
 def header(master,context):
-    frame=ctk.CTkFrame(master,fg_color='transparent');frame.pack(fill='x',padx=16,pady=10)
-    title=label(frame,context['titulo_tema']);title.configure(font=ctk.CTkFont(size=20,weight='bold'));title.pack(fill='x',pady=3)
-    label(frame,f"{context['curso_nombre']} · {context['grado']} {context['seccion']} · {context['categoria']} · {context['fecha']}").pack(fill='x',pady=3)
-    label(frame,context['competencia_nombre']).pack(fill='x',pady=3)
+    frame=ctk.CTkFrame(master,fg_color='transparent');frame.pack(fill='x',padx=16,pady=(8,2))
+    title=label(frame,context['titulo_tema']);title.configure(font=ctk.CTkFont(size=20,weight='bold'));title.pack(fill='x',pady=(0,2))
+    label(frame,f"{context['curso_nombre']} · {context['grado']} {context['seccion']} · {context['categoria']} · {context['fecha']} · {context['competencia_nombre']}").pack(fill='x',pady=2)
 
 
 class InstrumentView(SafeDialog):

@@ -350,6 +350,13 @@ class PlanillaNativaTreeview(GradeTreeview):
             self.on_edit_complete()
 
     def _start_entry_edit(self, item: str, column: str, col_index: int, value: str) -> None:
+        app=self.winfo_toplevel()
+        if getattr(app,'calif_combo_modo_inst',None) and app.calif_combo_modo_inst.get()!='Nota directa':
+            if str(self['columns'][col_index]).startswith('Cap '):
+                student=int(self.item(item,'values')[0])
+                cap=app._capacidades_actividad[col_index-4]['capacidad_id']
+                app.abrir_evaluacion_por_criterios(student,cap)
+                return
         self.see(item)
         bounds=self.bbox(item,column)
         if not bounds:
@@ -2372,6 +2379,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
         self._ultimo_estado_planilla=estado_actual
         self._table_context=context
+        self._evaluation_view=None
         self._instrument_pending={};self._instrument_pending_session=self.id_actividad_calificando
 
         for w in self.f_tabla_planilla.winfo_children():
@@ -2436,7 +2444,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree,identity,pane=grade_panels(self.f_tabla_planilla,headers,PlanillaNativaTreeview)
         tree.set_grade_columns([f"Cap {i}" for i in range(1,len(act["capacidades"])+1)])
         tree.on_edit_complete=self.marcar_planilla_pendiente
-        self.identidad_planilla=identity;self.planilla_nativa=tree
+        self.identidad_planilla=identity;self.planilla_nativa=tree;self._results_pane=pane
         self.restaurar_divisor("nombres_notas")
         tree.tag_configure("odd", background=getattr(self, "stripe_color", ""))
         
@@ -2555,6 +2563,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             
         guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso,nuevo_instrumento=self.calif_combo_modo_inst.get())
         self._instrument_pending={};self._undo=[];self._redo=[]
+        self.recargar_evaluacion_guardada()
         self._planilla_pendiente = False
         self._borrador_path().unlink(missing_ok=True)
         self.lbl_estado.configure(text="Notas, comentarios y asistencia guardados correctamente")

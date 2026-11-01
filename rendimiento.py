@@ -37,6 +37,8 @@ class PerformanceTools:
         self._page_refresh_job=None
         if getattr(self,'_closing_ui',False):return
         page=self.tabview.get()
+        if page=='Ingresar Calificativos' and hasattr(self,'actualizar_herramientas_evaluacion'):
+            self.actualizar_herramientas_evaluacion()
         pending=list(getattr(self,'_view_pending',{}).items())
         for name,(target,args,kwargs) in pending:
             if target==page:getattr(self,name)(*args,**kwargs)

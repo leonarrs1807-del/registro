@@ -41,11 +41,26 @@ class ConfigurationTools:
             ('Año escolar y periodo',self.seleccionar_periodo),('Bloqueo por inactividad',self.configurar_inactividad)]
         for row,(text,command) in enumerate(actions):
             ctk.CTkButton(records,text=text,height=40,command=command).grid(row=row,column=0,sticky='ew',padx=18,pady=8)
+        licensing=self.config_tabs.add('Licencia')
+        text='Cuenta, cursos comprados y activación para esta computadora.' if self._license_required else (
+            'Edición personal de revisión para Leonardo. Esta edición funciona sin activar licencias. '
+            'La importación de archivos .licencia se habilita en el instalador comercial, que se prepara con tu clave pública de vendedor.')
+        label(licensing,text).pack(fill='x',padx=18,pady=18)
+        self.config_import_license=ctk.CTkButton(licensing,text='Importar licencia (.licencia)',height=40,
+            state='normal' if self._license_required else 'disabled',command=self.importar_licencia_configuracion)
+        self.config_import_license.pack(anchor='w',padx=18,pady=8)
         if self._license_required:
-            licensing=self.config_tabs.add('Licencia')
-            label(licensing,'Cuenta, cursos comprados y activación para esta computadora.').pack(fill='x',padx=18,pady=18)
-            ctk.CTkButton(licensing,text='Abrir cuenta y licencia',height=40,command=self.mostrar_licencia).pack(anchor='w',padx=18,pady=8)
+            ctk.CTkButton(licensing,text='Mi cuenta y cursos',height=38,command=self.mostrar_licencia).pack(anchor='w',padx=18,pady=8)
+            label(licensing,'Crea primero tu usuario en esta computadora. Después guarda la solicitud para el vendedor e importa la licencia que recibas.').pack(fill='x',padx=18,pady=10)
+        else:
+            label(licensing,'Para preparar la edición de venta: abre RegistroLicencias, pulsa Crear mis claves y comparte únicamente license_public_key.pem. Conserva registro_privada.pem y su contraseña para emitir las licencias de tus compradores.').pack(fill='x',padx=18,pady=10)
         return courses
+
+    def importar_licencia_configuracion(self):
+        if not self._license_required:return
+        self.mostrar_licencia()
+        window=getattr(self,'_account_dialog',None)
+        if window and window.winfo_exists() and self.licensing and self.licensing.state:window.activate()
 
     def actualizar_configuracion(self):
         if not hasattr(self,'config_teacher'):return

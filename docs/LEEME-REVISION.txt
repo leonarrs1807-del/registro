@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.7 - REVISION PARA LEONARDO ROQUE
+REGISTRO DOCENTE 1.8 - REVISION PARA LEONARDO ROQUE
 
 Este paquete permite revisar el nuevo diseño y sus cálculos en Windows.
 Es una compilación personal para el propietario, sin activación comercial.

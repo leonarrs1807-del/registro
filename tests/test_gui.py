@@ -282,9 +282,8 @@ class DesktopTests(unittest.TestCase):
         request=service.request(self.app.catalogo_licencias())
         document=sign_request(request,(folder/'privada.pem').read_bytes(),'ClaveVendedorTemporal123',[second],now=now)
         file=folder/'compra.licencia';file.write_text(json.dumps(document))
-        dialog=AccountDialog(self.app)
         with patch('tkinter.filedialog.askopenfilename',return_value=str(file)),patch('tkinter.messagebox.showinfo'):
-            dialog.activate()
+            self.app.importar_licencia_configuracion()
         self.assertTrue(self.app.licencia_permite(other,show=False))
         self.assertFalse(self.app.licencia_permite(self.course,show=False))
         self.assertFalse(self.errors)
@@ -443,7 +442,7 @@ class DesktopTests(unittest.TestCase):
         from instrumentos_excel import RAW
         from instrument_design import InstrumentPreview
         file=app_storage.data_dir()/'evaluacion-previa.xlsx'
-        db.exportar_plantilla_rubrica_o_cotejo_excel(str(file),self.course_name,'3°','A','Prueba','Competencia',[(self.cap,'Capacidad','Explica')],'Rúbrica',sesion_id=self.session)
+        db.exportar_plantilla_rubrica_o_cotejo_excel(str(file),self.course_name,'3°','A','Prueba','Competencia',[(self.cap,'Capacidad','Explica')],'Rúbrica',sesion_id=self.session,formato=3)
         wb=openpyxl.load_workbook(file);wb[RAW]['D2']='AD';wb.save(file);wb.close()
         inspected=[]
         def decide(confirm):
@@ -470,4 +469,74 @@ class DesktopTests(unittest.TestCase):
             if widget.winfo_manager()=='place':
                 self.assertLessEqual(widget.winfo_x()+widget.winfo_width(),frame.winfo_width()+2)
                 self.assertLessEqual(widget.winfo_y()+widget.winfo_height(),frame.winfo_height()+2)
+        self.assertFalse(self.errors)
+
+    def test_excel_first_download_import_and_individual_criteria_in_main_page(self):
+        import json,openpyxl
+        from excel_ui import TemplateOptions
+        from instrument_design import InstrumentPreview
+        from plantilla_excel import EVALUAR
+        from instrumentos_excel import IND,META
+        self.app.edicion_desbloqueada=True
+        self.app.calif_combo_modo_inst.set('Rúbrica');self.app.cambiar_metodo_evaluacion('Rúbrica')
+        self.assertEqual(self.app._export_button.cget('state'),'normal')
+        file=app_storage.data_dir()/'Rubrica_Prueba.xlsx'
+        def choose_counts():
+            for window in self.app.winfo_children():
+                if isinstance(window,TemplateOptions) and window.ready:
+                    window.counts[self.cap].set('2');window.confirm();return
+            self.app.after(50,choose_counts)
+        self.app.after(50,choose_counts)
+        with patch.object(self.app,'elegir_destino',return_value=str(file)),patch.object(self.app,'insignia_exportacion',return_value=None),patch.object(self.app,'archivo_guardado'):
+            self.app.exportar_modelo_actual('Rúbrica')
+        self.assertFalse(db.obtener_indicadores_instrumento_sesion(self.session))
+        wb=openpyxl.load_workbook(file);meta={r[0].value:r[1].value for r in wb[META]}
+        for n,entry in enumerate(json.loads(meta['layout_rows']),1):
+            row=entry['row'];wb[IND].cell(row,3,f'Criterio {n} de esta sesión')
+            for col,text in enumerate(['Con apoyo','Parcialmente','Autónomamente','Justifica y comprueba'],4):wb[IND].cell(row,col,text)
+        wb[EVALUAR]['D2']=6;wb[EVALUAR]['E2']=8;wb.save(file);wb.close()
+        def approve():
+            for window in self.app.winfo_children():
+                if isinstance(window,InstrumentPreview) and window.ready:window.confirmed=True;window.destroy();return
+            self.app.after(50,approve)
+        self.app.after(50,approve)
+        with patch('tkinter.filedialog.askopenfilename',return_value=str(file)),patch('tkinter.messagebox.showinfo'):
+            self.app._subir_excel_instrumento_a_sesion(self.session)
+        panel=self.app._embedded_evaluation
+        self.assertEqual(len(panel.grid_view.variables),2)
+        tree=self.app.planilla_nativa;iid=tree.get_children()[0]
+        self.assertEqual(float(tree.item(iid,'values')[4]),14)
+        self.assertEqual(self.app._evaluation_view,'criteria')
+        self.app.after(200,self.app.quit);self.app.mainloop()
+        self.app.cambiar_vista_evaluacion('Resultados y asistencia')
+        tree._start_entry_edit(iid,'Cap 1',4,'14')
+        self.assertIsNone(tree._entry);self.assertEqual(self.app._evaluation_view,'criteria')
+        self.assertFalse(self.errors)
+
+    def test_main_page_grades_each_criterion_and_undo_restores_its_answer(self):
+        from evaluacion_datos import get_answers
+        self.app.edicion_desbloqueada=True
+        values=[dict(capacidad_id=self.cap,criterio=f'Criterio {n}',puntaje_maximo=10,puntajes=dict(C=2,B=6,A=8,AD=10)) for n in (1,2)]
+        first,second=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',values)
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        panel=self.app._embedded_evaluation
+        panel.set_answer(self.student,first,'B');panel.set_answer(self.student,second,'A')
+        tree=self.app.planilla_nativa;iid=tree.get_children()[0]
+        self.assertEqual(float(tree.item(iid,'values')[4]),14)
+        self.app.deshacer_planilla()
+        self.assertEqual(panel.answers[(self.student,first)],'B');self.assertNotIn((self.student,second),panel.answers)
+        self.assertEqual(tree.item(iid,'values')[4],'')
+        self.app.deshacer_planilla(redo=True)
+        self.assertEqual(panel.answers[(self.student,second)],'A')
+        self.app.cambiar_interfaz_visual('Gris Profesional')
+        from grade_cells import PALETTE
+        self.assertEqual(panel.grid_view.cells[(first,'C')].cget('fg_color'),PALETTE['C'][0])
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertEqual(get_answers(self.session,self.app._db_path),{(self.student,first):'B',(self.student,second):'A'})
+        self.assertFalse(self.app._planilla_pendiente);self.assertFalse(self.errors)
+
+    def test_license_section_explains_why_personal_preview_has_no_activation(self):
+        self.app.abrir_configuracion('Licencia');self.app.update_idletasks()
+        self.assertEqual(self.app.config_tabs.get(),'Licencia')
+        self.assertEqual(self.app.config_import_license.cget('state'),'disabled')
         self.assertFalse(self.errors)

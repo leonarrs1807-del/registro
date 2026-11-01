@@ -39,7 +39,15 @@ def _format_sheet(sheet,header_row,identity_columns=()):
     sheet.print_title_rows=f'1:{header_row}'
 
 
-def export_template(destination,course,grade,section,title,competency,capacities,kind,path,session=None):
+def export_template(destination,course,grade,section,title,competency,capacities,kind,path,session=None,
+                    *,criteria_counts=None,blank=False,format_version=4):
+    if format_version==3:return _export_v3(destination,course,grade,section,title,competency,capacities,kind,path,session)
+    if format_version!=4:raise ValueError('Formato de plantilla no compatible.')
+    from plantilla_excel import export_form
+    return export_form(destination,course,grade,section,title,competency,capacities,kind,path,session,criteria_counts,blank)
+
+
+def _export_v3(destination,course,grade,section,title,competency,capacities,kind,path,session=None,*,criteria_counts=None,blank=False):
     import db
     kind=instrument_kind(kind);limits=thresholds(path)
     ids=[c[0] for c in capacities]
@@ -52,14 +60,20 @@ def export_template(destination,course,grade,section,title,competency,capacities
         if session:
             current=conn.execute('SELECT competencia_id,grado,seccion FROM Sesiones_Clase WHERE id=?',(session,)).fetchone()
             if not current or tuple(current)!=(comp_id,grade,section):raise ValueError('La actividad no coincide con el modelo solicitado.')
-    existing=db.obtener_indicadores_instrumento_sesion(session,path) if session else []
+    existing=db.obtener_indicadores_instrumento_sesion(session,path) if session and not blank else []
     existing=[i for i in existing if i['capacidad_id'] in ids and i['tipo']==kind];definitions=[]
     for cap_id,name,criterion in capacities:
         rows=[i for i in existing if i['capacidad_id']==cap_id]
         if not rows:
-            texts=[criterion or name]
-            if kind=='Lista de Cotejo':texts.append('Explica su respuesta usando la evidencia solicitada.')
-            rows=[dict(criterio=text,puntaje_maximo=20 if kind=='Rúbrica' else 10) for text in texts]
+            if blank:
+                count=(criteria_counts or {}).get(cap_id,2)
+                if not isinstance(count,int) or not 1<=count<=20:raise ValueError('Elija entre 1 y 20 criterios por capacidad.')
+                first=criterion if normalized(criterion)!=normalized(name) else ''
+                rows=[dict(criterio=first if n==0 else '',puntaje_maximo=20/count,descriptores={l:'' for l in LEVELS}) for n in range(count)]
+            else:
+                texts=[criterion or name]
+                if kind=='Lista de Cotejo':texts.append('Explica su respuesta usando la evidencia solicitada.')
+                rows=[dict(criterio=text,puntaje_maximo=20 if kind=='Rúbrica' else 10) for text in texts]
         for row in rows:
             item=definition({**row,'tipo':kind,'capacidad_id':cap_id,'capacidad_nombre':name},limits)
             item['ident']=f"I{row['id']}" if row.get('id') else f'N{len(definitions)+1}'
@@ -145,6 +159,11 @@ def import_template(session,source,grade,section,path):
 
 def _import_workbook(wb,formulas,session,grade,section,path,db):
     meta={row[0].value:row[1].value for row in wb[META].iter_rows(max_col=2)} if META in wb.sheetnames else {}
+    if meta.get('format')=='registro-instrumento' and meta.get('version')==4:
+        from plantilla_excel import normalize_form
+        converted,checked=normalize_form(wb,formulas)
+        try:return _import_workbook(converted,checked,session,grade,section,path,db)
+        finally:converted.close();checked.close()
     modern=bool(meta)
     if modern and (meta.get('format')!='registro-instrumento' or meta.get('version') not in (2,3)):raise ValueError('Versión de plantilla no compatible.')
     structured=meta.get('version')==3

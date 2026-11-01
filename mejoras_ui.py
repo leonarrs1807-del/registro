@@ -196,6 +196,8 @@ class ClassroomTools:
         tree=getattr(self,'planilla_nativa',None)
         if event and event.widget is not tree:return
         if not tree or not tree.selection() or not self.verificar_permiso_edicion():return
+        if self.calif_combo_modo_inst.get()!='Nota directa':
+            self.abrir_evaluacion_por_criterios();return 'break'
         import csv,io
         from db_safety import valid_number
         values=list(csv.reader(io.StringIO(self.clipboard_get()),delimiter='\t'))

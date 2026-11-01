@@ -32,7 +32,7 @@ class InstrumentWorkbookTests(unittest.TestCase):
         activity=next(s for s in db.obtener_sesiones_clase(self.course,'3°','A',db_path=self.path) if s['id']==self.session)
         capacities=[(c['capacidad_id'],c['capacidad_nombre'],c['criterio_precisado']) for c in activity['capacidades']]
         db.exportar_plantilla_rubrica_o_cotejo_excel(str(self.file),self.course_name,'3°','A','Resolver ecuaciones',self.comp_name,
-            capacities,kind,self.path,sesion_id=self.session)
+            capacities,kind,self.path,sesion_id=self.session,formato=3)
         wb=openpyxl.load_workbook(self.file);self.addCleanup(wb.close);return wb
 
     def apply(self,wb,session=None):

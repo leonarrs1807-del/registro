@@ -39,7 +39,7 @@ def decorate_workbook(path, logo=None):
     instrument_model='Registro_Meta' in wb.sheetnames
     for ws in wb:
         if ws.sheet_state!='visible':continue
-        ws.sheet_view.zoomScale = 110
+        if not instrument_model:ws.sheet_view.zoomScale = 110
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.orientation = 'landscape'
         ws.page_setup.paperSize = ws.PAPERSIZE_A3

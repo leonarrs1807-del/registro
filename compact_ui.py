@@ -12,6 +12,7 @@ class CompactTools:
         from main import TEMAS_INTERFAZ
         card=TEMAS_INTERFAZ[self.tema_actual_nombre]['bg_card']
         def visit(widget):
+            if getattr(widget,'_preserve_theme',False):return
             if isinstance(widget,ctk.CTkFrame) and widget.cget('fg_color')!='transparent':
                 widget.configure(fg_color=card)
             elif isinstance(widget,ctk.CTkComboBox):
@@ -126,4 +127,4 @@ class CompactTools:
                     tree._start_entry_edit(item,'Cap 1',4,tree.item(item,'values')[4])
                 return
             kind='Rúbrica' if 'Rúbrica' in self.calif_combo_modo_inst.get() else 'Lista de Cotejo'
-            self._abrir_dialogo_masivo_desde_nativa(activity,self._datos_estudiantes,kind)
+            self.abrir_evaluacion_por_criterios()

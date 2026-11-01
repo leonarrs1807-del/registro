@@ -5,7 +5,7 @@ import ctypes,os,sqlite3,subprocess,sys,tempfile,time
 from ctypes import wintypes
 
 
-def visible_application(pid,prefix='Registro Docente 1.7'):
+def visible_application(pid,prefix='Registro Docente 1.8'):
     user32=ctypes.windll.user32
     found=[]
     callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)

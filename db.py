@@ -882,10 +882,12 @@ def exportar_plantilla_rubrica_o_cotejo_excel(
     ruta_destino: str, nombre_curso: str, grado: str, seccion: str, titulo_actividad: str,
     competencia_nombre: str, capacidades_y_criterios: List[Tuple[int,str,str]],
     tipo_instrumento: str = "Lista de Cotejo", db_path: Path = DB_PATH, *, sesion_id=None,
+    criterios_por_capacidad=None,desde_cero=False,formato=4,
 ) -> None:
     from instrumentos_excel import export_template
     export_template(ruta_destino,nombre_curso,grado,seccion,titulo_actividad,competencia_nombre,
-                    capacidades_y_criterios,tipo_instrumento,db_path,sesion_id)
+                    capacidades_y_criterios,tipo_instrumento,db_path,sesion_id,
+                    criteria_counts=criterios_por_capacidad,blank=desde_cero,format_version=formato)
 
 
 @atomic

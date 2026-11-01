@@ -4,6 +4,31 @@ Aplicación de escritorio para estudiantes, sesiones, rúbricas, asistencia y
 evaluación por competencias. Funciona con Python 3.12, Tkinter y SQLite, sin
 servidor ni conexión permanente a Internet.
 
+## Versión 1.8: Excel desde el inicio y evaluación por criterio
+
+En Calificaciones, **Herramientas → Plantilla Excel** está disponible sin diseñar
+antes el instrumento. Elija cuántos criterios necesita cada capacidad; la plantilla
+usa el tema y las capacidades de la actividad y permite redactar los descriptores
+directamente en Excel. Si ya hay un instrumento, puede conservarlo o empezar uno nuevo.
+
+La hoja de evaluación tiene una columna por criterio. El resumen de capacidades
+calcula las notas; no sustituye esas respuestas por una nota manual. La rúbrica
+alinea los cuatro descriptores y sus puntos en bloques de dos filas, con un ancho
+y zoom que permiten ver sus niveles juntos. La importación mantiene la identidad
+de estudiantes y criterios, valida toda la operación y calcula las notas desde
+las respuestas, sin depender de la caché de fórmulas del resumen.
+
+La vista **Criterios** permite evaluar todos los criterios desde la pantalla
+principal. **Resultados y asistencia** muestra las notas calculadas. La nota final
+de una capacidad es la suma de puntos obtenidos dividida entre la suma de máximos,
+multiplicada por veinte. Deshacer, borradores y guardado incluyen las respuestas.
+El editor de instrumentos sigue disponible. La escala se configura en Configuración.
+
+**Configuración → Licencia** muestra la importación en la edición comercial y
+explica su disponibilidad en la revisión personal. La edición de venta continúa
+requiriendo la clave pública del vendedor. Las claves y licencias existentes
+mantienen su protocolo y siguen siendo compatibles entre actualizaciones.
+
 ## Versión 1.7: evaluación por criterios y configuración
 
 Actividades prepara el tema, la competencia y las capacidades. En **Calificaciones**
@@ -37,7 +62,7 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La edición comercial 1.7 permite vender cualquier selección de cursos, o todos,
+La edición comercial 1.8 permite vender cualquier selección de cursos, o todos,
 con una licencia vinculada a una cuenta y PC. La edición personal previa permite
 trabajar sin demo ni activación comercial.
 Si conserva la contraseña inicial, el primer arranque solicita configurar el
@@ -156,7 +181,7 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Activación comercial 1.7
+## Activación comercial 1.8
 
 La edición comercial utiliza cuentas locales y una demo de **30 días con un solo curso
 y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se

@@ -19,7 +19,7 @@ def paragraph(master, **kwargs):
 class SellerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title('Registro Licencias 1.6 — Leonardo Roque')
+        self.title('Registro Licencias 1.8 — Leonardo Roque')
         self.geometry('850x720')
         self.minsize(650, 500)
         self.request_data = None
