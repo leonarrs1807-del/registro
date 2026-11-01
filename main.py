@@ -8,6 +8,7 @@ import app_storage
 from app_security import verify_license, license_public_key
 from db_safety import valid_number
 from desktop_ui import DesktopTools
+from widgets import scroll_area, wrap_label
 from db import actualizar_pesos_actividades
 
 from db import (
@@ -121,21 +122,24 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         super().__init__(master)
         self.app = master
         self.title("Datos Generales del Docente y Configuración del Candado")
-        self.geometry("460x440")
+        self.geometry("600x600")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
 
+        body=scroll_area(self)
+        body.pack(fill="both",expand=True)
+        self.after(100,lambda:self.app._fuentes_legibles(body))
         cfg = obtener_docente_config()
 
         ctk.CTkLabel(
-            self,
+            body,
             text="👤 Perfil del Docente y Usuario de Seguridad",
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(padx=20, pady=(16, 4), anchor="w")
 
         ctk.CTkLabel(
-            self,
+            body,
             text="Configure sus datos generales y el usuario/contraseña para desbloquear el candado de edición:",
             font=ctk.CTkFont(size=11),
             text_color=("gray35", "gray75"),
@@ -143,28 +147,28 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
             justify="left",
         ).pack(padx=20, pady=(0, 10), anchor="w")
 
-        ctk.CTkLabel(self, text="Nombres y Apellidos del Docente:", font=ctk.CTkFont(weight="bold")).pack(
+        ctk.CTkLabel(body, text="Nombres y Apellidos del Docente:", font=ctk.CTkFont(weight="bold")).pack(
             padx=20, pady=(2, 1), anchor="w"
         )
-        self.ent_nombres = ctk.CTkEntry(self)
+        self.ent_nombres = ctk.CTkEntry(body)
         self.ent_nombres.insert(0, cfg["nombres_docente"])
         self.ent_nombres.pack(padx=20, pady=(0, 8), fill="x")
 
-        ctk.CTkLabel(self, text="Institución Educativa / Colegio:", font=ctk.CTkFont(weight="bold")).pack(
+        ctk.CTkLabel(body, text="Institución Educativa / Colegio:", font=ctk.CTkFont(weight="bold")).pack(
             padx=20, pady=(2, 1), anchor="w"
         )
-        self.ent_institucion = ctk.CTkEntry(self)
+        self.ent_institucion = ctk.CTkEntry(body)
         self.ent_institucion.insert(0, cfg["institucion"])
         self.ent_institucion.pack(padx=20, pady=(0, 8), fill="x")
 
-        ctk.CTkLabel(self, text="Especialidad / Nivel:", font=ctk.CTkFont(weight="bold")).pack(
+        ctk.CTkLabel(body, text="Especialidad / Nivel:", font=ctk.CTkFont(weight="bold")).pack(
             padx=20, pady=(2, 1), anchor="w"
         )
-        self.ent_esp = ctk.CTkEntry(self)
+        self.ent_esp = ctk.CTkEntry(body)
         self.ent_esp.insert(0, cfg["especialidad"])
         self.ent_esp.pack(padx=20, pady=(0, 8), fill="x")
 
-        f_cred = ctk.CTkFrame(self, fg_color="transparent")
+        f_cred = ctk.CTkFrame(body, fg_color="transparent")
         f_cred.pack(padx=20, pady=4, fill="x")
         f_cred.grid_columnconfigure((0, 1), weight=1)
 
@@ -183,7 +187,7 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         self.ent_clave.grid(row=1, column=1, padx=(6, 0), sticky="ew")
 
         ctk.CTkButton(
-            self,
+            body,
             text="💾 Guardar Datos del Docente y Desbloquear Candado",
             height=38,
             fg_color="#15803d",
@@ -451,6 +455,7 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
         except ValueError as exc:
             messagebox.showwarning("Evaluación incompleta", str(exc), parent=self)
             return
+        self.app.recordar_planilla()
         tree = self.app.planilla_nativa
         for item in tree.get_children():
             row = list(tree.item(item, "values"))
@@ -498,7 +503,7 @@ class PlanillaNativaTreeview(ttk.Treeview):
         if not item or not column:
             return
 
-        col_index = int(column[1:]) - 1
+        col_index = list(self["columns"]).index(self.column(column, "id"))
         # 0: Codigo, 1: Alumno, 2: Asistencia, 3+: Notas, Last: Comentario
         
         cols = self["columns"]
@@ -522,6 +527,7 @@ class PlanillaNativaTreeview(ttk.Treeview):
         self._start_entry_edit(item, column, col_index, value)
 
     def _update_value(self, item: str, col_index: int, new_val: str) -> None:
+        self.winfo_toplevel().recordar_planilla()
         vals = list(self.item(item, 'values'))
         vals[col_index] = new_val
         self.item(item, values=vals)
@@ -529,11 +535,21 @@ class PlanillaNativaTreeview(ttk.Treeview):
             self.on_edit_complete()
 
     def _start_entry_edit(self, item: str, column: str, col_index: int, value: str) -> None:
-        x, y, width, height = self.bbox(item, column)
+        self.see(item)
+        bounds=self.bbox(item,column)
+        if not bounds:
+            columns=list(self["displaycolumns"])
+            name=self.column(column,"id") if str(column).startswith("#") else column
+            if name in columns:
+                widths=[self.column(c,"width") for c in columns]
+                self.xview_moveto(sum(widths[:columns.index(name)])/max(sum(widths),1))
+                self.update_idletasks();bounds=self.bbox(item,column)
+        if not bounds:return
+        x,y,width,height=bounds
         if self._entry:
             self._entry.destroy()
 
-        self._entry = tk.Entry(self, justify="center", font=("Arial", 11))
+        self._entry = tk.Entry(self, justify="center", font=ttk.Style(self).lookup("Treeview","font") or ("Segoe UI",16))
         self._entry.place(x=x, y=y, width=width, height=height)
         if value and not any(c.isdigit() for c in value):
              self._entry.insert(0, "") 
@@ -596,7 +612,7 @@ class PlanillaNativaTreeview(ttk.Treeview):
             cols = self["columns"]
             if col_index > 4: # Can move left up to Cap 1 (index 4)
                 new_col_index = col_index - 1
-                new_col = f"#{new_col_index + 1}"
+                new_col = self["columns"][new_col_index]
                 self._start_entry_edit(item, new_col, new_col_index, self.item(item, 'values')[new_col_index])
             return "break"
 
@@ -607,7 +623,7 @@ class PlanillaNativaTreeview(ttk.Treeview):
             cols = self["columns"]
             if col_index < len(cols) - 2: # Last is Comentario, don't move into it with right arrow
                 new_col_index = col_index + 1
-                new_col = f"#{new_col_index + 1}"
+                new_col = self["columns"][new_col_index]
                 self._start_entry_edit(item, new_col, new_col_index, self.item(item, 'values')[new_col_index])
             return "break"
 
@@ -706,7 +722,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.edicion_desbloqueada: bool = False
         cfg_ini = obtener_docente_config()
         self.tema_actual_nombre: str = cfg_ini.get("tema_visual", "Oscuro Noche")
-        self.tamano_letra_actual: str = cfg_ini.get("tamano_letra", "Normal (12)")
+        self.tamano_letra_actual: str = cfg_ini.get("tamano_letra", "Personalizado (18)")
         if self.tema_actual_nombre not in TEMAS_INTERFAZ:
             self.tema_actual_nombre = "Oscuro Noche"
 
@@ -751,12 +767,21 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.set_appearance_mode(cfg_t["appearance"])
         self.configure(fg_color=cfg_t["bg_main"])
+        for area in getattr(self,"_scroll_areas",[]):
+            if area.winfo_exists():
+                area.configure(fg_color=cfg_t["bg_card"])
+                area.viewport.configure(bg=cfg_t["bg_card"])
+                area.container.configure(fg_color=cfg_t["bg_card"])
 
         estilo = ttk.Style()
         estilo.theme_use("clam")
         
         f_size = {"Normal (12)": 12, "Grande (15)": 15, "Muy Grande (18)": 18}.get(self.tamano_letra_actual, 12)
-        r_height = max(30, f_size * 2 + 6)
+        import re
+        match = re.search(r"\((\d+)\)", self.tamano_letra_actual)
+        f_size = max(16, int(match.group(1)) if match else 18)
+        f_size = round(f_size * getattr(self, "_zoom", 1))
+        r_height = max(42, f_size * 2 + 8)
                 
         estilo.configure(
             "Treeview",
@@ -796,8 +821,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         if hasattr(self, "planilla_xy"):
             self.planilla_xy.aplicar_color_fondo(cfg_t["bg_main"])
-        if hasattr(self, "canvas_graficos"):
-            self.canvas_graficos.configure(bg=cfg_t["bg_main"])
+        if hasattr(self, "graficos_tabs"):
             self.dibujar_graficos_estadisticos()
 
     def editar_perfil_docente(self):
@@ -805,6 +829,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             DialogoPerfilDocente(self)
 
     def verificar_permiso_edicion(self) -> bool:
+        if hasattr(self, "lbl_estado") and self.periodo_cerrado():
+            messagebox.showinfo("Periodo cerrado", "Reabra el periodo desde Trabajo docente para modificar los datos.")
+            return False
         if self.edicion_desbloqueada:
             return True
         dialog = DialogoDesbloquearCandado(self)
@@ -992,7 +1019,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             hover_color="#7c3aed",
             command=self.activar_dev_mode,
         ).pack(side="left", padx=8)
-        sizes = ctk.CTkComboBox(self.tab_curriculo, values=["Normal (12)", "Grande (15)", "Muy Grande (18)"],
+        sizes = ctk.CTkComboBox(self.tab_curriculo, values=["Personalizado (16)", "Personalizado (18)", "Personalizado (20)", "Personalizado (24)"],
                                state="readonly", command=self.cambiar_tamano_letra)
         sizes.set(self.tamano_letra_actual)
         sizes.grid(row=1, column=2, padx=12, pady=4, sticky="e")
@@ -1000,7 +1027,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkLabel(
             self.tab_curriculo,
-            text="Catálogo Curricular (10 Áreas de Secundaria precargadas). Seleccione el Curso para ver sus Competencias y Capacidades.",
+            text="Seleccione un curso para consultar sus competencias y capacidades.",
+            wraplength=620,
             font=ctk.CTkFont(size=13),
         ).grid(row=1, column=0, columnspan=3, padx=12, pady=(6, 8), sticky="w")
 
@@ -1030,7 +1058,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.btn_eliminar_curso.grid_remove()
 
         f_comp = ctk.CTkFrame(self.tab_curriculo, corner_radius=10)
-        f_comp.grid(row=1, column=1, padx=5, pady=6, sticky="nsew")
+        f_comp.grid(row=2, column=1, padx=5, pady=6, sticky="nsew")
         f_comp.grid_rowconfigure(1, weight=1)
         f_comp.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(f_comp, text="2° Competencias del Curso", font=ctk.CTkFont(size=14, weight="bold")).grid(
@@ -1050,7 +1078,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ).grid(row=2, column=0, padx=10, pady=8, sticky="ew")
 
         f_cap = ctk.CTkFrame(self.tab_curriculo, corner_radius=10)
-        f_cap.grid(row=1, column=2, padx=(5, 8), pady=6, sticky="nsew")
+        f_cap.grid(row=2, column=2, padx=(5, 8), pady=6, sticky="nsew")
         f_cap.grid_rowconfigure(1, weight=1)
         f_cap.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(f_cap, text="3° Capacidades de la Competencia", font=ctk.CTkFont(size=14, weight="bold")).grid(
@@ -1216,15 +1244,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # PESTAÑA 3: CREAR ACTIVIDAD + EXPORTAR/IMPORTAR PLANTILLA DE RÚBRICA O LISTA DE COTEJO
     # --------------------------------------------------------------------------
     def _construir_tab_crear_actividad(self) -> None:
-        self.tab_crear.grid_columnconfigure(0, weight=0)
-        self.tab_crear.grid_columnconfigure(1, weight=1)
+        self.tab_crear.grid_columnconfigure(0, weight=3, minsize=550)
+        self.tab_crear.grid_columnconfigure(1, weight=2, minsize=300)
         self.tab_crear.grid_rowconfigure(0, weight=1)
 
-        panel_form = ctk.CTkFrame(self.tab_crear, width=530, corner_radius=10)
+        panel_form = scroll_area(self.tab_crear, width=600, corner_radius=10)
         panel_form.grid(row=0, column=0, padx=(8, 6), pady=8, sticky="nsew")
-        panel_form.grid_propagate(False)
         panel_form.grid_columnconfigure(0, weight=1)
-        panel_form.grid_rowconfigure(4, weight=1)
+        panel_form.grid_rowconfigure(4, weight=0)
 
         f_head = ctk.CTkFrame(panel_form, fg_color="transparent")
         f_head.grid(row=0, column=0, padx=14, pady=(8, 2), sticky="ew")
@@ -1307,12 +1334,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             f_comp_c, state="readonly", command=self._al_cambiar_comp_en_creacion
         )
         self.crear_combo_comp.grid(row=1, column=0, pady=(0, 4), sticky="ew")
+        self.lbl_comp_completa = ctk.CTkLabel(f_comp_c, text="", wraplength=480, justify="left", anchor="w")
+        self.lbl_comp_completa.grid(row=2,column=0,sticky="ew")
+        wrap_label(self.lbl_comp_completa)
 
-        self.scroll_caps_creacion = ctk.CTkScrollableFrame(
-            panel_form,
-            label_text="Marque las Capacidades a evaluar (El texto continúa hacia abajo) y su Criterio Precisado:",
-            label_font=ctk.CTkFont(size=12, weight="bold"),
-        )
+        self.scroll_caps_creacion = ctk.CTkFrame(panel_form)
         self.scroll_caps_creacion.grid(row=4, column=0, padx=14, pady=4, sticky="nsew")
         self.scroll_caps_creacion.grid_columnconfigure(0, weight=1)
 
@@ -1699,10 +1725,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             ]
         ):
             ctk.CTkLabel(f_grid_pct, text=etiqueta, font=ctk.CTkFont(size=14, weight="bold")).grid(
-                row=0, column=idx, padx=4, pady=(6, 2)
+                row=(idx//2)*2, column=idx%2, padx=4, pady=(6, 2)
             )
             ent = ctk.CTkEntry(f_grid_pct, width=85, font=ctk.CTkFont(size=15, weight="bold"), justify="center")
-            ent.grid(row=1, column=idx, padx=4, pady=(0, 8))
+            ent.grid(row=(idx//2)*2+1, column=idx%2, padx=4, pady=(0, 8), sticky="ew")
             self.entries_pct_rubros[clave] = ent
 
         ctk.CTkButton(
@@ -1722,7 +1748,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkLabel(
             f_sel_cat,
-            text="2° Seleccione Categoría para Ver/Modificar Pesos de Actividades:",
+            text="Pesos de actividades por categoría", wraplength=370,
             font=ctk.CTkFont(size=14, weight="bold"),
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
 
@@ -1763,13 +1789,19 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkLabel(
             panel_der,
-            text="📊 Gráfico Circular de Porcentajes (%) y Frecuencia de Competencias / Capacidades Evaluadas",
+            text="Ponderaciones y cobertura curricular", wraplength=550,
             font=ctk.CTkFont(size=14, weight="bold"),
         ).grid(row=0, column=0, padx=14, pady=(10, 4), sticky="w")
 
-        self.canvas_graficos = tk.Canvas(panel_der, bg="#0f172a", highlightthickness=0)
-        self.canvas_graficos.grid(row=1, column=0, padx=12, pady=(0, 12), sticky="nsew")
-        self.canvas_graficos.bind("<Configure>", lambda _e: self.dibujar_graficos_estadisticos())
+        self.graficos_tabs = ctk.CTkTabview(panel_der, command=self._render_current_plot)
+        self.graficos_tabs.grid(row=1, column=0, sticky="nsew", padx=8, pady=8)
+        self.graficos_hosts = []
+        for title in ("Ponderaciones", "Competencias", "Capacidades"):
+            tab = self.graficos_tabs.add(title)
+            host = scroll_area(tab)
+            host.pack(fill="both", expand=True)
+            self.graficos_hosts.append(host)
+        self.figuras_porcentajes = []
 
     # --------------------------------------------------------------------------
     # PESTAÑA 7: MATRIZ GENERAL + EXPORTAR E IMPORTAR EXCEL CON NOTAS
@@ -1939,10 +1971,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 
             elif "Barras" in ax_tipo:
                 notas = [float(f["promedio"]) for f in filas if f["promedio"]]
-                rangos = {"C (<10,5)": 0, "B (10,5–<13,5)": 0, "A (13,5–<17,5)": 0, "AD (17,5–20)": 0}
-                for n in notas:
-                    label = {"C": "C (<10,5)", "B": "B (10,5–<13,5)", "A": "A (13,5–<17,5)", "AD": "AD (17,5–20)"}[nota_a_literal(n)]
-                    rangos[label] += 1
+                from escala import thresholds
+                from db import DB_PATH
+                b_min,a_min,ad_min=thresholds(DB_PATH)
+                labels={"C":f"C (<{b_min:g})","B":f"B ({b_min:g}–<{a_min:g})","A":f"A ({a_min:g}–<{ad_min:g})","AD":f"AD ({ad_min:g}–20)"}
+                rangos={label:0 for label in labels.values()}
+                for n in notas:rangos[labels[nota_a_literal(n)]]+=1
                 ax.bar(rangos.keys(), rangos.values(), color=["#ef4444", "#f59e0b", "#3b82f6", "#10b981"])
                 ax.set_title("Distribución de Notas Literales")
                 ax.set_ylabel("Frecuencia")
@@ -1967,32 +2001,32 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 ax.tick_params(axis='x', rotation=45)
                 
             elif "Capacidades" in ax_tipo:
-                cap_notas = {}
-                for f in filas:
-                    if f["notas_str"] and f["notas_str"] != "Sin Calificar":
-                        partes = f["notas_str"].split(" | ")
-                        for p in partes:
-                            if ": " in p:
-                                cap_nom, nota = p.split(": ")
-                                try: cap_notas.setdefault(cap_nom, []).append(float(nota))
-                                except ValueError: pass
+                import textwrap
+                cap_notas = {}; cap_names = {}
+                for row in filas:
+                    for item in row.get("notas_detalle",[]):
+                        if item["nota"] is not None:
+                            cap_notas.setdefault(item["id"],[]).append(item["nota"])
+                            cap_names[item["id"]]=item["nombre"]
                 if not cap_notas:
-                    ax.set_title("No hay notas por capacidad.")
+                    ax.set_title("No hay notas por capacidad")
                 else:
-                    labels = [l[:10]+".." for l in cap_notas.keys()]
-                    vals = [sum(v)/len(v) for v in cap_notas.values()]
-                    ax.bar(labels, vals, color="#f43f5e")
-                    ax.set_title("Promedio por Capacidades")
-                    ax.set_ylim(0, 20)
-                    ax.tick_params(axis='x', rotation=45)
-                    
+                    ids=list(cap_notas)
+                    labels=[textwrap.fill(cap_names[i],42) for i in ids]
+                    vals=[sum(cap_notas[i])/len(cap_notas[i]) for i in ids]
+                    ax.barh(range(len(ids)),vals,color="#2563eb")
+                    ax.set_yticks(range(len(ids)),labels,fontsize=9)
+                    ax.invert_yaxis();ax.set_xlim(0,20);ax.set_xlabel("Nota promedio por actividad")
+                    ax.set_title("Promedios por capacidad")
+                    fig.set_size_inches(12,max(8 if is_dash else 4,len(ids)*(.85 if is_dash else .55)))
+
             elif "Comparativa" in ax_tipo:
                 sec_comp_notas = {}
                 for f in filas:
                     if f["promedio"]:
-                        cod = f.get("codigo", "")
-                        if cod and len(cod) >= 2:
-                            s = cod[1:2]
+                        cod = f.get("seccion", "")
+                        if cod:
+                            s = cod
                             comp = f.get("competencia", "General")
                             sec_comp_notas.setdefault(s, {}).setdefault(comp, []).append(float(f["promedio"]))
                 
@@ -2040,7 +2074,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ruta = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Document", "*.pdf")])
         if ruta:
             try:
-                self.fig_actual.savefig(ruta, format="pdf", bbox_inches="tight")
+                import reportes
+                reportes.save_figure(self.fig_actual, ruta, self.insignia_exportacion())
                 messagebox.showinfo("Éxito", f"Reporte PDF guardado en:\n{ruta}")
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo exportar:\n{e}")
@@ -2062,6 +2097,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         grados, secciones = obtener_grados_y_secciones()
         self.combo_grado_global.configure(values=grados)
+        if self.combo_grado_global.get() not in grados: self.combo_grado_global.set(grados[0])
         self.combo_seccion_global.configure(values=secciones)
 
         # Configurar columnas del treeview segun dev_mode
@@ -2381,6 +2417,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.crear_combo_comp.set(getattr(self, "_comp_form_actual", texto_comp))
             return
         self._comp_form_actual = texto_comp
+        if hasattr(self,"lbl_comp_completa"): self.lbl_comp_completa.configure(text=texto_comp)
         for w in self.scroll_caps_creacion.winfo_children():
             w.destroy()
         self.widgets_caps_creacion.clear()
@@ -2403,19 +2440,20 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 text=f"Capacidad {idx}: {cap_nom}",
                 font=ctk.CTkFont(size=12, weight="bold"),
                 text_color=("#1e3a8a", "#93c5fd"),
-                wraplength=425,
+                wraplength=480,
                 justify="left",
                 anchor="w",
             )
             lbl_cap.grid(row=0, column=1, padx=(2, 8), pady=(6, 2), sticky="ew")
+            wrap_label(lbl_cap)
 
             ctk.CTkLabel(
                 f_item,
-                text="Criterio de Evaluación Precisado (Opcional - Multilínea):",
+                text="Criterio de evaluación (opcional):", wraplength=350,
                 font=ctk.CTkFont(size=11),
             ).grid(row=1, column=1, padx=2, pady=(0, 1), sticky="w")
 
-            txt_crit = ctk.CTkTextbox(f_item, height=42, wrap="word")
+            txt_crit = ctk.CTkTextbox(f_item, height=90, wrap="word", font=ctk.CTkFont(size=15))
             txt_crit.grid(row=2, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="ew")
 
             self.widgets_caps_creacion.append(
@@ -2473,6 +2511,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             capacidades_y_criterios=caps_marcadas,
             tipo_instrumento=tipo_instrumento,
         )
+        import reportes
+        reportes.decorate_workbook(ruta, self.insignia_exportacion())
         messagebox.showinfo(
             f"Plantilla de {tipo_instrumento} Creada",
             f"Se creó la plantilla con las Capacidades y Criterios Precisados que marcó en:\n{ruta}\n\n"
@@ -2626,12 +2666,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             curso_id, self.combo_grado_global.get(), self.combo_seccion_global.get()
         )
         for i, s in enumerate(todas_sesiones, start=1):
+            if s.get("archivada"):continue
             self.actividades_creadas_map[s["id"]] = s
             etiqueta = f"#{i} [{s['categoria']} | Peso {s['peso_clase']:.1f}x] {s['titulo_tema']}"
             opciones_combo_calif.append(etiqueta)
             self.combo_calif_etiqueta_a_id[etiqueta] = s["id"]
 
         for s in sesiones:
+            if s.get("archivada"):continue
             caps_str = " • ".join(
                 f"{c['capacidad_nombre']}" + (f" ({c['criterio_precisado']})" if c["criterio_precisado"] else "")
                 for c in s["capacidades"]
@@ -2833,7 +2875,32 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         
         tree = PlanillaNativaTreeview(self.f_tabla_planilla, columns=headers, show="headings")
         tree.on_edit_complete = self.marcar_planilla_pendiente
-        tree.pack(fill="both", expand=True)
+        tree.configure(displaycolumns=headers[3:])
+        tree.grid(row=1, column=1, sticky="nsew")
+        identity=ttk.Treeview(self.f_tabla_planilla,columns=("codigo","alumno"),show="headings",selectmode="browse")
+        identity.heading("codigo",text="Código");identity.heading("alumno",text="Apellidos y nombres")
+        identity.column("codigo",width=85,stretch=False);identity.column("alumno",width=245,stretch=False)
+        identity.grid(row=1,column=0,sticky="ns")
+        self.identidad_planilla=identity
+        self.f_tabla_planilla.grid_columnconfigure(0,weight=0)
+        self.f_tabla_planilla.grid_columnconfigure(1,weight=1)
+        def scroll_both(*args):
+            tree.yview(*args);identity.yview(*args)
+        def sync_selection(source,target):
+            if source.selection() and target.selection()!=source.selection():
+                target.selection_set(source.selection());target.focus(source.selection()[0])
+        identity.bind("<<TreeviewSelect>>",lambda e:sync_selection(identity,tree))
+        tree.bind("<<TreeviewSelect>>",lambda e:sync_selection(tree,identity))
+        sy = ttk.Scrollbar(self.f_tabla_planilla, orient="vertical", command=scroll_both)
+        sx = ttk.Scrollbar(self.f_tabla_planilla, orient="horizontal", command=tree.xview)
+        sy.grid(row=1, column=2, sticky="ns"); sx.grid(row=2, column=1, sticky="ew")
+        def sync_scroll(first,last):
+            sy.set(first,last)
+            if abs(identity.yview()[0]-float(first))>.001:identity.yview_moveto(first)
+        tree.configure(yscrollcommand=sync_scroll, xscrollcommand=sx.set)
+        identity.configure(yscrollcommand=lambda first,last: tree.yview_moveto(first) if abs(tree.yview()[0]-float(first))>.001 else None)
+        self.f_tabla_planilla.grid_rowconfigure(0, weight=0)
+        self.f_tabla_planilla.grid_rowconfigure(1, weight=1)
         self.planilla_nativa = tree
         tree.tag_configure("odd", background=getattr(self, "stripe_color", ""))
         
@@ -2842,7 +2909,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.heading("Apellidos y Nombres", text="Apellidos y Nombres")
         tree.heading("Asistencia", text="Asistencia (Sí/No)")
         for idx_c, cap_inf in enumerate(act["capacidades"], start=1):
-            tree.heading(f"Cap {idx_c}", text=cap_inf["capacidad_nombre"].split()[0])
+            tree.heading(f"Cap {idx_c}", text=f"Cap. {idx_c}: " + cap_inf["capacidad_nombre"])
         tree.heading("Comentario", text="Comentario (Doble Clic)")
         
         tree.column("ID", width=0, stretch=False)
@@ -2850,7 +2917,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.column("Apellidos y Nombres", width=250, anchor="w", stretch=False)
         tree.column("Asistencia", width=120, anchor="center", stretch=False)
         for idx_c in range(1, len(act["capacidades"]) + 1):
-            tree.column(f"Cap {idx_c}", width=80, anchor="center", stretch=False)
+            tree.column(f"Cap {idx_c}", width=300, minwidth=180, anchor="center", stretch=False)
         tree.column("Comentario", width=400, anchor="w", stretch=False)
         
         for est in estudiantes:
@@ -2866,15 +2933,17 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                     row.append("")
             row.append(comentario.replace("\n", " ") if comentario else "")
             tags = ("odd",) if len(tree.get_children()) % 2 == 0 else ("even",)
-            tree.insert("", "end", values=row, tags=tags)
+            item=tree.insert("", "end", values=row, tags=tags)
+            identity.insert("", "end", iid=item,values=(row[1],row[2]))
 
+        self._undo=[];self._redo=[]
         self._datos_estudiantes = estudiantes
         self._capacidades_actividad = act["capacidades"]
 
         if usar_instrumento:
             tipo_btn = "Rúbrica" if "Rúbrica" in modo_str else "Lista de Cotejo"
             btn = ctk.CTkButton(self.f_tabla_planilla, text=f"📋 Evaluar {tipo_btn} (Masivo)", fg_color="#4338ca", hover_color="#3730a3", command=lambda: self._abrir_dialogo_masivo_desde_nativa(act, estudiantes, tipo_btn))
-            btn.place(relx=0.98, rely=0.02, anchor="ne")
+            btn.grid(row=0, column=0, columnspan=2, sticky="w", padx=6, pady=6)
 
     def _abrir_dialogo_masivo_desde_nativa(self, act, estudiantes, tipo_inst):
         if not self.verificar_permiso_edicion():
@@ -2884,6 +2953,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def accion_marcar_asistencia_todos(self) -> None:
         if not self.verificar_permiso_edicion():
             return
+        self.recordar_planilla()
         self.marcar_planilla_pendiente()
         if not hasattr(self, 'planilla_nativa') or not self.planilla_nativa:
             return
@@ -2900,6 +2970,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.planilla_nativa.item(child, values=vals)
 
     def accion_guardar_planilla_calificacion_completa(self) -> None:
+        if getattr(self.planilla_nativa,"_entry",None): self.planilla_nativa._entry.event_generate("<FocusOut>")
         if not self.verificar_permiso_edicion(): return
         if not self.planilla_nativa: return
         
@@ -2942,6 +3013,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             
         guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso)
         self._planilla_pendiente = False
+        self._borrador_path().unlink(missing_ok=True)
+        self.lbl_estado.configure(text="Notas, comentarios y asistencia guardados correctamente")
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
         self.cargar_lista_pesos_por_categoria_en_graficos()
@@ -3204,159 +3277,34 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
 
     def dibujar_graficos_estadisticos(self) -> None:
-        c = self.canvas_graficos
-        c.delete("all")
-        ancho = max(c.winfo_width(), 720)
-        alto = max(c.winfo_height(), 520)
-
-        cfg_t = TEMAS_INTERFAZ.get(self.tema_actual_nombre, TEMAS_INTERFAZ["Oscuro Noche"])
-        color_texto = cfg_t["fg_text"]
-        color_fondo = cfg_t["bg_main"]
-
-        curso_id = self.obtener_curso_activo_id()
-        if not curso_id:
+        if not hasattr(self, "graficos_hosts"):
             return
+        course = self.obtener_curso_activo_id()
+        if not course:
+            return
+        from graficos import category_figure, frequency_figure
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        import matplotlib.pyplot as plt
+        weights = obtener_pesos_rubros_curso(course)
+        comps, caps = obtener_estadisticas_frecuencia_evaluacion(course, self.combo_grado_global.get(), self.combo_seccion_global.get())
+        state=(course,self.combo_grado_global.get(),self.combo_seccion_global.get(),tuple(weights.items()),tuple(comps),tuple(caps))
+        if getattr(self,"_graph_state",None)==state:return
+        self._graph_state=state
+        for fig in getattr(self,"figuras_porcentajes",[]):plt.close(fig)
+        self.figuras_porcentajes = [category_figure(weights), frequency_figure(comps, "Actividades por competencia"), frequency_figure([(name, count) for name,count,_ in caps], "Actividades por capacidad")]
+        for host in self.graficos_hosts:
+            for child in host.winfo_children():child.destroy()
+        self._render_current_plot()
 
-        pesos = obtener_pesos_rubros_curso(curso_id)
-        freq_comp, freq_cap = obtener_estadisticas_frecuencia_evaluacion(
-            curso_id, self.combo_grado_global.get(), self.combo_seccion_global.get()
-        )
+    def _render_current_plot(self):
+        if not getattr(self,"figuras_porcentajes",[]):return
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        index=("Ponderaciones","Competencias","Capacidades").index(self.graficos_tabs.get())
+        host=self.graficos_hosts[index]
+        if host.winfo_children():return
+        canvas=FigureCanvasTkAgg(self.figuras_porcentajes[index],master=host)
+        canvas.draw();canvas.get_tk_widget().pack(fill="x",expand=True)
 
-        c.create_text(
-            20,
-            22,
-            anchor="w",
-            text="1. GRÁFICO CIRCULAR DE PORCENTAJES (%) POR CATEGORÍA",
-            fill=color_texto,
-            font=("Segoe UI", 16, "bold"),
-        )
-        cx1, cy1, r1 = 140, 155, 100
-        total_pct = sum(max(v, 0.0) for v in pesos.values()) or 1.0
-        ang_ini = 0.0
-
-        for idx, (rubro, val) in enumerate(pesos.items()):
-            color = PALETA_COLORES[idx % len(PALETA_COLORES)]
-            ext = (max(val, 0.0) / total_pct) * 360.0
-            if ext > 0:
-                if ext >= 359.9:
-                    c.create_oval(cx1 - r1, cy1 - r1, cx1 + r1, cy1 + r1, fill=color, outline=color_fondo)
-                else:
-                    c.create_arc(
-                        cx1 - r1,
-                        cy1 - r1,
-                        cx1 + r1,
-                        cy1 + r1,
-                        start=ang_ini,
-                        extent=ext,
-                        fill=color,
-                        outline=color_fondo,
-                        width=2,
-                    )
-            ly = 68 + idx * 32
-            c.create_rectangle(260, ly, 278, ly + 18, fill=color, outline="")
-            pct_real = (max(val, 0.0) / total_pct) * 100.0
-            c.create_text(
-                286,
-                ly + 9,
-                anchor="w",
-                text=f"{rubro}: {val:.1f}% ({pct_real:.0f}%)",
-                fill=color_texto,
-                font=("Segoe UI", 15, "bold"),
-            )
-            ang_ini += ext
-
-        mitad_x = ancho // 2 + 15
-        c.create_text(
-            mitad_x,
-            22,
-            anchor="w",
-            text="2. FRECUENCIA DE COMPETENCIAS EVALUADAS",
-            fill=color_texto,
-            font=("Segoe UI", 16, "bold"),
-        )
-        cx2, cy2, r2 = mitad_x + 110, 155, 100
-        total_f_comp = sum(cuenta for _, cuenta in freq_comp)
-
-        if total_f_comp == 0:
-            c.create_oval(cx2 - r2, cy2 - r2, cx2 + r2, cy2 + r2, outline="#64748b", width=2)
-            c.create_text(cx2, cy2, text="Sin actividades\naún", fill="#64748b", justify="center")
-        else:
-            ang2 = 0.0
-            for idx, (_nom_c, cuenta) in enumerate(freq_comp):
-                if cuenta <= 0:
-                    continue
-                color = PALETA_COLORES[(idx + 2) % len(PALETA_COLORES)]
-                ext = (cuenta / total_f_comp) * 360.0
-                if ext >= 359.9:
-                    c.create_oval(cx2 - r2, cy2 - r2, cx2 + r2, cy2 + r2, fill=color, outline=color_fondo)
-                else:
-                    c.create_arc(
-                        cx2 - r2,
-                        cy2 - r2,
-                        cx2 + r2,
-                        cy2 + r2,
-                        start=ang2,
-                        extent=ext,
-                        fill=color,
-                        outline=color_fondo,
-                        width=2,
-                    )
-                ang2 += ext
-
-        for idx, (nom_c, cuenta) in enumerate(freq_comp):
-            color = PALETA_COLORES[(idx + 2) % len(PALETA_COLORES)]
-            ly = 62 + idx * 28
-            c.create_rectangle(cx2 + 124, ly, cx2 + 140, ly + 16, fill=color, outline="")
-            c.create_text(
-                cx2 + 148,
-                ly + 8,
-                anchor="w",
-                text=f"{nom_c[:32]} → {cuenta} eval.",
-                fill=color_texto if cuenta > 0 else "#ef4444",
-                font=("Segoe UI", 14, "bold"),
-            )
-
-        y_base = 265
-        c.create_line(20, y_base - 12, ancho - 20, y_base - 12, fill="#64748b", width=1)
-        c.create_text(
-            20,
-            y_base + 6,
-            anchor="w",
-            text="3. FRECUENCIA POR CAPACIDAD (Muestra qué capacidades se evaluaron más y cuáles faltan evaluar)",
-            fill=cfg_t["accent"],
-            font=("Segoe UI", 15, "bold"),
-        )
-
-        max_f_cap = max([cuenta for _, cuenta, _ in freq_cap] + [1])
-        espacio_disp = max(alto - (y_base + 30), 180)
-        alto_fila = max(min(int(espacio_disp / max(len(freq_cap), 1)), 30), 22)
-
-        for idx, (nom_cap, cuenta, idx_c) in enumerate(freq_cap):
-            fy = y_base + 30 + idx * alto_fila
-            if fy > alto - 12:
-                break
-            c.create_text(
-                24,
-                fy,
-                anchor="w",
-                text=(nom_cap[:20] + "...") if len(nom_cap) > 20 else nom_cap,
-                fill=color_texto if cuenta > 0 else "#ef4444",
-                font=("Segoe UI", 14),
-            )
-            x_barra_ini = 370
-            ancho_max_barra = max(ancho - x_barra_ini - 115, 110)
-            largo = int((cuenta / max_f_cap) * ancho_max_barra) if cuenta > 0 else 4
-            color_b = PALETA_COLORES[(idx_c - 1 + 2) % len(PALETA_COLORES)] if cuenta > 0 else "#ef4444"
-            c.create_rectangle(x_barra_ini, fy - 6, x_barra_ini + largo, fy + 6, fill=color_b, outline="")
-            etiqueta_f = f"{cuenta} eval." if cuenta > 0 else "0 (Sin evaluar)"
-            c.create_text(
-                x_barra_ini + largo + 8,
-                fy,
-                anchor="w",
-                text=etiqueta_f,
-                fill=color_texto if cuenta > 0 else "#ef4444",
-                font=("Segoe UI", 14, "bold"),
-            )
 
     # ==========================================================================
     # ACCIONES PESTAÑA 7: MATRIZ GENERAL + EXPORTAR E IMPORTAR EXCEL
@@ -3534,6 +3482,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
 
         exportar_matriz_completa_excel(ruta, curso, grado, seccion, estructura_comp, filas_matriz)
+        import reportes
+        reportes.decorate_workbook(ruta, self.insignia_exportacion())
         messagebox.showinfo(
             "Excel con Colores Exportado",
             f"Se creó el archivo Excel con códigos por sección ({grado}{seccion}01...) y divisiones de columna a color en:\n{ruta}",
@@ -3606,8 +3556,29 @@ def main() -> None:
             dialog.mainloop()
             if not dialog.validada:
                 return
-    app_storage.prepare_storage(DB_PATH)
-    inicializar_db()
+    try:
+        app_storage.prepare_storage(DB_PATH)
+        inicializar_db()
+    except Exception as exc:
+        logging.getLogger("registro").exception("Error al preparar la base de datos")
+        root=tk.Tk();root.withdraw()
+        select=messagebox.askyesno("Abrir base de calificativos", f"No se pudo abrir la base seleccionada. Sus archivos se conservan.\n\n{exc}\n\n¿Desea seleccionar otra base .db o documento .registro?")
+        if select:
+            selected=filedialog.askopenfilename(filetypes=[("Datos de Registro", "*.db *.registro")])
+            if selected:
+                try:
+                    import time, os, subprocess, sys, documento
+                    target=app_storage.data_dir()/f"recuperado-{time.time_ns()}.db"
+                    if selected.endswith(".registro"):documento.open_document(selected,target)
+                    else:
+                        app_storage.validate_database(selected,current=False)
+                        app_storage.copy_database(selected,target)
+                    args=[sys.executable] if getattr(sys,"frozen",False) else [sys.executable,str(Path(__file__))]
+                    subprocess.Popen(args,env={**os.environ,"REGISTRO_DB_PATH":str(target)})
+                except Exception as recovery_error:
+                    messagebox.showerror("Recuperación",str(recovery_error))
+        root.destroy()
+        return
     app = VentanaPrincipal()
     if obtener_docente_config().get("requiere_cambio_clave"):
         app.after(100, lambda: DialogoPerfilDocente(app))

@@ -165,3 +165,67 @@ Linux); sin pantalla se marcan como omitidas. Comprueban evaluación masiva,
 selección de competencias, editor, bloqueo inicial, cambios
 pendientes, cancelación de importación y exportación PDF, además de pruebas de
 datos, migración, recuperación, transacciones y firmas.
+
+## Versión 1.2: lectura, Primaria y documentos propios
+
+En la barra superior puede elegir **Primaria** o **Secundaria**. Primaria incluye
+seis grados y un catálogo inicial editable de áreas, con Personal Social. Cada
+nivel tiene sus propios cursos y estudiantes. Los registros anteriores conservan
+su nivel Secundaria, sus identificadores y sus notas. Los criterios precisados y
+la adecuación al grado los configura el docente; el catálogo no certifica por sí
+solo el cumplimiento de una programación curricular institucional.
+
+**Archivo y exportación** incorpora:
+
+- **Documento `.registro`**: guarda la base completa del periodo, incluyendo
+  alumnos, notas, asistencias, criterios, biblioteca de instrumentos, historial,
+  configuración docente e insignia. Puede volver a abrirse desde el menú; el
+  instalador Windows permite abrirlo con doble clic. Al abrir un documento se
+  crea una copia de trabajo nueva y se conserva el documento original. Use
+  Guardar documento para actualizar el archivo que quiera transportar.
+- **Excel y Google Sheets**: XLSX con notas numéricas, nombres completos, IDs
+  permanentes, filtros y resumen de promedios; CSV UTF-8 para importar en Sheets.
+  En Sheets use Archivo → Importar → Subir. Para volver al programa, descargue el
+  libro como XLSX o CSV y utilice Importar notas de Google Sheets. La validación
+  por IDs, nombres y nivel evita aplicar notas a otro alumno. Los documentos de
+  un periodo distinto deben abrirse como `.registro`, no mezclarse por Excel.
+- **Insignia PNG/JPEG**: se guarda dentro de la base, por lo que viaja con los
+  respaldos y el documento interno. Se pregunta si incluirla en reportes XLSX,
+  plantillas y gráficos PDF/PNG. CSV y JSON contienen datos, sin imágenes.
+- **Respaldo externo**: permite copiar una base verificada a otra carpeta o USB.
+
+Los gráficos de ponderaciones, competencias y capacidades se muestran en pestañas
+separadas. Las ponderaciones se expresan una sola vez en porcentaje; las
+frecuencias son cantidades de actividades, no porcentajes de notas. Se conservan
+todas las capacidades, con etiquetas completas y desplazamiento vertical. Los
+promedios por capacidad de Estadísticas usan IDs completos, evitando agrupar
+capacidades distintas por tener nombres abreviados iguales.
+
+La creación de actividades desplaza el formulario completo y permite leer todos
+los criterios. La planilla mantiene códigos y nombres en un panel fijo y permite
+desplazar las notas horizontalmente. Un clic derecho muestra el contenido completo
+de una celda o encabezado. El menú **Lectura** ajusta letra y zoom; se recuerdan
+el tamaño de ventana y las preferencias.
+
+**Trabajo docente** permite deshacer/rehacer cambios de planilla, pegar bloques
+con Ctrl+V desde la fila seleccionada, recuperar borradores automáticos cada 15
+segundos, duplicar actividades sin notas, reutilizar instrumentos, revisar
+pendientes, simular ponderaciones y cerrar/reabrir el periodo con autenticación.
+Los borradores son recuperables, pero no sustituyen Guardar; los documentos y las
+exportaciones utilizan las notas confirmadas. La biblioteca exige capacidades
+compatibles con la actividad, para no trasladar criterios a otra competencia.
+Archivar una actividad la oculta del trabajo diario y conserva sus notas en los
+promedios históricos. El bloqueo por inactividad es configurable.
+
+El arranque respalda bases vacías o reconocidas antes de migrarlas. Una base que
+no se reconoce no se sobrescribe: se ofrece seleccionar otra base o documento.
+La compilación Windows también abre el ejecutable real con una instalación nueva
+y con una base anterior de prueba, y comprueba que conserva su nota antes de
+crear el instalador.
+
+La versión 1.2 añade exportación de calificativos a PDF por aula o estudiante,
+con insignia opcional. El menú Trabajo docente también permite configurar los
+límites B/A/AD por nivel: se conserva por defecto la escala anterior, los cambios
+requieren confirmación y quedan en un historial de reglas. Cambiar la escala no
+modifica notas numéricas ni ponderaciones. En una institución con criterios de
+logro propios, el docente debe configurar y validar esa escala.

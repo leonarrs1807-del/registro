@@ -3,3 +3,4 @@ openpyxl==3.1.5
 matplotlib==3.11.2
 numpy==2.5.4
 cryptography==50.0.2
+pillow==13.0.0

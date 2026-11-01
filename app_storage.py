@@ -49,7 +49,7 @@ def copy_database(source, target):
             src.backup(dst)
 
 
-def validate_database(path):
+def validate_database(path, current=True):
     with closing(sqlite3.connect(f'{Path(path).resolve().as_uri()}?mode=ro', uri=True)) as conn:
         if conn.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
             raise ValueError('La base de datos está dañada.')
@@ -57,18 +57,20 @@ def validate_database(path):
             raise ValueError('La base de datos contiene relaciones inválidas.')
         required = {'Estudiantes', 'Cursos', 'Competencias', 'Capacidades', 'Sesiones_Clase', 'Docente_Config'}
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not required <= tables:
+        if current and not required <= tables:
             raise ValueError('No es una base de datos de Registro Docente.')
+        if not current and tables - {'sqlite_sequence'} and not {'Estudiantes', 'Cursos'} <= tables:
+            raise ValueError('Base no reconocida. El archivo original se conserva; seleccione su base de Registro.')
 
 
-def backup_database(path, reason='manual'):
+def backup_database(path, reason='manual', current=True):
     root = Path(path).parent / 'backups'
     root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     target = root / f'{Path(path).stem}-{stamp}-{reason}.db'
     copy_database(path, target)
     try:
-        validate_database(target)
+        validate_database(target, current=current)
     except Exception:
         target.unlink(missing_ok=True)
         raise
@@ -84,7 +86,7 @@ def prepare_storage(path):
     if not path.exists() and legacy.exists() and legacy.resolve() != path.resolve():
         copy_database(legacy, path)
     if path.exists():
-        backup_database(path, 'inicio')
+        backup_database(path, 'inicio', current=False)
 
 
 def restore_database(backup, target):
@@ -117,6 +119,7 @@ def create_period(source, year, period):
             conn.execute('DELETE FROM Sesiones_Clase')
             conn.execute('DELETE FROM Notas_Manuales_Capacidad')
             conn.execute('DELETE FROM Historial_Notas')
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Estado_Periodo'").fetchone():conn.execute('UPDATE Estado_Periodo SET cerrado=0')
             conn.execute('CREATE TABLE IF NOT EXISTS Periodo_Info (id INTEGER PRIMARY KEY CHECK(id=1), anio INTEGER, periodo INTEGER)')
             conn.execute('INSERT OR REPLACE INTO Periodo_Info VALUES (1, ?, ?)', (year, period))
         validate_database(staged)
