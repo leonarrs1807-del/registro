@@ -67,6 +67,7 @@ def _license_guards(conn):
         'Sesiones_Clase': "registro_permiso('curso',{r}.curso_id)",
         'Sesion_Capacidades': "registro_permiso('sesion',{r}.sesion_id)",
         'Instrumento_Indicadores': "registro_permiso('sesion',{r}.sesion_id)",
+        'Instrumento_Respuestas': "registro_permiso('sesion',{r}.sesion_id)",
         'Asistencia_Y_Comentarios_Clase': "registro_permiso('sesion',{r}.sesion_id)",
         'Notas_Sesion_Capacidad': "registro_permiso('sesion',{r}.sesion_id)",
         'Notas_Manuales_Capacidad': "registro_permiso('capacidad',{r}.capacidad_id)",
@@ -156,6 +157,8 @@ def valid_number(value, minimum=0, maximum=20, label='Nota'):
 
 def migrate(conn):
     from app_security import hash_password
+    from evaluacion_datos import migrate as migrate_instruments
+    migrate_instruments(conn)
     cols = {r[1] for r in conn.execute('PRAGMA table_info(Docente_Config)')}
     if 'requiere_cambio_clave' not in cols:
         conn.execute('ALTER TABLE Docente_Config ADD COLUMN requiere_cambio_clave INTEGER NOT NULL DEFAULT 0')

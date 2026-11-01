@@ -52,46 +52,4 @@ class ScaleDialog(SafeDialog):
         self.destroy()
 
 
-class InstrumentEditor(SafeDialog):
-    def __init__(self,master,session,indicators,callback):
-        super().__init__(master);self.app=getattr(master,'app',master)
-        self.title('Editar indicadores');fit_dialog(self,self.app,850,650)
-        self.session=session;self.callback=callback;self.kind=indicators[0]['tipo'] if indicators else getattr(master,'tipo_inst','Rúbrica')
-        with db.obtener_conexion() as conn:
-            self.capacities={name:cid for cid,name in conn.execute('SELECT a.id,a.nombre FROM Capacidades a JOIN Sesion_Capacidades s ON s.capacidad_id=a.id WHERE s.sesion_id=?',(session,))}
-        self.rows=[]
-        bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=14,pady=12)
-        ctk.CTkButton(bar,text='Añadir indicador',height=36,command=lambda:self.add_row()).pack(side='left')
-        ctk.CTkButton(bar,text='Guardar instrumento',height=36,command=self.save).pack(side='right')
-        self.body=scroll_area(self,auto_hide=True);self.body.pack(fill='both',expand=True,padx=14,pady=(0,14));self.body.grid_columnconfigure(0,weight=1)
-        for index,item in enumerate(indicators):self.add_row({**item,'source_index':index})
-        self.grab_set()
-
-    def add_row(self,item=None):
-        item=item or dict(capacidad_id=next(iter(self.capacities.values())),indicador_texto='',puntaje_maximo=20 if self.kind=='Rúbrica' else 10)
-        card=ctk.CTkFrame(self.body);card.grid(row=len(self.rows),column=0,sticky='ew',pady=8);card.grid_columnconfigure(0,weight=1)
-        choice=ctk.CTkComboBox(card,values=list(self.capacities),state='readonly',height=36,font=ctk.CTkFont(size=14))
-        choice.set(next((name for name,cid in self.capacities.items() if cid==item['capacidad_id']),next(iter(self.capacities))))
-        choice.grid(row=0,column=0,columnspan=3,sticky='ew',padx=12,pady=10)
-        text=ctk.CTkTextbox(card,height=110,wrap='word',font=ctk.CTkFont(size=15));text.insert('1.0',item['indicador_texto']);text.grid(row=1,column=0,columnspan=3,sticky='ew',padx=12,pady=4)
-        ctk.CTkLabel(card,text='Máximo',font=ctk.CTkFont(size=14)).grid(row=2,column=0,padx=12,pady=8,sticky='w')
-        maximum=ctk.CTkEntry(card,width=90,height=36,font=ctk.CTkFont(size=15));maximum.insert(0,str(item['puntaje_maximo']));maximum.grid(row=2,column=1,pady=8)
-        record=dict(card=card,choice=choice,text=text,maximum=maximum,active=True,source_index=item.get('source_index'))
-        def remove():record['active']=False;card.grid_remove()
-        ctk.CTkButton(card,text='Quitar',width=90,height=36,command=remove).grid(row=2,column=2,padx=12,pady=8)
-        self.rows.append(record)
-
-    def save(self):
-        values=[];origins=[]
-        try:
-            for row in self.rows:
-                if row['active']:
-                    text=row['text'].get('1.0','end').strip()
-                    if not text:raise ValueError('Cada indicador necesita un texto.')
-                    values.append((self.capacities[row['choice'].get()],text,valid_number(row['maximum'].get().replace(',','.'),.000001,20,'Máximo')))
-                    origins.append((values[-1][0],len(origins),row['source_index']))
-            if not values:raise ValueError('Conserve al menos un indicador.')
-            app_storage.backup_database(self.app._db_path,'antes-editar-instrumento')
-            db.guardar_indicadores_instrumento_sesion(self.session,self.kind,values)
-        except ValueError as exc:messagebox.showwarning('Revise los indicadores',str(exc),parent=self);return
-        self.destroy();self.callback([origin for cap,index,origin in sorted(origins)])
+from instrument_design import InstrumentEditor

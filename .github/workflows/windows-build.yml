@@ -7,11 +7,18 @@ on:
         type: choice
         options: [comercial, personal]
         default: comercial
+      review:
+        description: Compilación de revisión para el propietario
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       edition:
         type: string
         default: comercial
+      review:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -39,8 +46,12 @@ jobs:
         shell: pwsh
         run: |
           $info = (Get-Item dist/RegistroDocente/RegistroDocente.exe).VersionInfo
-          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '1.6.0') { throw 'Propietario o versión incorrectos.' }
+          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '1.7.0') { throw 'Propietario o versión incorrectos.' }
           Copy-Item docs/GUIA-USO.txt dist/RegistroDocente/GUIA-USO.txt
+      - name: Identify owner review package
+        if: inputs.review
+        shell: pwsh
+        run: Copy-Item docs/LEEME-REVISION.txt dist/RegistroDocente/LEEME-REVISION.txt
       - name: Build installer
         shell: pwsh
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\windows.iss'
@@ -50,7 +61,7 @@ jobs:
         run: python tools/smoke_windows.py --seller dist/RegistroLicencias/RegistroLicencias.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
+          name: ${{ inputs.review && 'RegistroDocente-Revision-1.7-Windows' || inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
           path: |
             dist/installer/*.exe
             dist/RegistroDocente/**

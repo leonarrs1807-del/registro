@@ -165,8 +165,8 @@ class ClassroomTools:
         return [list(tree.item(i,'values')) for i in tree.get_children()] if tree and tree.winfo_exists() else []
 
     def recordar_planilla(self):
-        rows=self._filas_planilla()
-        if rows and (not self._undo or self._undo[-1]!=rows):self._undo.append(rows)
+        rows=self._estado_planilla()
+        if rows['rows'] and (not self._undo or self._undo[-1]!=rows):self._undo.append(rows)
         self._redo.clear()
         self._undo=self._undo[-100:]
 
@@ -174,8 +174,14 @@ class ClassroomTools:
         if not self.verificar_permiso_edicion():return 'break'
         origin,target=(self._redo,self._undo) if redo else (self._undo,self._redo)
         if origin:
-            target.append(self._filas_planilla());self._poner_filas(origin.pop())
+            target.append(self._estado_planilla());state=origin.pop()
+            self._instrument_pending=dict(state.get('answers',{}));self._instrument_pending_session=self.id_actividad_calificando
+            self._poner_filas(state['rows'])
+            self.calif_combo_modo_inst.set(state.get('mode','Nota directa'));self.actualizar_herramientas_evaluacion()
         return 'break'
+
+    def _estado_planilla(self):
+        return dict(rows=self._filas_planilla(),answers=dict(getattr(self,'_instrument_pending',{})),mode=self.calif_combo_modo_inst.get())
 
     def _poner_filas(self,rows):
         tree=self.planilla_nativa
@@ -209,6 +215,8 @@ class ClassroomTools:
     def autoguardar_borrador(self):
         if self._planilla_pendiente and self._filas_planilla():
             data={'session':self.id_actividad_calificando,'rows':self._filas_planilla(),'peso':self.calif_entry_peso.get(),'context':self._contexto_guardado}
+            data['answers']=[[s,i,v] for (s,i),v in getattr(self,'_instrument_pending',{}).items()]
+            data['mode']=self.calif_combo_modo_inst.get()
             file=self._borrador_path();temp=file.with_suffix('.tmp');temp.write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8');temp.replace(file)
             self.lbl_estado.configure(text='Borrador recuperable guardado · Pulse Guardar para confirmar las notas')
         self.after(15000,self.autoguardar_borrador)
@@ -225,6 +233,11 @@ class ClassroomTools:
         for widget,value in zip((self.combo_curso_global,self.combo_grado_global,self.combo_seccion_global),data['context']):widget.set(value)
         self._al_cambiar_curso_global(self.combo_curso_global.get());self.abrir_actividad_en_pestana_calificar(data['session'])
         self._poner_filas(data['rows']);self.calif_entry_peso.delete(0,'end');self.calif_entry_peso.insert(0,data['peso'])
+        from evaluacion_datos import get_indicators
+        allowed={i['id'] for i in get_indicators(data['session'],self._db_path)}
+        students={int(row[0]) for row in data['rows']}
+        self._instrument_pending={(int(s),int(i)):v for s,i,v in data.get('answers',[]) if int(s) in students and int(i) in allowed}
+        self._instrument_pending_session=data['session'];self.calif_combo_modo_inst.set(data.get('mode','Nota directa'));self.actualizar_herramientas_evaluacion()
 
     def duplicar_actividad(self):
         if not self.verificar_permiso_edicion():return
@@ -235,7 +248,7 @@ class ClassroomTools:
         if not title:return
         sid=db.crear_o_actualizar_sesion_clase(None,act['curso_id'],act['competencia_id'],act['grado'],act['seccion'],title,act['proposito'],act['peso_clase'],[(c['capacidad_id'],c['criterio_precisado']) for c in act['capacidades']],categoria=act['categoria'])
         inds=db.obtener_indicadores_instrumento_sesion(act['id'])
-        if inds:db.guardar_indicadores_instrumento_sesion(sid,inds[0]['tipo'],[(i['capacidad_id'],i['indicador_texto'],i['puntaje_maximo']) for i in inds])
+        if inds:db.guardar_indicadores_instrumento_sesion(sid,inds[0]['tipo'],[{k:v for k,v in i.items() if k!='id'} for i in inds])
         self.recargar_cursos_y_contexto();self.abrir_actividad_en_pestana_calificar(sid)
 
     def guardar_instrumento(self):
@@ -259,7 +272,8 @@ class ClassroomTools:
         if not templates:messagebox.showinfo('Biblioteca','No hay plantillas guardadas.');return
         selection=simpledialog.askinteger('Biblioteca','Seleccione una plantilla:\n'+'\n'.join(f'{i+1}. {r[0]}' for i,r in enumerate(templates)),minvalue=1,maxvalue=len(templates))
         if selection:
-            inds=json.loads(templates[selection-1][1]);db.guardar_indicadores_instrumento_sesion(self.id_actividad_calificando,inds[0]['tipo'],[(i['capacidad_id'],i['indicador_texto'],i['puntaje_maximo']) for i in inds])
+            if not self.confirmar_descartar():return
+            inds=json.loads(templates[selection-1][1]);db.guardar_indicadores_instrumento_sesion(self.id_actividad_calificando,inds[0]['tipo'],[{k:v for k,v in i.items() if k!='id'} for i in inds])
             self.dibujar_planilla_calificacion(forzar=True)
 
     def ver_pendientes(self):

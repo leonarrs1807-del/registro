@@ -4,6 +4,26 @@ Aplicación de escritorio para estudiantes, sesiones, rúbricas, asistencia y
 evaluación por competencias. Funciona con Python 3.12, Tkinter y SQLite, sin
 servidor ni conexión permanente a Internet.
 
+## Versión 1.7: evaluación por criterios y configuración
+
+Actividades prepara el tema, la competencia y las capacidades. En **Calificaciones**
+elija Nota directa, Rúbrica o Lista de Cotejo y diseñe el instrumento de esa actividad.
+La rúbrica presenta cuatro columnas C/B/A/AD con descriptores y puntos editables;
+el cotejo usa Sí/No. La evaluación muestra un estudiante y una capacidad por vez.
+
+Las respuestas se conservan al guardar notas y también en deshacer y borradores.
+Pendiente y cero son distintos. Editar un instrumento conserva las notas publicadas;
+para actualizarlas hay que volver a aplicar la evaluación y guardar.
+Excel usa encabezados legibles y columnas ocultas de identidad. La importación
+muestra las casillas del instrumento y los cambios numéricos antes de confirmar.
+Las plantillas anteriores siguen siendo compatibles.
+
+**Configuración** reúne perfil, institución, apariencia, escala de logro, cursos y
+respaldos; en la edición comercial también incluye la licencia. Se mantiene el menú
+lateral de iconos. Las vistas costosas se actualizan al abrirlas; crear una actividad
+no vuelve a dibujar los gráficos y las matrices ocultas. Los promedios usan aritmética
+decimal y redondeo a dos decimales, con las mitades hacia arriba en cada etapa.
+
 ## Ejecutar desde el código
 
 En Windows, instale Python 3.12 con Tcl/Tk y ejecute en esta carpeta:
@@ -17,7 +37,7 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La edición comercial 1.6 permite vender cualquier selección de cursos, o todos,
+La edición comercial 1.7 permite vender cualquier selección de cursos, o todos,
 con una licencia vinculada a una cuenta y PC. La edición personal previa permite
 trabajar sin demo ni activación comercial.
 Si conserva la contraseña inicial, el primer arranque solicita configurar el
@@ -136,7 +156,7 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Activación comercial 1.6
+## Activación comercial 1.7
 
 La edición comercial utiliza cuentas locales y una demo de **30 días con un solo curso
 y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se
@@ -365,7 +385,7 @@ encabezado permite leer la capacidad completa. Las barras se ocultan cuando todo
 cabe en el panel.
 
 Actividades elimina títulos repetidos y abre los criterios opcionales desde
-**Criterio…**. **Más…** reúne descripción y plantillas/importaciones. Los textos
+**Criterio…**. **Descripción** abre el texto adicional; los instrumentos y sus plantillas se preparan desde Calificaciones. Los textos
 existentes se conservan. Puntos mantiene la **Nota / 20** junto al estudiante,
 incluso mientras se desplazan los ejercicios. **Crear nota / 20** publica el
 acumulado en una actividad de Exámenes; guardar puntos por sí solo no lo publica.

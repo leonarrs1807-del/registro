@@ -17,10 +17,12 @@ from mejoras_ui import ClassroomTools
 from vista import ViewTools
 from compact_ui import CompactTools
 from evaluation_ui import EvaluationTools
+from rendimiento import PerformanceTools
+from configuracion_ui import ConfigurationTools
 from licencias_ui import LicenseTools
 
 
-class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
+class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -39,11 +41,12 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.6 · {"Comercial" if self._license_required else "Personal"} — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.7 · {"Comercial" if self._license_required else "Personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
         self.fuentes_menu(menu)
+        self.actualizar_configuracion()
 
     def destroy(self):
         if getattr(self,'_closing_ui',False):return
@@ -117,6 +120,7 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
             return False
         self._planilla_pendiente = False
         self._formularios_pendientes.clear()
+        self._instrument_pending={}
         self._borrador_path().unlink(missing_ok=True)
         return True
 
@@ -243,38 +247,44 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
                 summary = f'Estudiantes procesados: {result[0]}. Notas que se cargarán: {result[1]}.'
             else:
                 summary = f'Indicadores: {result[0]}. Estudiantes con calificaciones: {result[1]}.'
-            window = tk.Toplevel(self)
-            window.title('Vista previa de importación')
-            width=min(1100,int(self.winfo_screenwidth()*.94));height=min(650,int(self.winfo_screenheight()*.85))
-            window.geometry(f'{width}x{height}')
-            window.transient(self)
-            tk.Label(window, text=f'{summary}\nRevise las primeras 150 filas de cada hoja antes de confirmar.',
-                     wraplength=width-40,justify='left').pack(fill='x',padx=15,pady=10)
-            frame = ttk.Frame(window)
-            frame.pack(fill='both', expand=True)
-            tree = ttk.Treeview(frame, columns=('hoja', 'fila', 'contenido'), show='headings')
-            for col, width in [('hoja', 140), ('fila', 60), ('contenido', 2000)]:
-                tree.heading(col, text=col.capitalize())
-                tree.column(col, width=width, stretch=False)
-            sy = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
-            sx = ttk.Scrollbar(frame, orient='horizontal', command=tree.xview)
-            tree.configure(yscrollcommand=sy.set, xscrollcommand=sx.set)
-            tree.grid(row=0, column=0, sticky='nsew'); sy.grid(row=0, column=1, sticky='ns'); sx.grid(row=1, column=0, sticky='ew')
-            frame.grid_rowconfigure(0, weight=1); frame.grid_columnconfigure(0, weight=1)
-            wb = openpyxl.load_workbook(workbook, read_only=True, data_only=True)
-            try:
-                for sheet in wb:
-                    if sheet.sheet_state!='visible':continue
-                    for rownum, row in enumerate(sheet.iter_rows(max_row=150, values_only=True), 1):
-                        tree.insert('', 'end', values=(sheet.title, rownum, ' | '.join('' if c is None else str(c) for c in row)))
-            finally:
-                wb.close()
-            confirmed = []
-            ttk.Button(window, text='Cancelar', command=window.destroy).pack(side='left', padx=15, pady=10)
-            ttk.Button(window, text='Importar todos los datos validados', command=lambda: (confirmed.append(True), window.destroy())).pack(side='right', padx=15, pady=10)
-            window.grab_set()
-            self.wait_window(window)
-            if not confirmed:
-                return None
+            if function.__name__=='importar_rubrica_o_cotejo_desde_excel':
+                from instrument_design import InstrumentPreview
+                preview=InstrumentPreview(self,staged_db,args[0],result)
+                self.wait_window(preview)
+                if not preview.confirmed:return None
+            else:
+                window = tk.Toplevel(self)
+                window.title('Vista previa de importación')
+                width=min(1100,int(self.winfo_screenwidth()*.94));height=min(650,int(self.winfo_screenheight()*.85))
+                window.geometry(f'{width}x{height}')
+                window.transient(self)
+                tk.Label(window, text=f'{summary}\nRevise las primeras 150 filas de cada hoja antes de confirmar.',
+                         wraplength=width-40,justify='left').pack(fill='x',padx=15,pady=10)
+                frame = ttk.Frame(window)
+                frame.pack(fill='both', expand=True)
+                tree = ttk.Treeview(frame, columns=('hoja', 'fila', 'contenido'), show='headings')
+                for col, width in [('hoja', 140), ('fila', 60), ('contenido', 2000)]:
+                    tree.heading(col, text=col.capitalize())
+                    tree.column(col, width=width, stretch=False)
+                sy = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+                sx = ttk.Scrollbar(frame, orient='horizontal', command=tree.xview)
+                tree.configure(yscrollcommand=sy.set, xscrollcommand=sx.set)
+                tree.grid(row=0, column=0, sticky='nsew'); sy.grid(row=0, column=1, sticky='ns'); sx.grid(row=1, column=0, sticky='ew')
+                frame.grid_rowconfigure(0, weight=1); frame.grid_columnconfigure(0, weight=1)
+                wb = openpyxl.load_workbook(workbook, read_only=True, data_only=True)
+                try:
+                    for sheet in wb:
+                        if sheet.sheet_state!='visible':continue
+                        for rownum, row in enumerate(sheet.iter_rows(max_row=150, values_only=True), 1):
+                            tree.insert('', 'end', values=(sheet.title, rownum, ' | '.join('' if c is None else str(c) for c in row)))
+                finally:
+                    wb.close()
+                confirmed = []
+                ttk.Button(window, text='Cancelar', command=window.destroy).pack(side='left', padx=15, pady=10)
+                ttk.Button(window, text='Importar todos los datos validados', command=lambda: (confirmed.append(True), window.destroy())).pack(side='right', padx=15, pady=10)
+                window.grab_set()
+                self.wait_window(window)
+                if not confirmed:
+                    return None
             storage.backup_database(self._db_path, 'antes-importar')
             return function(*copied_args, db_path=self._db_path)

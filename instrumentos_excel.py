@@ -1,48 +1,37 @@
-"""Versioned, bidirectional rubric/checklist workbooks with strict identity checks."""
-import re
+"""Versioned rubric/checklist workbooks with human headings and stable identities."""
+import json,re
 import openpyxl
 from openpyxl.styles import Font,Alignment,PatternFill,Border,Side
 from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.utils import get_column_letter
 from db_safety import connection,valid_number
-from instrumentos import instrument_kind,normalized,normalized_grade
+from instrumentos import instrument_kind,normalized,normalized_grade,definition,validate_definition,LEVELS,criterion_caption
+from escala import thresholds
 
 IND='1_Indicadores_Instrumento'
 FINAL='2_Calificar_Estudiantes'
 RAW='3_Evaluar_Indicadores'
 META='Registro_Meta'
-LEVELS=('C','B','A','AD')
-DESCRIPTORS=('Necesita apoyo para aplicar el criterio.','Aplica parcialmente el criterio.','Aplica el criterio con autonomía.','Aplica y justifica el criterio en situaciones nuevas.')
+COLORS=('FDE9E7','FFF4CC','E2F3E6','E1EDFC')
 
 
 def _integer(value,label):
-    try:
-        number=int(str(value).strip())
+    try:return int(str(value).strip())
     except (TypeError,ValueError):raise ValueError(label+': identificador inválido.') from None
-    return number
-
-
-def _split_rubric(text,fallback):
-    matches=list(re.finditer(r'(?:^|\n| \| )(AD|A|B|C):\s*',text))
-    values={m[1]:text[m.end():matches[i+1].start() if i+1<len(matches) else len(text)].strip() for i,m in enumerate(matches)}
-    criterion=text[:matches[0].start()].strip() if matches else text.strip() or fallback
-    return criterion or fallback,[values.get(level,DESCRIPTORS[i]) for i,level in enumerate(LEVELS)]
 
 
 def _format_sheet(sheet,header_row,identity_columns=()):
     sheet.freeze_panes=f'D{header_row+1}';sheet.sheet_view.showGridLines=False
     sheet.auto_filter.ref=f'A{header_row}:{get_column_letter(sheet.max_column)}{max(header_row,sheet.max_row)}'
-    edge=Border(bottom=Side(style='thin',color='E2E8F0'))
+    edge=Side(style='thin',color='CBD5E1')
     for row in sheet.iter_rows():
         for cell in row:
             cell.font=Font(name='Calibri',size=12)
             cell.alignment=Alignment(vertical='center',wrap_text=True)
-            cell.border=edge
+            if cell.row>=header_row:cell.border=Border(left=edge,right=edge,top=edge,bottom=edge)
             if cell.row==header_row:
                 cell.fill=PatternFill('solid',fgColor='1E3A8A');cell.font=Font(name='Calibri',size=12,bold=True,color='FFFFFF')
-            elif cell.row>header_row and cell.column in identity_columns:
-                cell.fill=PatternFill('solid',fgColor='F1F5F9')
+            elif cell.row>header_row and cell.column in identity_columns:cell.fill=PatternFill('solid',fgColor='F1F5F9')
         sheet.row_dimensions[row[0].row].height=36 if row[0].row>header_row else 44
     sheet.sheet_properties.pageSetUpPr.fitToPage=True
     sheet.page_setup.orientation='landscape';sheet.page_setup.paperSize=sheet.PAPERSIZE_A4
@@ -52,95 +41,91 @@ def _format_sheet(sheet,header_row,identity_columns=()):
 
 def export_template(destination,course,grade,section,title,competency,capacities,kind,path,session=None):
     import db
-    kind=instrument_kind(kind)
+    kind=instrument_kind(kind);limits=thresholds(path)
     ids=[c[0] for c in capacities]
     if not ids or len(ids)!=len(set(ids)):raise ValueError('Seleccione capacidades válidas, sin repetir.')
     with connection(path) as conn:
         allowed={r[0]:(r[1],r[2],r[3]) for r in conn.execute('SELECT a.id,c.id,u.id,u.nivel FROM Capacidades a JOIN Competencias c ON c.id=a.competencia_id JOIN Cursos u ON u.id=c.curso_id')}
-        if any(i not in allowed for i in ids) or len({allowed[i] for i in ids})!=1:
-            raise ValueError('Las capacidades deben pertenecer a una misma competencia y curso.')
+        if any(i not in allowed for i in ids) or len({allowed[i] for i in ids})!=1:raise ValueError('Las capacidades deben pertenecer a una misma competencia y curso.')
         comp_id,course_id,level=allowed[ids[0]]
-        active=conn.execute('SELECT nivel_educativo FROM Docente_Config WHERE id=1').fetchone()[0]
-        if active!=level:raise ValueError('Seleccione el nivel de la actividad antes de exportar.')
+        if conn.execute('SELECT nivel_educativo FROM Docente_Config WHERE id=1').fetchone()[0]!=level:raise ValueError('Seleccione el nivel de la actividad antes de exportar.')
         if session:
             current=conn.execute('SELECT competencia_id,grado,seccion FROM Sesiones_Clase WHERE id=?',(session,)).fetchone()
             if not current or tuple(current)!=(comp_id,grade,section):raise ValueError('La actividad no coincide con el modelo solicitado.')
     existing=db.obtener_indicadores_instrumento_sesion(session,path) if session else []
-    existing=[i for i in existing if i['capacidad_id'] in ids and i['tipo']==kind]
-    definitions=[]
+    existing=[i for i in existing if i['capacidad_id'] in ids and i['tipo']==kind];definitions=[]
     for cap_id,name,criterion in capacities:
         rows=[i for i in existing if i['capacidad_id']==cap_id]
         if not rows:
-            count=1 if kind=='Rúbrica' else 2
-            rows=[dict(indicador_texto=criterion or f'{name}: evidencia {n+1}',puntaje_maximo=20 if kind=='Rúbrica' else 10) for n in range(count)]
+            texts=[criterion or name]
+            if kind=='Lista de Cotejo':texts.append('Explica su respuesta usando la evidencia solicitada.')
+            rows=[dict(criterio=text,puntaje_maximo=20 if kind=='Rúbrica' else 10) for text in texts]
         for row in rows:
-            crit=criterion or f'Demuestra la capacidad: {name}'
-            if kind=='Rúbrica':crit,descriptors=_split_rubric(row['indicador_texto'],crit)
-            else:descriptors=[]
-            definitions.append(dict(id=f'I{len(definitions)+1:03}',cap=cap_id,name=name,criterion=crit,
-                text=row['indicador_texto'],maximum=row['puntaje_maximo'],descriptors=descriptors))
-    wb=openpyxl.Workbook();sheet=wb.active;sheet.title=IND
-    last='I' if kind=='Rúbrica' else 'G'
-    sheet.merge_cells(f'A1:{last}1');sheet['A1']=f'MODELO DE {kind.upper()} · {title}'
+            item=definition({**row,'tipo':kind,'capacidad_id':cap_id,'capacidad_nombre':name},limits)
+            item['ident']=f"I{row['id']}" if row.get('id') else f'N{len(definitions)+1}'
+            definitions.append(item)
+    wb=openpyxl.Workbook();sheet=wb.active;sheet.title=IND;rubric=kind=='Rúbrica'
+    last='M' if rubric else 'G'
+    sheet.merge_cells(f'A1:{last}1');sheet['A1']=f'{kind.upper()} · {title}'
     sheet.merge_cells(f'A2:{last}2');sheet['A2']=f'{course} · {grade} {section} · {competency}'
-    headers=['CAP_ID','Capacidad','Criterio']+(['Inicio (C)','Proceso (B)','Logro (A)','Destacado (AD)','Máximo','IND_ID'] if kind=='Rúbrica' else ['Indicador observable','Máximo','Tipo','IND_ID'])
-    sheet.append(headers)
+    sheet.append(['CAP_ID','Capacidad','Criterio observable']+(['Inicio (C)','En proceso (B)','Logro esperado (A)','Logro destacado (AD)','Máximo','IND_ID','Puntos C','Puntos B','Puntos A','Puntos AD'] if rubric else ['Registro','Máximo','Evaluación','IND_ID']))
     for item in definitions:
-        sheet.append([item['cap'],item['name'],item['criterion']]+(item['descriptors']+[item['maximum'],item['id']] if kind=='Rúbrica' else [item['text'],item['maximum'],kind,item['id']]))
-    _format_sheet(sheet,3,(1,len(headers)))
-    for column,width in [('A',10),('B',36),('C',40)]:sheet.column_dimensions[column].width=width
-    for col in range(4,len(headers)+1):sheet.column_dimensions[get_column_letter(col)].width=34 if col<=7 else 14
-    if kind=='Lista de Cotejo':sheet.column_dimensions['D'].width=48;sheet.column_dimensions['E'].width=14
-    for row in range(4,sheet.max_row+1):sheet.row_dimensions[row].height=90 if kind=='Rúbrica' else 60
+        sheet.append([item['capacidad_id'],item['capacidad_nombre'],item['criterio']]+([item['descriptores'][l] for l in LEVELS]+[item['puntaje_maximo'],item['ident']]+[item['puntajes'][l] for l in LEVELS] if rubric else ['Sí / No',item['puntaje_maximo'],kind,item['ident']]))
+    _format_sheet(sheet,3,(1,9 if rubric else 7));sheet.freeze_panes='D4'
+    for column,width in [('A',10),('B',34),('C',42)]:sheet.column_dimensions[column].width=width
+    for col in range(4,sheet.max_column+1):sheet.column_dimensions[get_column_letter(col)].width=32 if rubric and col<=7 else 14
+    sheet.column_dimensions['A'].hidden=True;sheet.column_dimensions['I' if rubric else 'G'].hidden=True
+    if not rubric:sheet.column_dimensions['F'].hidden=True
+    for row in range(4,sheet.max_row+1):
+        sheet.row_dimensions[row].height=110 if rubric else 60
+        if rubric:
+            for col,color in zip(range(4,8),COLORS):sheet.cell(row,col).fill=PatternFill('solid',fgColor=color)
+            for col in range(10,14):sheet.cell(row,col).number_format='0.########'
     students=db.obtener_estudiantes_filtrados(grade,section,'',incluir_retirados=False,db_path=path)
-    final=wb.create_sheet(FINAL)
-    final.append(['Código','Apellidos','Nombres']+[f'{name}\n[CAP_ID:{cap_id}]' for cap_id,name,_ in capacities]+['EST_ID','Comentario'])
+    final=wb.create_sheet(FINAL);final_headers=[name for cap,name,criterion in capacities]
     raw=wb.create_sheet(RAW)
-    raw.append(['Código','Apellidos','Nombres']+[f"{i['text'] if kind!='Rúbrica' else i['criterion']}\n[IND_ID:{i['id']}] [CAP_ID:{i['cap']}]" for i in definitions]+['EST_ID','Comentario'])
+    # Each caption is short; capacity names and rubric descriptors belong to sheet 1.
+    raw_headers=[f"Criterio {n+1}\n{criterion_caption(item)}" for n,item in enumerate(definitions)]
+    final.append(['Código','Apellidos','Nombres']+final_headers+['EST_ID','Comentario'])
+    raw.append(['Código','Apellidos','Nombres']+raw_headers+['EST_ID','Comentario'])
     for student in students:
         identity=[student['Codigo_Unico'],student['Apellidos'],student['Nombres']]
         final.append(identity+['']*len(capacities)+[student['ID'],''])
         raw.append(identity+['']*len(definitions)+[student['ID'],''])
     for ws,quantity in ((final,len(capacities)),(raw,len(definitions))):
         _format_sheet(ws,1,(1,2,3,quantity+4))
-        for col in range(1,ws.max_column+1):ws.column_dimensions[get_column_letter(col)].width=26
+        for col in range(1,ws.max_column+1):ws.column_dimensions[get_column_letter(col)].width=30
         ws.column_dimensions['A'].width=14;ws.column_dimensions['B'].width=28;ws.column_dimensions['C'].width=26
-        ws.column_dimensions[get_column_letter(quantity+4)].hidden=True
-        ws.row_dimensions[1].height=100
+        ws.column_dimensions[get_column_letter(quantity+4)].hidden=True;ws.row_dimensions[1].height=100
     final_dv=DataValidation(type='decimal',operator='between',formula1=0,formula2=20,allow_blank=True)
-    final_dv.showErrorMessage=True;final_dv.errorTitle='Nota de 0 a 20';final_dv.error='Ingrese un número entre 0 y 20.'
-    final.add_data_validation(final_dv)
+    final_dv.showErrorMessage=True;final_dv.errorTitle='Nota de 0 a 20';final_dv.error='Ingrese un número entre 0 y 20.';final.add_data_validation(final_dv)
     for col in range(4,len(capacities)+4):final_dv.add(f'{get_column_letter(col)}2:{get_column_letter(col)}1000')
-    for index,item in enumerate(definitions,4):
-        column=get_column_letter(index);ind_row=index
-        if kind=='Lista de Cotejo':
-            dv=DataValidation(type='list',formula1='"Sí,No"',allow_blank=True);dv.error='Seleccione Sí o No; deje vacío si aún no evaluó.'
-        else:
-            name='MAX_'+item['id']
-            wb.defined_names.add(DefinedName(name,attr_text=f"'{IND}'!$H${ind_row}"))
-            dv=DataValidation(type='decimal',operator='between',formula1=0,formula2=name,allow_blank=True);dv.error='El puntaje debe estar entre 0 y el máximo del indicador.'
-        dv.showErrorMessage=True;dv.errorTitle='Valor inválido';raw.add_data_validation(dv);dv.add(f'{column}2:{column}1000')
+    raw_dv=DataValidation(type='list',formula1='"C,B,A,AD,Sin evidencia"' if rubric else '"Sí,No"',allow_blank=True)
+    raw_dv.showErrorMessage=True;raw_dv.errorTitle='Evaluación inválida'
+    raw_dv.error='Seleccione un nivel; deje vacío si aún no evaluó.' if rubric else 'Seleccione Sí o No; deje vacío si aún no evaluó.'
+    raw.add_data_validation(raw_dv)
+    for col in range(4,len(definitions)+4):raw_dv.add(f'{get_column_letter(col)}2:{get_column_letter(col)}1000')
     instructions=wb.create_sheet('Instrucciones')
-    steps=[
-        f'MODELO DE {kind.upper()}',
-        '1. En 1_Indicadores_Instrumento personalice el criterio y los indicadores/descriptores. Máximo: mayor que 0 y hasta 20 por indicador.',
-        '2. Elija una forma de calificar: hoja 2 para notas finales de capacidades (0–20), O hoja 3 para evaluar cada indicador. No complete ambas para la misma capacidad.',
-        '3. Rúbrica (hoja 3): escriba puntos de 0 al máximo. La aplicación calcula suma de puntos / suma de máximos × 20 para cada capacidad.',
-        '4. Cotejo (hoja 3): seleccione Sí si cumple o No si no cumple. La aplicación calcula máximos cumplidos / máximos totales × 20 para cada capacidad.',
-        '5. Vacío significa sin evaluar y 0 es una nota real. Complete todos los indicadores de una capacidad antes de importarla; las capacidades totalmente vacías conservan su nota anterior.',
-        '6. Conserve CAP_ID, IND_ID, EST_ID, nombres y códigos. Para añadir indicadores, edite el instrumento en la aplicación y vuelva a exportar el modelo.',
-        '7. Guarde como XLSX. En Calificaciones pulse Importar instrumento, revise la vista previa y confirme. Se crea un respaldo antes de aplicar.',
-        '8. Si importó solo criterios, pulse Evaluar rúbrica/cotejo, complete las respuestas y después Guardar notas.',
-        'Ejemplo rúbrica: 6/10 + 8/10 = 14/20. Ejemplo cotejo con máximos 6 y 4: Sí + No = 6/10 × 20 = 12/20.',
-        'La importación no cambia asistencias. Los comentarios vacíos y las notas vacías no borran datos existentes.',
-        'Los descriptores iniciales son un ejemplo: adáptelos al grado, competencia y propósito de su actividad.'
-    ]
+    steps=[f'{kind.upper()} · {title}',
+        '1. En Calificaciones elija la actividad y diseñe su instrumento antes de descargar esta plantilla.',
+        '2. En la hoja 1 puede ajustar criterios, descriptores y puntajes. Máximo: mayor que 0 y hasta 20 por criterio. En la rúbrica: C < B < A < AD; AD vale el máximo.',
+        '3. Elija una forma de calificar por capacidad: hoja 2 para notas finales (0–20), O hoja 3 para evaluar criterios. No complete ambas para la misma capacidad.',
+        '4. Rúbrica: seleccione C, B, A o AD según la evidencia. Sin evidencia vale 0; una celda vacía sigue pendiente. También se admiten puntos numéricos de 0 al máximo del criterio.',
+        '5. Cotejo: seleccione Sí si cumple o No si no cumple. Cada Sí aporta el máximo de su criterio; No aporta 0.',
+        '6. La nota de capacidad es suma de puntos obtenidos / suma de máximos × 20. Complete todos sus criterios. Las capacidades completamente vacías conservan su nota anterior.',
+        '7. Conserve nombres, códigos, encabezados y las columnas ocultas. Para añadir o quitar criterios, edite el instrumento en la aplicación y descargue una nueva plantilla.',
+        '8. Guarde como XLSX. En Calificaciones pulse Importar evaluación Excel, revise el instrumento y los cambios de notas y confirme. Se crea un respaldo antes de aplicar.',
+        '9. Si importa solo el instrumento, pulse Evaluar estudiantes; marque las respuestas, aplique a la planilla y pulse Guardar notas.',
+        'Ejemplo de puntos: 6/10 + 8/10 = 14/20. Cotejo con máximos 6 y 4: Sí + No = 6/10 × 20 = 12/20.',
+        'La importación conserva asistencias. Comentarios y notas vacíos no borran los datos guardados. Adapte los descriptores al grado y al propósito de la actividad.']
     for text in steps:instructions.append([text])
     instructions.column_dimensions['A'].width=110
     for row in instructions:
         row[0].font=Font(size=13);row[0].alignment=Alignment(wrap_text=True,vertical='center');instructions.row_dimensions[row[0].row].height=55
     meta=wb.create_sheet(META)
-    for key,value in dict(format='registro-instrumento',version=2,kind=kind,course_id=course_id,competency_id=comp_id,level=level,grade=grade,section=section,session_id=session or '').items():meta.append([key,value])
+    final_map=[dict(column=n,cap=cap,header=caption) for n,((cap,_,_),caption) in enumerate(zip(capacities,final_headers),4)]
+    raw_map=[dict(column=n,indicator=i['ident'],cap=i['capacidad_id'],header=caption) for n,(i,caption) in enumerate(zip(definitions,raw_headers),4)]
+    for key,value in dict(format='registro-instrumento',version=3,kind=kind,course_id=course_id,competency_id=comp_id,level=level,grade=grade,section=section,session_id=session or '',final_columns=json.dumps(final_map,ensure_ascii=False),raw_columns=json.dumps(raw_map,ensure_ascii=False)).items():meta.append([key,value])
     meta.sheet_state='veryHidden'
     try:wb.save(destination)
     finally:wb.close()
@@ -161,7 +146,10 @@ def import_template(session,source,grade,section,path):
 def _import_workbook(wb,formulas,session,grade,section,path,db):
     meta={row[0].value:row[1].value for row in wb[META].iter_rows(max_col=2)} if META in wb.sheetnames else {}
     modern=bool(meta)
-    if modern and (meta.get('format')!='registro-instrumento' or meta.get('version')!=2):raise ValueError('Versión de plantilla no compatible.')
+    if modern and (meta.get('format')!='registro-instrumento' or meta.get('version') not in (2,3)):raise ValueError('Versión de plantilla no compatible.')
+    structured=meta.get('version')==3
+    if modern and (FINAL not in wb.sheetnames or RAW not in wb.sheetnames):raise ValueError('Conserve las hojas de notas finales y evaluación del modelo.')
+    limits=thresholds(path)
     with connection(path) as conn:
         target=conn.execute('SELECT s.competencia_id,s.curso_id,c.nivel,s.grado,s.seccion FROM Sesiones_Clase s JOIN Cursos c ON c.id=s.curso_id WHERE s.id=?',(session,)).fetchone()
         if not target or tuple(target[3:])!=(grade,section):raise ValueError('La actividad no pertenece al salón elegido.')
@@ -183,12 +171,11 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
                 if kind=='Rúbrica':
                     descriptors=[str(row[i] or '').strip() if len(row)>i else '' for i in range(3,7)]
                     if modern and not all(descriptors):raise ValueError('Complete los cuatro descriptores C, B, A y AD.')
-                    text=(criterion+'\n' if criterion else '')+' | '.join(f'{level}: {desc}' for level,desc in zip(LEVELS,descriptors) if desc)
-                    text=text.strip() or criterion
+                    text=criterion
                     maximum=row[7] if modern else row[7] if len(row)>7 and row[7] is not None and any('maximo' in h for h in header[7:8]) else 20
                     ident=str(row[8]).strip() if modern and len(row)>8 and row[8] else f'I{len(definitions)+1:03}'
                 else:
-                    text=str(row[3] or '').strip() or (criterion if not modern else '')
+                    text=criterion if structured else str(row[3] or '').strip() or (criterion if not modern else '')
                     maximum=row[4] if len(row)>4 and row[4] is not None else 20
                     ident=str(row[6]).strip() if modern and len(row)>6 and row[6] else f'I{len(definitions)+1:03}'
                     if len(row)>5 and row[5] and instrument_kind(row[5])!=kind:raise ValueError('Hay tipos de instrumento mezclados.')
@@ -199,7 +186,14 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
                     if len(row)<=index or not row[index]:raise ValueError('Conserve el IND_ID del modelo.')
                 if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,31}',ident):raise ValueError('IND_ID inválido.')
                 if ident in seen:raise ValueError('IND_ID repetido.')
-                seen.add(ident);definitions.append(dict(id=ident,cap=cap,text=text,criterion=criterion,maximum=maximum))
+                item=dict(capacidad_id=cap,tipo=kind,criterio=text,puntaje_maximo=maximum)
+                if kind=='Rúbrica':
+                    item['descriptores']=dict(zip(LEVELS,descriptors))
+                    if structured:
+                        if len(row)<13:raise ValueError('Conserve los puntos C, B, A y AD de cada criterio.')
+                        item['puntajes']={level:valid_number(str(row[n]).replace(',','.'),0,maximum,'Puntos de '+level) for n,level in enumerate(LEVELS,9)}
+                item=validate_definition(item,limits)
+                seen.add(ident);definitions.append(dict(id=ident,cap=cap,text=text,criterion=criterion,maximum=maximum,item=item))
             except (ValueError,TypeError,IndexError) as exc:raise ValueError(f'Hoja {sheet.title}, fila {rowno}: {exc}') from exc
         if not definitions:raise ValueError('La plantilla no tiene indicadores válidos.')
         roster=db.obtener_estudiantes_filtrados(grade,section,'',incluir_retirados=True,db_path=path)
@@ -241,14 +235,21 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
         if FINAL in wb.sheetnames or (not modern and len(wb.worksheets)>1):
             ws=wb[FINAL] if FINAL in wb.sheetnames else wb.worksheets[1]
             columns={};used=set()
-            for col,cell in enumerate(ws[1],1):
-                text=str(cell.value or '')
-                if '[CAP_ID:' in text:
-                    match=re.search(r'\[CAP_ID:(\d+)\]',text)
-                    if not match:raise ValueError('Encabezado CAP_ID inválido en calificaciones.')
-                    cap=int(match[1])
+            if structured:
+                mappings=_column_mapping(meta,'final_columns',ws)
+                for mapping in mappings:
+                    cap=mapping['cap']
                     if cap not in allowed or cap in used:raise ValueError('Hay capacidades repetidas o ajenas a la actividad en la hoja 2.')
-                    used.add(cap);columns[col]=cap
+                    used.add(cap);columns[mapping['column']]=cap
+            else:
+                for col,cell in enumerate(ws[1],1):
+                    text=str(cell.value or '')
+                    if '[CAP_ID:' in text:
+                        match=re.search(r'\[CAP_ID:(\d+)\]',text)
+                        if not match:raise ValueError('Encabezado CAP_ID inválido en calificaciones.')
+                        cap=int(match[1])
+                        if cap not in allowed or cap in used:raise ValueError('Hay capacidades repetidas o ajenas a la actividad en la hoja 2.')
+                        used.add(cap);columns[col]=cap
             if not columns:raise ValueError('La hoja de calificaciones no tiene columnas CAP_ID válidas.')
             for row,student,data in student_rows(ws):
                 for col,cap in columns.items():
@@ -258,26 +259,57 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
                         except ValueError as exc:raise ValueError(f'Hoja {ws.title}, fila {row}, columna {col}: {exc}') from exc
         if RAW in wb.sheetnames:
             ws=wb[RAW];columns={};used=set();by_id={d['id']:d for d in definitions}
-            for col,cell in enumerate(ws[1],1):
-                text=str(cell.value or '')
-                if '[IND_ID:' in text:
-                    match=re.search(r'\[IND_ID:([^\]]+)\]',text)
-                    if not match or match[1] not in by_id or match[1] in used:raise ValueError('IND_ID repetido o desconocido en la hoja 3.')
-                    cap=re.search(r'\[CAP_ID:(\d+)\]',text)
-                    if not cap or int(cap[1])!=by_id[match[1]]['cap']:raise ValueError('La capacidad de la columna no coincide con su indicador.')
-                    used.add(match[1]);columns[match[1]]=col
+            if structured:
+                for mapping in _column_mapping(meta,'raw_columns',ws):
+                    identity=mapping['indicator']
+                    if identity not in by_id or identity in used:raise ValueError('IND_ID repetido o desconocido en la hoja 3.')
+                    if mapping['cap']!=by_id[identity]['cap']:raise ValueError('La capacidad de la columna no coincide con su indicador.')
+                    used.add(identity);columns[identity]=mapping['column']
+            else:
+                for col,cell in enumerate(ws[1],1):
+                    text=str(cell.value or '')
+                    if '[IND_ID:' in text:
+                        match=re.search(r'\[IND_ID:([^\]]+)\]',text)
+                        if not match or match[1] not in by_id or match[1] in used:raise ValueError('IND_ID repetido o desconocido en la hoja 3.')
+                        cap=re.search(r'\[CAP_ID:(\d+)\]',text)
+                        if not cap or int(cap[1])!=by_id[match[1]]['cap']:raise ValueError('La capacidad de la columna no coincide con su indicador.')
+                        used.add(match[1]);columns[match[1]]=col
             if set(columns)!=set(by_id):raise ValueError('Los indicadores de las hojas 1 y 3 no coinciden. Exporte un modelo nuevo después de modificar el instrumento.')
             for row,student,data in student_rows(ws):
                 for cap in {d['cap'] for d in definitions}:
-                    values=[(editable_value(ws,row,columns[d['id']]),d['maximum']) for d in definitions if d['cap']==cap]
-                    if not any(v is not None and str(v).strip() for v,_ in values):continue
+                    selected=[d for d in definitions if d['cap']==cap]
+                    values=[(editable_value(ws,row,columns[d['id']]),d['maximum'],d['item']['puntajes']) for d in selected]
+                    if not any(v is not None and str(v).strip() for v,_,_ in values):continue
                     if cap in data['notas_por_capacidad']:raise ValueError('No complete las hojas 2 y 3 para la misma capacidad; elija notas finales o indicadores.')
                     try:data['notas_por_capacidad'][cap]=normalized_grade(kind,values)
                     except ValueError as exc:raise ValueError(f'Hoja {ws.title}, fila {row}: {exc}') from exc
+                    data.setdefault('raw_answers',{}).update({d['id']:value[0] for d,value in zip(selected,values)})
         changing=[d for d in updates.values() if d['notas_por_capacidad'] or d.get('comentario')]
         if modern and meta.get('session_id') and meta['session_id']!=session and changing:raise ValueError('Las notas pertenecen a otra actividad. Para reutilizar el instrumento deje las hojas de calificaciones vacías.')
         # Definitions and grades are one atomic operation, including late validation failures.
-        db.guardar_indicadores_instrumento_sesion(session,kind,[(d['cap'],d['text'],d['maximum']) for d in definitions],path)
-        for definition in definitions:conn.execute('UPDATE Sesion_Capacidades SET criterio_precisado=? WHERE sesion_id=? AND capacidad_id=?',(definition['criterion'],session,definition['cap']))
+        items=[]
+        for entry in definitions:
+            item=dict(entry['item'])
+            if structured and meta.get('session_id')==session and re.fullmatch(r'I\d+',entry['id']):item['id']=int(entry['id'][1:])
+            items.append(item)
+        identities=db.guardar_indicadores_instrumento_sesion(session,kind,items,path)
+        by_identity={d['id']:i for d,i in zip(definitions,identities)}
+        for data in changing:data['respuestas_instrumento']={by_identity[i]:v for i,v in data.pop('raw_answers',{}).items()}
+        criteria={}
+        for entry in definitions:criteria.setdefault(entry['cap'],entry['criterion'])
+        for cap,criterion in criteria.items():conn.execute('UPDATE Sesion_Capacidades SET criterio_precisado=? WHERE sesion_id=? AND capacidad_id=?',(criterion,session,cap))
         if changing:db.guardar_calificaciones_y_asistencia_sesion(session,changing,db_path=path)
         return len(definitions),len(changing)
+
+
+def _column_mapping(meta,key,sheet):
+    try:
+        mappings=json.loads(meta[key])
+        if not isinstance(mappings,list) or not mappings:raise ValueError()
+        columns=[entry['column'] for entry in mappings]
+        if columns!=list(range(4,len(mappings)+4)):raise ValueError()
+        for entry in mappings:
+            if sheet.cell(1,entry['column']).value!=entry['header']:raise ValueError()
+        return mappings
+    except (KeyError,TypeError,ValueError,IndexError):
+        raise ValueError(f'Hoja {sheet.title}: conserve el orden y los encabezados del modelo. Descargue una plantilla actualizada.') from None

@@ -12,6 +12,8 @@ from widgets import scroll_area, wrap_label, Tooltip, SafeDialog
 from ui_icons import icon
 from grade_cells import GradeTreeview
 from instrumentos import normalized_grade
+from rendimiento import TextBuffer,visible_when
+from nombres_ui import activity_labels
 from interfaz import PageBook, split, grade_panels, pixel_scale, scrollbar, flow_toolbar
 from db import actualizar_pesos_actividades
 
@@ -277,153 +279,8 @@ class DialogoDesbloquearCandado(SafeDialog):
             messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
 
 
-from dialogs_ui import InstrumentEditor
-
-class DialogoEditarInstrumento(InstrumentEditor):
-    pass
-
-class DialogoEvaluarInstrumentoMasivo(SafeDialog):
-    def __init__(
-        self,
-        master: "VentanaPrincipal",
-        sesion_info: Dict[str, Any],
-        filas_estudiantes: List[Dict[str, Any]],
-        tipo_inst: str
-    ) -> None:
-        super().__init__(master)
-        self.app = master
-        self.sesion = sesion_info
-        self.filas_estudiantes = filas_estudiantes
-        self.tipo_inst = tipo_inst
-
-        self.title(f"📋 Evaluación Masiva — {tipo_inst}")
-        from dialogs_ui import fit_dialog
-        fit_dialog(self,master,1200,720)
-        self.transient(master)
-        self.grab_set()
-
-        self.indicadores_db = obtener_indicadores_instrumento_sesion(self.sesion["id"])
-        if not self.indicadores_db:
-            sugeridos: List[Tuple[int, str, float]] = []
-            for c in self.sesion["capacidades"]:
-                crit = c["criterio_precisado"] or f"Desempeño en {c['capacidad_nombre']}"
-                if tipo_inst=="Rúbrica":
-                    from instrumentos_excel import DESCRIPTORS,LEVELS
-                    text=crit+"\n"+" | ".join(f"{level}: {description}" for level,description in zip(LEVELS,DESCRIPTORS))
-                    sugeridos.append((c["capacidad_id"],text,20))
-                else:
-                    sugeridos.extend([(c["capacidad_id"],crit+f" · evidencia {i}",10) for i in (1,2)])
-            guardar_indicadores_instrumento_sesion(self.sesion["id"], tipo_inst, sugeridos)
-            self.indicadores_db = obtener_indicadores_instrumento_sesion(self.sesion["id"])
-
-        self.app._loaded_instrument_kind=self.indicadores_db[0]["tipo"]
-        self.app._loaded_ind_count=len(self.indicadores_db)
-        self.app.actualizar_herramientas_evaluacion()
-        reference="\n\n".join(i['capacidad_nombre']+"\n"+i['indicador_texto'] for i in self.indicadores_db)
-        self.app.caja_ref_rubrica.configure(state="normal");self.app.caja_ref_rubrica.delete("1.0","end");self.app.caja_ref_rubrica.insert("1.0",reference);self.app.caja_ref_rubrica.configure(state="disabled")
-        ctk.CTkLabel(
-            self,
-            text=f"📋 Evaluación {tipo_inst}: {self.sesion['titulo_tema']}",
-            font=ctk.CTkFont(size=15, weight="bold"),
-        ).pack(padx=16, pady=(12, 2), anchor="w")
-
-        f_matriz = scroll_area(self, corner_radius=8, horizontal=True, min_width=240+160*len(self.indicadores_db), auto_hide=True)
-        f_matriz.pack(padx=16, pady=6, fill="both", expand=True)
-
-        ctk.CTkLabel(f_matriz, text="Estudiante", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=5, pady=5)
-        for col,ind in enumerate(self.indicadores_db,1):
-            header=ctk.CTkLabel(f_matriz,text=f"Indicador {col}\nMáximo: {ind['puntaje_maximo']:g}",font=ctk.CTkFont(size=14,weight="bold"),width=150,wraplength=150)
-            header.grid(row=0,column=col,padx=6,pady=10)
-            Tooltip(header,ind['capacidad_nombre']+"\n"+ind['indicador_texto'])
-
-        self.controles = {}
-        for row, fila_est in enumerate(self.filas_estudiantes, start=1):
-            est_id = fila_est.get("ID") or fila_est.get("id_db") or fila_est.get("estudiante_id")
-            
-            if "Apellidos" in fila_est and "Nombres" in fila_est:
-                nombre = f"{fila_est['Apellidos']}, {fila_est['Nombres']}"
-            else:
-                nombre = fila_est.get("nombre", "")
-                
-            ctk.CTkLabel(f_matriz, text=nombre, width=220,wraplength=220,justify="left",font=ctk.CTkFont(size=14)).grid(row=row, column=0, sticky="w", padx=5)
-            
-            self.controles[est_id] = []
-            for col, ind in enumerate(self.indicadores_db, start=1):
-                if "brica" in tipo_inst:
-                    ent = ctk.CTkEntry(f_matriz, width=90, height=36, font=ctk.CTkFont(size=15), justify="center")
-                    ent.grid(row=row, column=col, padx=5, pady=2)
-                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "ent": ent, "tipo": "R", "maximo": ind["puntaje_maximo"]})
-                else:
-                    cmb = ctk.CTkComboBox(f_matriz, values=["Sin evaluar", "Sí", "No"],state="readonly", width=145,height=36,font=ctk.CTkFont(size=14),dropdown_font=ctk.CTkFont(size=14))
-                    cmb.set("Sin evaluar")
-                    cmb.grid(row=row, column=col, padx=5, pady=2)
-                    
-                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "cmb": cmb, "tipo": "C", "maximo": ind["puntaje_maximo"]})
-
-        f_bot = ctk.CTkFrame(self, fg_color="transparent")
-        f_bot.pack(padx=16, pady=10, fill="x")
-        
-        ctk.CTkButton(f_bot, text="✏️ Editar Criterios (Rubrica/Cotejo)", fg_color="#ea580c", hover_color="#c2410c", command=self.abrir_editor).pack(side="left", padx=5)
-
-        ctk.CTkButton(
-            f_bot,
-            text="✅ Calcular Notas y Pasar a Planilla",
-            fg_color="#15803d",
-            hover_color="#166534",
-            font=ctk.CTkFont(weight="bold"),
-            command=self._aplicar_calculo,
-        ).pack(side="right", padx=4)
-
-    def abrir_editor(self):
-        if not self.app.verificar_permiso_edicion():
-            return
-        entered={sid:[c['ent'].get() if c['tipo']=='R' else c['cmb'].get() for c in controls] for sid,controls in self.controles.items()}
-        def reload(origins):
-            self.destroy()
-            dialog=DialogoEvaluarInstrumentoMasivo(self.app, self.sesion, self.filas_estudiantes, self.tipo_inst)
-            for sid,controls in dialog.controles.items():
-                previous=entered.get(sid,[])
-                for control,origin in zip(controls,origins):
-                    if origin is None or origin>=len(previous):continue
-                    value=previous[origin]
-                    if control['tipo']=='R':control['ent'].insert(0,value)
-                    else:control['cmb'].set(value)
-        DialogoEditarInstrumento(self, self.sesion["id"], self.indicadores_db, reload)
-
-    def _aplicar_calculo(self) -> None:
-        if not self.app.verificar_permiso_edicion():
-            return
-        calculated = {}
-        try:
-            for student in self.filas_estudiantes:
-                est_id = student.get("ID") or student.get("id_db") or student.get("estudiante_id")
-                by_cap = {}
-                for control in self.controles.get(est_id, []):
-                    if control["tipo"] == "R":
-                        raw = control["ent"].get().strip()
-                        value=raw if raw else None
-                    else:
-                        value = control["cmb"].get()
-                        if value=="Sin evaluar":value=None
-                    by_cap.setdefault(control["cap_id"], []).append((value, control["maximo"]))
-                for cap_id, values in by_cap.items():
-                    if not any(v is not None and str(v).strip() for v,_ in values):continue
-                    calculated[(est_id,cap_id)]=normalized_grade(self.tipo_inst,values)
-            if not calculated:raise ValueError("No hay respuestas completas. Escriba puntos o seleccione Sí/No antes de calcular.")
-        except ValueError as exc:
-            messagebox.showwarning("Evaluación incompleta", str(exc), parent=self)
-            return
-        self.app.recordar_planilla()
-        tree = self.app.planilla_nativa
-        for item in tree.get_children():
-            row = list(tree.item(item, "values"))
-            for index, cap in enumerate(self.sesion["capacidades"], 4):
-                key = (int(row[0]), cap["capacidad_id"])
-                if key in calculated:
-                    row[index] = str(calculated[key])
-            tree.item(item, values=row)
-        self.app.marcar_planilla_pendiente()
-        self.destroy()
+from instrument_design import InstrumentEditor as DialogoEditarInstrumento
+from instrument_evaluate import InstrumentEvaluator as DialogoEvaluarInstrumentoMasivo
 
 
 class PlanillaNativaTreeview(GradeTreeview):
@@ -821,17 +678,17 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.dev_mode = False
             self.btn_toggle_curso.grid_remove()
             self.btn_eliminar_curso.grid_remove()
-            messagebox.showinfo("Dev Mode", "Modo Desarrollador desactivado.")
+            messagebox.showinfo("Cursos", "Administración de cursos desactivada.")
             self.recargar_cursos_y_contexto()
             return
             
         import tkinter.simpledialog as simpledialog
-        pwd = simpledialog.askstring("Dev Mode", "Ingrese su contraseña docente para administrar cursos:", show="*")
+        pwd = simpledialog.askstring("Administrar cursos", "Ingrese su contraseña docente para administrar cursos:", show="*")
         if pwd and self.autenticar(self.credenciales_actuales(), pwd) and self.licencia_permite():
             self.dev_mode = True
             self.btn_toggle_curso.grid()
             self.btn_eliminar_curso.grid()
-            messagebox.showinfo("Dev Mode", "Modo Desarrollador activado. Ahora puedes bloquear/eliminar cursos.")
+            messagebox.showinfo("Cursos", "Administración de cursos habilitada.")
             self.recargar_cursos_y_contexto()
         else:
             messagebox.showerror("Error", "Clave incorrecta.")
@@ -839,6 +696,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def actualizar_visual_candado_y_docente(self) -> None:
         cfg = obtener_docente_config()
         self.lbl_docente_info.configure(text=f"👤 {cfg['nombres_docente']}")
+        if hasattr(self,'actualizar_configuracion'):self.actualizar_configuracion()
         self.btn_candado.configure(text="",image=icon("unlock" if self.edicion_desbloqueada else "lock",master=self),
             fg_color=("#dcfce7","#14532d") if self.edicion_desbloqueada else "transparent")
         if hasattr(self,"lbl_estado"):
@@ -868,6 +726,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_matriz = self.tabview.add("Matriz General")
         self.tab_estadisticas = self.tabview.add("Estadísticas")
 
+        self.tab_configuracion=self.tab_curriculo
+        self.tab_curriculo=self.crear_configuracion(self.tab_configuracion)
         self._construir_tab_curriculo()
         self._construir_tab_estudiantes()
         self._construir_tab_crear_actividad()
@@ -1139,13 +999,6 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_limpiar_formulario_actividad,
         ).grid(row=0, column=1)
 
-        template_actions=ctk.CTkFrame(f_head,fg_color="transparent")
-        template_actions.grid(row=1,column=0,columnspan=2,sticky="ew",pady=8)
-        template_actions.grid_columnconfigure(0,weight=1)
-        for i,(label,kind) in enumerate([("Plantilla de rúbrica","Rúbrica"),("Plantilla de cotejo","Lista de Cotejo")]):
-            ctk.CTkButton(template_actions,text=label,height=36,font=ctk.CTkFont(size=14),
-                command=lambda k=kind:self.accion_exportar_plantilla_instrumento(k)).grid(row=i,column=0,sticky="ew",pady=3)
-
         f_datos1 = ctk.CTkFrame(panel_form, fg_color="transparent")
         f_datos1.grid(row=1, column=0, padx=14, pady=2, sticky="ew")
         f_datos1.grid_columnconfigure((0, 1), weight=1)
@@ -1175,26 +1028,19 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ).grid(row=2, column=0, sticky="w")
         ctk.CTkLabel(
             f_datos1, text="Fecha", font=ctk.CTkFont(size=12, weight="bold")
-        ).grid(row=2, column=1, sticky="w")
+        ).grid(row=4, column=0, sticky="w")
         
         self.crear_entry_titulo = ctk.CTkEntry(
             f_datos1, placeholder_text="Ej. Clase 1: Ecuaciones / Examen Unidad 1"
         )
-        self.crear_entry_titulo.grid(row=3, column=0, padx=(0, 6), pady=(0, 4), sticky="ew")
+        self.crear_entry_titulo.grid(row=3, column=0,columnspan=2, pady=(0, 8), sticky="ew")
 
         import datetime
         self.crear_ent_fecha = ctk.CTkEntry(f_datos1, width=120)
         self.crear_ent_fecha.insert(0, datetime.date.today().isoformat())
-        self.crear_ent_fecha.grid(row=3, column=1, pady=(0, 4), sticky="ew")
+        self.crear_ent_fecha.grid(row=4, column=1, pady=(0, 4), sticky="ew")
 
-        f_prop = ctk.CTkFrame(panel_form, fg_color="transparent")
-        # Optional description is edited from Más; it does not consume form height.
-        f_prop.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(
-            f_prop, text="Propósito de la Clase / Descripción:", font=ctk.CTkFont(size=12, weight="bold")
-        ).grid(row=0, column=0, sticky="w")
-        self.crear_txt_proposito = ctk.CTkTextbox(f_prop, height=42, wrap="word")
-        self.crear_txt_proposito.grid(row=1, column=0, pady=(0, 4), sticky="ew")
+        self.crear_txt_proposito = TextBuffer()
 
         f_comp_c = ctk.CTkFrame(panel_form, fg_color="transparent")
         f_comp_c.grid(row=3, column=0, padx=14, pady=2, sticky="ew")
@@ -1208,6 +1054,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_combo_comp.grid(row=1, column=0, pady=(0, 4), sticky="ew")
         self.lbl_comp_completa = ctk.CTkLabel(f_comp_c, text="", wraplength=480, justify="left", anchor="w")
         Tooltip(self.crear_combo_comp,lambda:self.lbl_comp_completa.cget("text"))
+        self.lbl_comp_completa.grid(row=2,column=0,sticky="ew",pady=8)
         wrap_label(self.lbl_comp_completa)
 
         self.scroll_caps_creacion = ctk.CTkFrame(panel_form)
@@ -1223,7 +1070,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_actualizar_actividad_existente)
         self.btn_actualizar_act.grid(row=0,column=1,sticky="ew",padx=4)
         ctk.CTkButton(f_btns_c,text="Descripción",height=34,command=lambda:self.editar_texto_actividad(self.crear_txt_proposito,"Descripción de la actividad")).grid(row=1,column=0,sticky="ew",padx=(0,4),pady=6)
-        ctk.CTkButton(f_btns_c,text="Importar instrumento",height=34,command=self.accion_importar_rubrica_cotejo_excel).grid(row=1,column=1,sticky="ew",padx=4,pady=6)
+        ctk.CTkLabel(f_btns_c,text="El instrumento se configura en Calificaciones.",font=ctk.CTkFont(size=13),wraplength=300,justify="left").grid(row=2,column=0,columnspan=2,sticky="ew",pady=6)
 
         panel_lista = ctk.CTkFrame(pane, corner_radius=10)
         pane.add(panel_lista,minsize=round(260*pixel_scale(self)),stretch="always")
@@ -1268,16 +1115,16 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             columns=("ID", "Categoria", "Peso", "Titulo", "Competencia", "Capacidades", "Instrumento"),
             show="headings",
             selectmode="browse",
-            displaycolumns=("Categoria", "Peso", "Titulo", "Competencia", "Capacidades", "Instrumento")
+            displaycolumns=("Titulo", "Categoria", "Peso", "Instrumento")
         )
         for col, txt, w, al in [
             ("ID", "ID", 42, "center"),
             ("Categoria", "Categoría", 110, "center"),
             ("Peso", "Peso", 65, "center"),
-            ("Titulo", "Título de la Clase / Examen / Trabajo", 205, "w"),
+            ("Titulo", "Actividad", 300, "w"),
             ("Competencia", "Competencia", 180, "w"),
             ("Capacidades", "Capacidades y Criterios Evaluados", 235, "w"),
-            ("Instrumento", "Modo / Instrumento", 125, "center"),
+            ("Instrumento", "Evaluación", 150, "center"),
         ]:
             self.tree_actividades.heading(col, text=txt)
             self.tree_actividades.column(col, width=w, anchor=al)
@@ -1418,7 +1265,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_detalle.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         f_detalle.grid_columnconfigure(0, weight=1)
         
-        ctk.CTkLabel(f_detalle, text="Detalle del Comentario / Retroalimentación:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(f_detalle, text="Comentario y retroalimentación", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky="ew")
         self.busc_txt_comentario_detalle = ctk.CTkTextbox(f_detalle, height=80, wrap="word", state="disabled")
         self.busc_txt_comentario_detalle.grid(row=1, column=0, sticky="ew")
         
@@ -1905,7 +1752,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self._cargar_tree_capacidades(self.competencias_curso_actual[0][0])
 
         opciones_comp = [nom for _id, nom in self.competencias_curso_actual]
-        self.crear_combo_comp.configure(values=opciones_comp)
+        self.crear_comp_map={f'Competencia {i}':cid for i,(cid,name) in enumerate(self.competencias_curso_actual,1)}
+        self.crear_combo_comp.configure(values=list(self.crear_comp_map))
 
         self.busc_comp_map: Dict[str, Optional[int]] = {"Todas las Competencias": None}
         opciones_busc_comp = ["Todas las Competencias"]
@@ -1916,8 +1764,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.busc_combo_comp.set("Todas las Competencias")
 
         if opciones_comp:
-            self.crear_combo_comp.set(opciones_comp[0])
-            self._al_cambiar_comp_en_creacion(opciones_comp[0])
+            self.crear_combo_comp.set(next(iter(self.crear_comp_map)))
+            self._al_cambiar_comp_en_creacion(self.crear_combo_comp.get())
             
         if hasattr(self, "stats_combo_comp"):
             opciones_stats = ["Todas las Competencias"] + opciones_comp
@@ -1976,6 +1824,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def _obtener_comp_id_desde_texto(self, texto: str) -> Optional[int]:
         if not texto:
             return None
+        if texto in getattr(self,'crear_comp_map',{}):return self.crear_comp_map[texto]
         for cid, nombre in self.competencias_curso_actual:
             if texto == nombre:
                 return cid
@@ -2182,7 +2031,6 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.crear_combo_comp.set(getattr(self, "_comp_form_actual", texto_comp))
             return
         self._comp_form_actual = texto_comp
-        if hasattr(self,"lbl_comp_completa"): self.lbl_comp_completa.configure(text=texto_comp)
         for w in self.scroll_caps_creacion.winfo_children():
             w.destroy()
         self.widgets_caps_creacion.clear()
@@ -2190,6 +2038,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         comp_id = self._obtener_comp_id_desde_texto(texto_comp)
         if comp_id is None:
             return
+        if hasattr(self,'lbl_comp_completa'):
+            self.lbl_comp_completa.configure(text=next((name for cid,name in self.competencias_curso_actual if cid==comp_id),texto_comp))
         caps = obtener_capacidades_por_competencia(comp_id)
         for idx, (cap_id, cap_nom) in enumerate(caps, start=1):
             f_item = ctk.CTkFrame(self.scroll_caps_creacion, corner_radius=8)
@@ -2212,7 +2062,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             lbl_cap.grid(row=0, column=1, padx=(2, 8), pady=(6, 2), sticky="ew")
             wrap_label(lbl_cap)
 
-            txt_crit = ctk.CTkTextbox(f_item, height=70, wrap="word", font=ctk.CTkFont(size=13))
+            txt_crit = TextBuffer()
             criterion=ctk.CTkButton(f_item,text="Criterio",width=70,height=26,fg_color="transparent",
                 text_color=("#475569","#cbd5e1"),hover_color=("#e2e8f0","#334155"),
                 command=lambda target=txt_crit,title=cap_nom:self.editar_texto_actividad(target,"Criterio · "+title))
@@ -2231,67 +2081,6 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def _extraer_peso_creacion(self) -> float:
         raw = self.crear_combo_peso.get().strip().split()[0].replace("x", "").replace("%", "")
         return valid_number(raw, 0.000001, 1000000, "Peso")
-
-    def accion_exportar_plantilla_instrumento(self, tipo_instrumento: str) -> None:
-        """
-        Exporta una plantilla Excel de Lista de Cotejo o Rúbrica que incluye exactamente
-        la Competencia elegida, las Capacidades marcadas por el docente y sus Criterios Precisados,
-        además de la lista de estudiantes de la sección actual.
-        """
-        caps_marcadas: List[Tuple[int, str, str]] = []
-        for w in self.widgets_caps_creacion:
-            if w["checkbox"].get() == 1:
-                crit = w["txt_criterio"].get("1.0", "end").strip()
-                caps_marcadas.append((w["capacidad_id"], w["nombre"], crit))
-
-        if not caps_marcadas:
-            messagebox.showwarning("Seleccione Capacidades", "Marque al menos una capacidad para generar la plantilla.")
-            return
-
-        titulo_act = self.crear_entry_titulo.get().strip() or "Sesión_Evaluada"
-        comp_nom = self.crear_combo_comp.get()
-        curso = self.combo_curso_global.get()
-        grado = self.combo_grado_global.get()
-        seccion = self.combo_seccion_global.get()
-
-        ruta = self.elegir_destino(
-            title=f"Guardar Plantilla Excel de {tipo_instrumento}",
-            defaultextension=".xlsx",
-            initialfile=f"Plantilla_{tipo_instrumento}_{curso}_{grado}{seccion}.xlsx",
-            filetypes=[("Archivo Excel", "*.xlsx")],
-        )
-        if not ruta:
-            return
-
-        exportar_plantilla_rubrica_o_cotejo_excel(
-            ruta_destino=ruta,
-            nombre_curso=curso,
-            grado=grado,
-            seccion=seccion,
-            titulo_actividad=titulo_act,
-            competencia_nombre=comp_nom,
-            capacidades_y_criterios=caps_marcadas,
-            tipo_instrumento=tipo_instrumento,
-        )
-        import reportes
-        reportes.decorate_workbook(ruta, self.insignia_exportacion())
-        messagebox.showinfo(
-            f"Plantilla de {tipo_instrumento} Creada",
-            f"Se creó la plantilla con las Capacidades y Criterios Precisados que marcó en:\n{ruta}\n\n"
-            f"💡 Puede editar los indicadores (o poner notas) en ese Excel y luego subirlo con el botón '📥 Subir Instrumento Excel'.",
-        )
-
-    def accion_importar_rubrica_cotejo_excel(self) -> None:
-        if not self.verificar_permiso_edicion():
-            return
-        sid = self.id_actividad_editando or self.id_actividad_calificando
-        if sid is None:
-            messagebox.showwarning(
-                "Seleccione una Actividad",
-                "Primero guarde o seleccione una Clase/Actividad en la tabla derecha para asociarle la Lista de Cotejo o Rúbrica.",
-            )
-            return
-        self._subir_excel_instrumento_a_sesion(sid)
 
     def accion_importar_rubrica_cotejo_en_calificacion(self) -> None:
         if not self.verificar_permiso_edicion():
@@ -2328,7 +2117,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 "Rúbrica / Lista de Cotejo Cargada",
                 f"Se cargaron {ind_cant} indicador(es) de evaluación para esta clase"
                 + (f" y las notas de {alum_cant} estudiante(s)." if alum_cant > 0 else ".")
-                + "\n\nLas notas importadas ya están guardadas. Para evaluar aquí, pulse Evaluar rúbrica/cotejo y después Guardar notas.",
+                + "\n\nLas notas importadas ya están guardadas. Para evaluar aquí, pulse Evaluar estudiantes, aplique a la planilla y después Guardar notas.",
             )
         except Exception as e:
             messagebox.showerror("Error al cargar instrumento", f"Detalle: {e}")
@@ -2346,7 +2135,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_combo_peso.set("1")
         self.btn_actualizar_act.configure(state="disabled")
         if self.competencias_curso_actual:
-            txt = f"1. {self.competencias_curso_actual[0][1]}"
+            txt = next(iter(self.crear_comp_map))
             self.crear_combo_comp.set(txt)
             self._al_cambiar_comp_en_creacion(txt)
 
@@ -2405,7 +2194,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         if messagebox.askyesno(
             "Actividad Guardada",
-            f"La actividad '{titulo}' se guardó correctamente.\n\n¿Desea ir ahora a la Pestaña 4 para ingresar las notas?",
+            f"La actividad '{titulo}' se guardó correctamente.\n\n¿Desea ir ahora a la Calificaciones para ingresar las notas?",
         ):
             self.abrir_actividad_en_pestana_calificar(sid)
 
@@ -2416,25 +2205,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if not curso_id:
             return
         cat_filtro = self.filtro_cat_creacion.get()
-        sesiones = obtener_sesiones_clase(
-            curso_id, self.combo_grado_global.get(), self.combo_seccion_global.get(), None, cat_filtro
-        )
-
-        self.actividades_creadas_map: Dict[int, Dict[str, Any]] = {}
-        opciones_combo_calif: List[str] = []
-        self.combo_calif_etiqueta_a_id: Dict[str, int] = {}
-
-        todas_sesiones = obtener_sesiones_clase(
-            curso_id, self.combo_grado_global.get(), self.combo_seccion_global.get()
-        )
-        for i, s in enumerate(todas_sesiones, start=1):
-            if s.get("archivada"):continue
-            self.actividades_creadas_map[s["id"]] = s
-            etiqueta = s['titulo_tema']
-            if etiqueta in self.combo_calif_etiqueta_a_id:
-                etiqueta += f" · {s['fecha']} · {s['categoria']} ({s['id']})"
-            opciones_combo_calif.append(etiqueta)
-            self.combo_calif_etiqueta_a_id[etiqueta] = s["id"]
+        todas_sesiones = [s for s in obtener_sesiones_clase(curso_id,self.combo_grado_global.get(),self.combo_seccion_global.get()) if not s.get('archivada')]
+        sesiones=[s for s in todas_sesiones if cat_filtro=='Todas' or s['categoria']==cat_filtro]
+        self.actividades_creadas_map={s['id']:s for s in todas_sesiones}
+        names=activity_labels(todas_sesiones)
+        self.combo_calif_etiqueta_a_id={names[s['id']]:s['id'] for s in todas_sesiones}
+        opciones_combo_calif=list(self.combo_calif_etiqueta_a_id)
 
         for s in sesiones:
             if s.get("archivada"):continue
@@ -2465,7 +2241,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                     etiqueta_elegir = et
                     break
             self.calif_combo_actividad.set(etiqueta_elegir)
-            self._al_cambiar_actividad_en_calificar(etiqueta_elegir)
+            selected=self.combo_calif_etiqueta_a_id[etiqueta_elegir]
+            caps=tuple(c['capacidad_id'] for c in self.actividades_creadas_map[selected]['capacidades'])
+            previous=tuple(c['capacidad_id'] for c in getattr(self,'_capacidades_actividad',[]))
+            context=getattr(self,'_table_context',None)
+            expected=(selected,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get())
+            if not context or context[:4]!=expected or caps!=previous:
+                self._al_cambiar_actividad_en_calificar(etiqueta_elegir)
+            else:self.actualizar_herramientas_evaluacion()
         else:
             self.calif_combo_actividad.set("No hay actividades creadas aún (Créelas en la Pestaña 3)")
             self.id_actividad_calificando = None
@@ -2483,7 +2266,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
 
         self.id_actividad_editando = sid
-        self.lbl_modo_creacion.configure(text=f"Editar #{sid}")
+        self.lbl_modo_creacion.configure(text="Editar actividad")
         self.crear_combo_categoria.set(s["categoria"])
         self.crear_combo_peso.set(f"{s['peso_clase']:.1f}")
         self.crear_entry_titulo.delete(0, "end")
@@ -2495,7 +2278,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         for idx, (cid, cnom) in enumerate(self.competencias_curso_actual, start=1):
             if cid == s["competencia_id"]:
-                txt = f"{idx}. {cnom}"
+                txt = f"Competencia {idx}"
                 self.crear_combo_comp.set(txt)
                 self._al_cambiar_comp_en_creacion(txt)
                 break
@@ -2589,6 +2372,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
         self._ultimo_estado_planilla=estado_actual
         self._table_context=context
+        self._instrument_pending={};self._instrument_pending_session=self.id_actividad_calificando
 
         for w in self.f_tabla_planilla.winfo_children():
             w.destroy()
@@ -2726,6 +2510,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if getattr(self.planilla_nativa,"_entry",None): self.planilla_nativa._entry.event_generate("<FocusOut>")
         if not self.verificar_permiso_edicion(): return
         if not self.planilla_nativa: return
+        kind=self.calif_combo_modo_inst.get()
+        if kind!='Nota directa' and (getattr(self,'_loaded_instrument_kind',None)!=kind or not getattr(self,'_loaded_ind_count',0)):
+            messagebox.showwarning('Configure la evaluación','Diseñe el instrumento seleccionado antes de guardar. También puede elegir Nota directa para ingresar las notas finales.')
+            return
         
         try:
             nuevo_peso = float(self.calif_entry_peso.get().strip() or 1.0)
@@ -2761,10 +2549,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 "estudiante_id": est_id,
                 "asistio": asistio,
                 "comentario": comentario,
-                "notas_por_capacidad": notas_cap
+                "notas_por_capacidad": notas_cap,
+                "respuestas_instrumento": {identity:value for (student,identity),value in getattr(self,'_instrument_pending',{}).items() if student==est_id}
             })
             
-        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso)
+        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso,nuevo_instrumento=self.calif_combo_modo_inst.get())
+        self._instrument_pending={};self._undo=[];self._redo=[]
         self._planilla_pendiente = False
         self._borrador_path().unlink(missing_ok=True)
         self.lbl_estado.configure(text="Notas, comentarios y asistencia guardados correctamente")
@@ -2787,6 +2577,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 self.busc_txt_comentario_detalle.insert("1.0", "(No hay comentario registrado para esta sesión)")
         self.busc_txt_comentario_detalle.configure(state="disabled")
 
+    @visible_when('Buscador')
     def recargar_buscador_alumnos(self) -> None:
         if not hasattr(self, "tree_buscador_alumnos"):
             return
@@ -2819,8 +2610,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         # Actualizar combo para elegir qué clase ir a editar
         opciones_editar = []
         self.busc_ir_clase_map: Dict[str, int] = {}
+        from nombres_ui import activity_labels
+        labels=activity_labels(sesiones)
         for s in sesiones:
-            et = f"#{s['id']} [{s['categoria']}] {s['titulo_tema']}"
+            et=labels[s['id']]
             opciones_editar.append(et)
             self.busc_ir_clase_map[et] = s["id"]
         self.busc_combo_ir_clase.configure(
@@ -2831,12 +2624,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         cols = ["Fecha", "Alumno", "Actividad", "Competencia", "Notas", "Promedio", "Comentario"]
         headers_cfg: List[Tuple[str, str, int]] = [
-            ("Fecha", "Fecha", 95),
-            ("Alumno", "Alumno", 190),
-            ("Actividad", "Actividad / Clase", 180),
-            ("Competencia", "Competencia", 130),
-            ("Notas", "Notas por Capacidad", 180),
-            ("Promedio", "Prom", 50),
+            ("Fecha", "Fecha", 115),
+            ("Alumno", "Alumno", 260),
+            ("Actividad", "Actividad / Clase", 240),
+            ("Competencia", "Competencia", 240),
+            ("Notas", "Notas por Capacidad", 290),
+            ("Promedio", "Promedio", 105),
             ("Comentario", "Comentario", 220),
         ]
 
@@ -2845,7 +2638,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.tree_buscador_alumnos.heading(col_id, text=txt_h)
             self.tree_buscador_alumnos.column(
                 col_id,
-                width=ancho,
+                width=round(ancho*pixel_scale(self)),minwidth=round(ancho*pixel_scale(self)),stretch=col_id=='Comentario',
                 anchor="w" if col_id in ("Alumno", "Actividad", "Comentario", "Competencia") else "center",
             )
 
@@ -2918,6 +2711,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # ACCIONES PESTAÑA 6: PORCENTAJES (%) + VER/MODIFICAR PESOS POR CATEGORÍA + GRÁFICOS
     # ==========================================================================
 
+    @visible_when('Porcentajes de Actividades')
     def cargar_lista_pesos_por_categoria_en_graficos(
         self, categoria_seleccionada: str | None = None
     ) -> None:
@@ -2961,7 +2755,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
             activity_label=ctk.CTkLabel(
                 f_row,
-                text=f"#{act['id']} • {act['titulo_tema']}\n({act['competencia_nombre']})",
+                text=f"{act['titulo_tema']}\n({act['competencia_nombre']})",
                 font=ctk.CTkFont(size=11, weight="bold"),
                 justify="left",
                 anchor="w",
@@ -3031,6 +2825,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             f"Se actualizaron los porcentajes de evaluación (Suma total: {suma:.1f}%).",
         )
 
+    @visible_when('Porcentajes de Actividades')
     def dibujar_graficos_estadisticos(self) -> None:
         if not hasattr(self, "graficos_hosts"):
             return
@@ -3086,6 +2881,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # ACCIONES PESTAÑA 7: MATRIZ GENERAL + EXPORTAR E IMPORTAR EXCEL
     # ==========================================================================
 
+    @visible_when('Matriz General')
     def recargar_matriz_completa(self) -> None:
         curso_id = self.obtener_curso_activo_id()
         if not curso_id:

@@ -67,8 +67,8 @@ class DesktopTests(unittest.TestCase):
         act = db.obtener_sesiones_clase(self.course, '3°', 'A')[0]
         students = db.obtener_estudiantes_filtrados('3°', 'A')
         dialog = self.main.DialogoEvaluarInstrumentoMasivo(self.app, act, students, 'Rúbrica')
-        for control in dialog.controles[self.student]:
-            control['ent'].insert(0, '15')
+        for indicator in dialog.indicadores_db:
+            dialog.set_answer(self.student,indicator['id'],15)
         dialog._aplicar_calculo()
         tree = self.app.planilla_nativa
         row = tree.item(tree.get_children()[0], 'values')
@@ -310,8 +310,10 @@ class DesktopTests(unittest.TestCase):
         self.app.calif_combo_modo_inst.set('Rúbrica');self.app.dibujar_planilla_calificacion(forzar=True)
         self.app.update_idletasks()
         self.assertFalse(self.app.caja_ref_rubrica.winfo_ismapped())
-        with patch.object(self.app,'_texto_emergente') as popup:self.app.detalles_calificacion()
-        self.assertIn('Resolver con sustento',popup.call_args.args[1])
+        popup=self.app.detalles_calificacion()
+        self.assertEqual(popup.instrument_grid.indicators[0]['criterio'],'Resolver con sustento')
+        self.assertEqual(set(popup.instrument_grid.indicators[0]['descriptores']),{'C','B','A','AD'})
+        popup.destroy()
         self.app.alternar_herramientas();self.app.update_idletasks()
         self.assertTrue(self.app.btn_evaluar.winfo_ismapped())
 
@@ -368,8 +370,8 @@ class DesktopTests(unittest.TestCase):
         self.app.edicion_desbloqueada=True
         act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
         dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Lista de Cotejo')
-        self.assertTrue(all(c['cmb'].get()=='Sin evaluar' for c in dialog.controles[self.student]))
-        for control in dialog.controles[self.student]:control['cmb'].set('No')
+        self.assertFalse(dialog.answers)
+        for indicator in dialog.indicadores_db:dialog.set_answer(self.student,indicator['id'],'No')
         dialog._aplicar_calculo()
         tree=self.app.planilla_nativa;self.assertEqual(float(tree.item(tree.get_children()[0],'values')[4]),0)
         with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
@@ -380,12 +382,12 @@ class DesktopTests(unittest.TestCase):
         self.app.edicion_desbloqueada=True
         act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
         dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Rúbrica')
-        dialog.controles[self.student][0]['ent'].insert(0,'12.75')
+        dialog.set_answer(self.student,dialog.indicadores_db[0]['id'],'12.75')
         dialog.abrir_editor();self.app.update()
         editor=next(w for w in dialog.winfo_children() if isinstance(w,self.main.DialogoEditarInstrumento))
         editor.rows[0]['text'].insert('end',' Aclaración');editor.save()
         reopened=next(w for w in self.app.winfo_children() if isinstance(w,self.main.DialogoEvaluarInstrumentoMasivo))
-        self.assertEqual(reopened.controles[self.student][0]['ent'].get(),'12.75')
+        self.assertEqual(float(reopened.answers[(self.student,reopened.indicadores_db[0]['id'])]),12.75)
         self.assertFalse(self.errors)
 
     def test_personal_workspace_keeps_header_short_and_has_no_trial_banner(self):
@@ -393,3 +395,69 @@ class DesktopTests(unittest.TestCase):
         self.assertLess(self.app.barra_top.winfo_height()/pixel_scale(self.app),65)
         self.assertFalse(self.app._license_required)
         self.assertFalse(hasattr(self.app,'_license_label'))
+
+    def test_saved_level_answers_reopen_and_undo_with_their_grades(self):
+        from evaluacion_datos import get_answers
+        self.app.edicion_desbloqueada=True
+        db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Explica',20)])
+        act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
+        dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Rúbrica')
+        identity=dialog.indicadores_db[0]['id'];dialog.set_answer(self.student,identity,'A');dialog._aplicar_calculo()
+        tree=self.app.planilla_nativa;iid=tree.get_children()[0]
+        self.assertEqual(float(tree.item(iid,'values')[4]),15.5)
+        self.app.deshacer_planilla();self.assertFalse(self.app._instrument_pending)
+        self.assertEqual(tree.item(iid,'values')[4],'')
+        self.app.deshacer_planilla(redo=True)
+        self.assertEqual(self.app._instrument_pending[(self.student,identity)],'A')
+        self.app.autoguardar_borrador();self.app._instrument_pending={};self.app._planilla_pendiente=False
+        self.app.recuperar_borrador()
+        self.assertEqual(self.app._instrument_pending[(self.student,identity)],'A')
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertEqual(get_answers(self.session,self.app._db_path)[(self.student,identity)],'A')
+        reopened=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Rúbrica')
+        self.assertEqual(reopened.answers[(self.student,identity)],'A');self.assertFalse(self.errors)
+
+    def test_metadata_refresh_preserves_pending_notes_and_defers_hidden_views(self):
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;iid=tree.get_children()[0]
+        values=list(tree.item(iid,'values'));values[4]='12.75';tree.item(iid,values=values);self.app.marcar_planilla_pendiente()
+        with patch('db.calcular_matriz_competencias_y_capacidades',side_effect=AssertionError('La vista oculta no debe calcular')):
+            self.app.recargar_tabla_actividades_creadas();self.app.recargar_matriz_completa()
+        self.assertIs(self.app.planilla_nativa,tree);self.assertEqual(tree.item(iid,'values')[4],'12.75')
+        self.assertIn('recargar_matriz_completa',self.app._view_pending)
+        self.app.tabview.set('Matriz General');self.app.after(200,self.app.quit);self.app.mainloop()
+        self.assertNotIn('recargar_matriz_completa',self.app._view_pending);self.assertFalse(self.errors)
+
+    def test_instrument_import_preview_uses_boxes_and_cancel_keeps_live_data(self):
+        import openpyxl
+        from instrumentos_excel import RAW
+        from instrument_design import InstrumentPreview
+        file=app_storage.data_dir()/'evaluacion-previa.xlsx'
+        db.exportar_plantilla_rubrica_o_cotejo_excel(str(file),self.course_name,'3°','A','Prueba','Competencia',[(self.cap,'Capacidad','Explica')],'Rúbrica',sesion_id=self.session)
+        wb=openpyxl.load_workbook(file);wb[RAW]['D2']='AD';wb.save(file);wb.close()
+        inspected=[]
+        def decide(confirm):
+            for widget in self.app.winfo_children():
+                if isinstance(widget,InstrumentPreview):
+                    inspected.append(widget.instrument_grid.indicators[0]['descriptores']['AD'])
+                    widget.confirmed=confirm;widget.destroy();return
+            self.app.after(50,lambda:decide(confirm))
+        self.app.after(50,lambda:decide(False))
+        self.assertIsNone(self.app._importar_con_vista_previa(db.importar_rubrica_o_cotejo_desde_excel,self.session,str(file),'3°','A'))
+        self.assertFalse(db.obtener_indicadores_instrumento_sesion(self.session))
+        self.app.after(50,lambda:decide(True))
+        self.assertEqual(self.app._importar_con_vista_previa(db.importar_rubrica_o_cotejo_desde_excel,self.session,str(file),'3°','A'),(1,1))
+        with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0],20)
+        self.assertEqual(len(inspected),2);self.assertFalse(self.errors)
+
+    def test_search_loads_without_ids_and_filters_fit_a_small_window(self):
+        self.app.geometry('1024x740');self.app.tabview.set('Buscador')
+        self.app.after(350,self.app.quit);self.app.mainloop()
+        self.assertEqual(self.app.busc_combo_ir_clase.get(),'Prueba')
+        self.assertEqual(len(self.app.tree_buscador_alumnos.get_children()),1)
+        frame=self.app.busc_combo_ir_clase.master
+        for widget in frame.winfo_children():
+            if widget.winfo_manager()=='place':
+                self.assertLessEqual(widget.winfo_x()+widget.winfo_width(),frame.winfo_width()+2)
+                self.assertLessEqual(widget.winfo_y()+widget.winfo_height(),frame.winfo_height()+2)
+        self.assertFalse(self.errors)

@@ -28,77 +28,66 @@ def split(master,key,orient='horizontal'):
 
 
 def flow_toolbar(frame):
-    """Wrap related controls onto another row when the available width shrinks."""
+    """Wrap direct children without nested geometry masters or resize cycles."""
     root=frame.winfo_toplevel()
     controls=[w for w in frame.winfo_children() if w.winfo_manager() in ('grid','pack')]
     for widget in controls:
+        if widget.winfo_manager()=='pack':widget.pack_forget()
+        else:widget.grid_forget()
         if isinstance(widget,ctk.CTkButton):
             font=widget.cget('font')
             if isinstance(font,ctk.CTkFont):
-                if font.cget('size')<13:font.configure(size=13)
                 widget.configure(width=max(widget.cget('width'),font.measure(widget.cget('text'))+28))
-    columns=frame.grid_size()[0]
-    for col in range(columns):frame.grid_columnconfigure(col,weight=0,minsize=0)
-    frame.grid_columnconfigure(0,weight=1)
-    groups=[]
-    index=0
+    groups=[];index=0
     while index<len(controls):
-        group=ctk.CTkFrame(frame,fg_color='transparent',corner_radius=0)
-        related=[controls[index]]
-        if (isinstance(controls[index],ctk.CTkLabel) and index+1<len(controls)
-                and isinstance(controls[index+1],(ctk.CTkComboBox,ctk.CTkEntry))):
-            related.append(controls[index+1]);index+=1
-        for col,widget in enumerate(related):
-            if widget.winfo_manager()=='pack':widget.pack_forget()
-            else:widget.grid_forget()
-            widget.grid(in_=group,row=0,column=col,padx=4,pady=3,sticky='w')
-            widget.lift()
+        group=[controls[index]]
+        if isinstance(controls[index],ctk.CTkLabel) and index+1<len(controls) and isinstance(controls[index+1],(ctk.CTkComboBox,ctk.CTkEntry)):
+            group.append(controls[index+1]);index+=1
         groups.append(group);index+=1
-    rows=[];last=None;timer=None
+    natural={w:max(float(w.cget('width')),w.winfo_reqwidth()/pixel_scale(w)) for w in controls}
+    timer=None;last=None
     def arrange():
-        nonlocal last,timer
+        nonlocal timer,last
         timer=None
-        if getattr(root,'_closing_ui',False) or not frame.winfo_exists():return
-        available=max(160,frame.winfo_width()-12)
-        lines=[];line=[];used=0
+        if getattr(root,'_closing_ui',False) or not frame.winfo_exists() or frame.winfo_width()<2:return
+        scale=pixel_scale(frame);available=max(100,frame.winfo_width()/scale-12)
+        x=6;y=6;row_height=0;layout=[]
         for group in groups:
-            width=group.winfo_reqwidth()+8
-            if line and used+width>available:lines.append(line);line=[];used=0
-            line.append(group);used+=width
-        if line:lines.append(line)
-        layout=tuple(tuple(str(g) for g in line) for line in lines)
-        if layout==last:return
-        last=layout
-        while len(rows)<len(lines):
-            rows.append(ctk.CTkFrame(frame,fg_color='transparent',corner_radius=0))
-        for row in rows:row.grid_remove()
-        for index,line in enumerate(lines):
-            host=rows[index];host.grid(row=index,column=0,sticky='w')
-            for col,group in enumerate(line):
-                group.grid(in_=host,row=0,column=col,padx=2,pady=1,sticky='w')
-                group.lift()
-        for widget in controls:widget.lift()
+            widths=[max(natural[w],w.winfo_reqwidth()/scale) for w in group]
+            width=sum(widths)+10*(len(group)-1)
+            if x>6 and x+width>available:y+=row_height+8;x=6;row_height=0
+            if width>available-6 and isinstance(group[-1],(ctk.CTkComboBox,ctk.CTkEntry)):
+                widths[-1]=max(70,available-6-sum(widths[:-1])-10*(len(group)-1))
+            for widget,width in zip(group,widths):
+                height=max(28,widget.winfo_reqheight()/scale)
+                layout.append((widget,x,y,width));row_height=max(row_height,height);x+=width+10
+        height=y+row_height+6
+        key=tuple((str(w),round(x),round(y),round(width)) for w,x,y,width in layout)+(round(height),)
+        if key==last:return
+        last=key
+        # Each row has its own positions. Shared grid columns would force narrow
+        # rows to inherit the widths of unrelated controls on other rows.
+        frame.configure(height=height)
+        for widget,x,y,width in layout:
+            if isinstance(widget,(ctk.CTkComboBox,ctk.CTkEntry)) and abs(float(widget.cget('width'))-width)>1:widget.configure(width=width)
+            widget.place(x=x,y=y)
     def changed(event=None):
         nonlocal timer
         if getattr(root,'_closing_ui',False):return
         if timer:frame.after_cancel(timer)
-        timer=frame.after(80,arrange)
+        timer=frame.after(60,arrange)
     def cleanup(event):
-        nonlocal timer
         if event.widget is frame and timer:
             try:frame.after_cancel(timer)
             except tk.TclError:pass
-            timer=None
-    frame.bind('<Configure>',changed,add='+')
-    frame.bind('<Destroy>',cleanup,add='+')
-    changed()
+    frame.bind('<Configure>',changed,add='+');tk.Misc.bind(frame,'<Destroy>',cleanup,add='+');changed()
     return frame
 
 
 class PageBook(ctk.CTkFrame):
     """Collapsible icon navigation; page IDs remain compatible with saved workflows."""
     ITEMS={
-        'Config. Cursos':('Cursos','courses'), 'Estudiantes':('Estudiantes','students'),
+        'Config. Cursos':('Configuración','settings'), 'Estudiantes':('Estudiantes','students'),
         'Crear Actividad':('Actividades','activity'), 'Ingresar Calificativos':('Calificaciones','grades'),
         'Buscador':('Buscar','search'), 'Porcentajes de Actividades':('Ponderaciones','weights'),
         'Matriz General':('Matriz','matrix'), 'Estadísticas':('Estadísticas','stats'),
@@ -152,6 +141,8 @@ class PageBook(ctk.CTkFrame):
                              image=icon(self.ITEMS[title][1],active=selected,master=self),
                              text_color='#ffffff' if selected else ('#334155','#e2e8f0'))
         if self.expanded and self.winfo_width()/pixel_scale(self)<1000:self.set_expanded(False)
+        root=self.winfo_toplevel()
+        if hasattr(root,'tabview') and hasattr(root,'al_mostrar_pagina'):root.al_mostrar_pagina(name)
 
     def get(self):return self._current
     def tab(self,name):return self._pages[name]

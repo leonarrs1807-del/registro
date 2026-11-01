@@ -162,3 +162,33 @@ class InstrumentWorkbookTests(unittest.TestCase):
         self.assertEqual(decorated[FINAL]['A1'].value,'Código')
         self.assertEqual(self.apply(decorated),(1,1))
         self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(16.0,)])
+
+    def test_human_headers_level_answers_and_stable_criteria_round_trip(self):
+        from evaluacion_datos import get_answers
+        wb=self.model(indicators=[(self.cap,'Explica',6),(self.cap,'Comprueba',14)])
+        identities=[i['id'] for i in db.obtener_indicadores_instrumento_sesion(self.session,self.path)]
+        self.assertNotIn('CAP_ID',wb[FINAL]['D1'].value);self.assertNotIn('IND_ID',wb[RAW]['D1'].value)
+        self.assertTrue(wb[IND].column_dimensions['A'].hidden);self.assertTrue(wb[IND].column_dimensions['I'].hidden)
+        wb[RAW]['D2']='A';wb[RAW]['E2']='AD';wb[IND]['C4']='Explica y sustenta'
+        self.assertEqual(self.apply(wb),(2,1))
+        self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(18.65,)])
+        self.assertEqual(get_answers(self.session,self.path),{(self.student,identities[0]):'A',(self.student,identities[1]):'AD'})
+        self.assertEqual([i['id'] for i in db.obtener_indicadores_instrumento_sesion(self.session,self.path)],identities)
+
+    def test_modified_visible_column_mapping_is_rejected_atomically(self):
+        wb=self.model(indicators=[(self.cap,'Explica',6),(self.cap,'Comprueba',14)])
+        wb[RAW]['D1'],wb[RAW]['E1']=wb[RAW]['E1'].value,wb[RAW]['D1'].value
+        wb[RAW]['D2']='AD';wb[RAW]['E2']='A'
+        with self.assertRaisesRegex(ValueError,'encabezados'):self.apply(wb)
+        self.assertFalse(self.read('SELECT nota FROM Notas_Sesion_Capacidad'))
+
+    def test_legacy_version_two_still_imports_numeric_answers(self):
+        wb=self.model()
+        for row in wb[META]:
+            if row[0].value=='version':row[1].value=2
+        wb[FINAL]['D1']=f'Capacidad\n[CAP_ID:{self.cap}]'
+        identity=wb[IND]['I4'].value
+        wb[RAW]['D1']=f'Explica\n[IND_ID:{identity}] [CAP_ID:{self.cap}]'
+        wb[RAW]['D2']=13.25
+        self.assertEqual(self.apply(wb),(1,1))
+        self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(13.25,)])

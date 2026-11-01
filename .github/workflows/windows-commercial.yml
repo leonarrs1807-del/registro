@@ -30,3 +30,11 @@ jobs:
     uses: ./.github/workflows/windows-build.yml
     with:
       edition: comercial
+  owner-review:
+    name: Revisión Windows para Leonardo (clave comercial pendiente)
+    needs: public-key
+    if: needs.public-key.outputs.ready == 'false'
+    uses: ./.github/workflows/windows-build.yml
+    with:
+      edition: personal
+      review: true

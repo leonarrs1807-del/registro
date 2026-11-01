@@ -59,7 +59,7 @@ class CompactTools:
         Tooltip(self.combo_seccion_global,'Sección')
         action(6,'save','Guardar documento .registro · Ctrl+S',self.guardar_documento)
         self.btn_candado=action(7,'lock',lambda:'Bloquear edición' if self.edicion_desbloqueada else 'Desbloquear edición',self.alternar_candado)
-        self._header_more=action(8,'more','Docente, apariencia y otras opciones',self.menu_cabecera)
+        self._header_more=action(8,'settings','Configuración',self.abrir_configuracion)
         self.lbl_docente_info=ctk.CTkLabel(self.barra_top,text='')  # Profile is shown in the menu.
         self.barra_top.bind('<Configure>',self._ajustar_cabecera,add='+')
         self.bind('<Control-b>',lambda e:self.tabview.toggle())
@@ -75,34 +75,12 @@ class CompactTools:
         if abs(self.combo_curso_global.cget('width')-desired)>3:self.combo_curso_global.configure(width=desired)
 
     def menu_cabecera(self):
-        import db
-        from main import TEMAS_INTERFAZ
-        menu=tk.Menu(self,tearoff=False)
-        menu.add_command(label=db.obtener_docente_config()['nombres_docente'],state='disabled')
-        menu.add_command(label='Configurar docente…',command=self.editar_perfil_docente)
-        levels=tk.Menu(menu,tearoff=False)
-        for level in ('Primaria','Secundaria'):levels.add_command(label=level,command=lambda n=level:self.cambiar_nivel(n))
-        menu.add_cascade(label='Nivel educativo',menu=levels)
-        themes=tk.Menu(menu,tearoff=False)
-        for theme in TEMAS_INTERFAZ:themes.add_command(label=theme,command=lambda n=theme:self.cambiar_interfaz_visual(n))
-        menu.add_cascade(label='Apariencia',menu=themes)
-        menu.add_command(label='Restablecer vista',command=self.restaurar_vista)
-        menu.add_command(label='Administrar cursos…',command=self.activar_dev_mode)
-        menu.add_separator();menu.add_command(label='Instrucciones · F1',command=self.abrir_instrucciones)
-        self.fuentes_menu(menu)
-        menu.tk_popup(self._header_more.winfo_rootx(),self._header_more.winfo_rooty()+self._header_more.winfo_height())
+        self.abrir_configuracion()
 
     def detalles_calificacion(self):
-        activity=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
-        if not activity:return
-        lines=[activity['titulo_tema'],f"{activity['categoria']} · Peso: {self.calif_entry_peso.get()}",
-               '\nCompetencia: '+activity['competencia_nombre']]
-        if activity['proposito']:lines.append('\nDescripción: '+activity['proposito'])
-        for i,cap in enumerate(activity['capacidades'],1):
-            lines.append(f"\nCap. {i}: {cap['capacidad_nombre']}\n{cap.get('criterio_precisado','')}")
-        reference=self.caja_ref_rubrica.get('1.0','end').strip()
-        if reference:lines.append('\nIndicadores\n'+reference)
-        self._texto_emergente('Detalles de la actividad','\n'.join(lines))
+        if not self.id_actividad_calificando:return
+        from instrument_design import InstrumentView
+        return InstrumentView(self,self.id_actividad_calificando)
 
     def _texto_emergente(self,title,text,save=None):
         window=SafeDialog(self);window.title(title)
@@ -123,15 +101,6 @@ class CompactTools:
             widget.delete('1.0','end');widget.insert('1.0',value)
             self._formularios_pendientes.add(str(self.tab_crear))
         self._texto_emergente(title,widget.get('1.0','end').strip(),save)
-
-    def menu_instrumento_actividad(self,button):
-        menu=tk.Menu(self,tearoff=False)
-        menu.add_command(label='Descripción…',command=lambda:self.editar_texto_actividad(self.crear_txt_proposito,'Descripción de la actividad'))
-        menu.add_separator()
-        menu.add_command(label='Plantilla de rúbrica…',command=lambda:self.accion_exportar_plantilla_instrumento('Rúbrica'))
-        menu.add_command(label='Plantilla de cotejo…',command=lambda:self.accion_exportar_plantilla_instrumento('Lista de Cotejo'))
-        menu.add_command(label='Importar instrumento…',command=self.accion_importar_rubrica_cotejo_excel)
-        self.fuentes_menu(menu);menu.tk_popup(button.winfo_rootx(),button.winfo_rooty()+button.winfo_height())
 
     def menu_calificacion(self,button):
         menu=tk.Menu(self,tearoff=False)

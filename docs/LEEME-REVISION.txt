@@ -1,0 +1,16 @@
+REGISTRO DOCENTE 1.7 - REVISION PARA LEONARDO ROQUE
+
+Este paquete permite revisar el nuevo diseño y sus cálculos en Windows.
+Es una compilación personal para el propietario, sin activación comercial.
+Todavía no es el instalador para vender a los clientes.
+
+La edición comercial definitiva requiere license_public_key.pem, generado
+por Leonardo en su computadora con RegistroLicencias. Nunca comparta
+registro_privada.pem ni su contraseña.
+
+Extraiga el ZIP completo. Puede instalar RegistroDocente-Setup.exe o abrir
+dist/RegistroDocente/RegistroDocente.exe con todos sus archivos al lado.
+GUIA-USO.txt explica las nuevas pantallas de evaluación y configuración.
+
+El paquete RegistroLicencias-SoloVendedor se descarga por separado.
+No lo entregue a los compradores.

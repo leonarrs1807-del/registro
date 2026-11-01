@@ -65,6 +65,7 @@ def scroll_area(master, scrollbar_width=22, auto_hide=False, horizontal=False, m
         canvas.yview_scroll(-int(event.delta/120) if event.delta else (-1 if event.num==4 else 1),'units')
         return 'break'
     def bind_children(widget):
+        if isinstance(widget,tk.Text):return
         widget.bind('<MouseWheel>',wheel,add='+')
         widget.bind('<Button-4>',wheel,add='+');widget.bind('<Button-5>',wheel,add='+')
         for child in widget.winfo_children():bind_children(child)
@@ -73,7 +74,7 @@ def scroll_area(master, scrollbar_width=22, auto_hide=False, horizontal=False, m
         if event.widget is inner:
             try:inner.after_cancel(wheel_job)
             except tk.TclError:pass
-    inner.bind('<Destroy>',cleanup,add='+')
+    tk.Misc.bind(inner,'<Destroy>',cleanup,add='+')
     return inner
 
 
@@ -133,4 +134,6 @@ def wrap_label(label):
             try:label.after_cancel(pending)
             except tk.TclError:pass
             label._wrap_job=None
-    label.bind('<Destroy>',cleanup,add='+')
+    # CTkLabel.bind targets its internal text label, whose event.widget differs.
+    # Listen to the actual outer widget so its delayed wrap is always cancelled.
+    tk.Misc.bind(label,'<Destroy>',cleanup,add='+')

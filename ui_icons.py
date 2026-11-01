@@ -36,6 +36,11 @@ def _draw(name, color):
         line([(32,34),(32,39)]);d.ellipse((30,45,34,49),fill=color)
     elif name=='save':
         box((11,10,53,54));box((21,11,43,27));box((21,37,43,53))
+    elif name=='settings':
+        import math
+        d.ellipse((17,17,47,47),outline=color,width=4);d.ellipse((25,25,39,39),outline=color,width=4)
+        for i in range(8):
+            a=i*math.pi/4;line([(32+15*math.cos(a),32+15*math.sin(a)),(32+23*math.cos(a),32+23*math.sin(a))])
     elif name=='more':
         for x in (15,32,49):d.ellipse((x-3,29,x+3,35),fill=color)
     elif name in ('lock','unlock'):

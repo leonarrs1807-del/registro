@@ -867,55 +867,15 @@ def importar_estudiantes_desde_excel(
 # ==============================================================================
 
 
-def obtener_indicadores_instrumento_sesion(
-    sesion_id: int, db_path: Path = DB_PATH
-) -> List[Dict[str, Any]]:
-    with obtener_conexion(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            """
-            SELECT ii.*, cap.nombre AS capacidad_nombre
-            FROM Instrumento_Indicadores ii
-            JOIN Capacidades cap ON ii.capacidad_id = cap.id
-            WHERE ii.sesion_id = ?
-            ORDER BY ii.capacidad_id ASC, ii.id ASC
-            """,
-            (sesion_id,),
-        ).fetchall()
-        return [dict(r) for r in rows]
+def obtener_indicadores_instrumento_sesion(sesion_id:int,db_path:Path=DB_PATH):
+    from evaluacion_datos import get_indicators
+    return get_indicators(sesion_id,db_path)
 
 
-def guardar_indicadores_instrumento_sesion(
-    sesion_id: int,
-    tipo_instrumento: str,
-    lista_indicadores: List[Tuple[int, str, float]],
-    db_path: Path = DB_PATH,
-) -> None:
-    """
-    Guarda los indicadores de Lista de Cotejo o Rúbrica para una actividad (`sesion_id`).
-    `lista_indicadores`: tuplas `(capacidad_id, indicador_texto, puntaje_maximo)`.
-    """
-    from instrumentos import instrument_kind
-    tipo_instrumento=instrument_kind(tipo_instrumento)
-    with obtener_conexion(db_path) as conn:
-        cur = conn.cursor()
-        allowed = {r[0] for r in cur.execute("SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?", (sesion_id,))}
-        for cap_id, text, maximum in lista_indicadores:
-            if cap_id not in allowed or not text.strip():
-                raise ValueError("Indicador sin texto o con capacidad ajena a la sesión.")
-            valid_number(maximum, 0.000001, 20, "Puntaje máximo")
-        cur.execute("UPDATE Sesiones_Clase SET tipo_instrumento = ? WHERE id = ?", (tipo_instrumento, sesion_id))
-        cur.execute("DELETE FROM Instrumento_Indicadores WHERE sesion_id = ?", (sesion_id,))
-        for cap_id, texto_ind, p_max in lista_indicadores:
-            if texto_ind.strip():
-                cur.execute(
-                    """
-                    INSERT INTO Instrumento_Indicadores (sesion_id, capacidad_id, tipo, indicador_texto, puntaje_maximo)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (sesion_id, cap_id, tipo_instrumento, texto_ind.strip(), float(p_max)),
-                )
-        conn.commit()
+@atomic
+def guardar_indicadores_instrumento_sesion(sesion_id,tipo_instrumento,lista_indicadores,db_path=DB_PATH):
+    from evaluacion_datos import save_indicators
+    return save_indicators(sesion_id,tipo_instrumento,lista_indicadores,db_path)
 
 
 def exportar_plantilla_rubrica_o_cotejo_excel(
@@ -996,8 +956,9 @@ def crear_o_actualizar_sesion_clase(
             if not previous:
                 raise ValueError("La sesión ya no existe.")
             evaluated = {r[0] for r in cur.execute("SELECT DISTINCT capacidad_id FROM Notas_Sesion_Capacidad WHERE sesion_id=? AND nota IS NOT NULL", (sid,))}
+            evaluated.update(r[0] for r in cur.execute("SELECT DISTINCT i.capacidad_id FROM Instrumento_Respuestas r JOIN Instrumento_Indicadores i ON i.id=r.indicador_id WHERE r.sesion_id=?",(sid,)))
             if evaluated and (tuple(previous) != (curso_id, competencia_id, grado.strip(), seccion.strip().upper()) or not evaluated <= {c[0] for c in capacidades_y_criterios}):
-                raise ValueError("La sesión tiene notas. No cambie su salón, competencia ni elimine capacidades calificadas; cree una nueva sesión.")
+                raise ValueError("La sesión tiene notas o respuestas de criterios. No cambie su salón, competencia ni elimine capacidades calificadas; cree una nueva sesión.")
             cur.execute(
                 """
                 UPDATE Sesiones_Clase
@@ -1077,18 +1038,13 @@ def obtener_sesiones_clase(
     with obtener_conexion(db_path) as conn:
         conn.row_factory = sqlite3.Row
         sesiones = [dict(r) for r in conn.execute(query, params).fetchall()]
-        for s in sesiones:
-            caps = conn.execute(
-                """
-                SELECT sc.capacidad_id, cap.nombre AS capacidad_nombre, sc.criterio_precisado
-                FROM Sesion_Capacidades sc
-                JOIN Capacidades cap ON sc.capacidad_id = cap.id
-                WHERE sc.sesion_id = ?
-                ORDER BY sc.capacidad_id ASC
-                """,
-                (s["id"],),
-            ).fetchall()
-            s["capacidades"] = [dict(c) for c in caps]
+        by_id={s['id']:s for s in sesiones}
+        for s in sesiones:s['capacidades']=[]
+        caps=conn.execute(f"""SELECT sc.sesion_id,sc.capacidad_id,cap.nombre AS capacidad_nombre,sc.criterio_precisado
+            FROM Sesion_Capacidades sc JOIN Capacidades cap ON cap.id=sc.capacidad_id
+            JOIN ({query}) selected ON selected.id=sc.sesion_id ORDER BY sc.sesion_id,sc.capacidad_id""",params).fetchall()
+        for row in caps:
+            value=dict(row);session=value.pop('sesion_id');by_id[session]['capacidades'].append(value)
         return sesiones
 
 
@@ -1098,11 +1054,16 @@ def guardar_calificaciones_y_asistencia_sesion(
     datos_estudiantes: List[Dict[str, Any]],
     db_path: Path = DB_PATH,
     nuevo_peso: Optional[float] = None,
+    nuevo_instrumento=None,
 ) -> None:
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
         if nuevo_peso is not None:
             actualizar_peso_actividad(sesion_id, nuevo_peso, db_path)
+        if nuevo_instrumento is not None:
+            from instrumentos import instrument_kind
+            kind='Normal' if nuevo_instrumento=='Nota directa' else instrument_kind(nuevo_instrumento)
+            cur.execute('UPDATE Sesiones_Clase SET tipo_instrumento=? WHERE id=?',(kind,sesion_id))
         session = cur.execute("SELECT grado, seccion FROM Sesiones_Clase WHERE id=?", (sesion_id,)).fetchone()
         if not session:
             raise ValueError("La sesión no existe.")
@@ -1144,6 +1105,11 @@ def guardar_calificaciones_y_asistencia_sesion(
                     """,
                     (sesion_id, cap_id, est_id, nota_val),
                 )
+        answers=[dict(estudiante_id=item['estudiante_id'],indicador_id=int(identity),respuesta=value)
+                 for item in datos_estudiantes for identity,value in item.get('respuestas_instrumento',{}).items()]
+        if answers:
+            from evaluacion_datos import save_answers
+            save_answers(sesion_id,answers,db_path)
         conn.commit()
 
 
@@ -1474,11 +1440,8 @@ def calcular_matriz_competencias_y_capacidades(
         manuales_map: Dict[Tuple[int, int], float] = {(r[0], r[1]): float(r[2]) for r in manuales_rows}
 
     def _prom_lista(pares: List[Tuple[float, float]]) -> Optional[float]:
-        if not pares:
-            return None
-        sp = sum(n * w for n, w in pares)
-        sw = sum(w for _, w in pares)
-        return round(sp / sw, 2) if sw > 0 else None
+        from calculos import weighted_average
+        return weighted_average(pares)
 
     filas_matriz: List[Dict[str, Any]] = []
     for est in estudiantes:
@@ -1488,6 +1451,7 @@ def calcular_matriz_competencias_y_capacidades(
         notas_competencia: Dict[int, Optional[float]] = {}
         faltan_capacidades = 0
 
+        from calculos import rounded,weighted_average
         for comp in estructura_comp:
             cid = comp["competencia_id"]
             valores_caps_de_comp: List[float] = []
@@ -1495,26 +1459,24 @@ def calcular_matriz_competencias_y_capacidades(
             for cap in comp["capacidades"]:
                 cap_id = cap["capacidad_id"]
                 if (est_id, cap_id) in manuales_map:
-                    val_man = round(manuales_map[(est_id, cap_id)], 2)
+                    val_man = rounded(manuales_map[(est_id, cap_id)])
                     notas_capacidad[cap_id] = val_man
                     es_manual_cap[cap_id] = True
                     valores_caps_de_comp.append(val_man)
                     continue
 
                 es_manual_cap[cap_id] = False
-                suma_rubros = 0.0
-                suma_pct = 0.0
+                rubric_averages=[]
 
                 for rubro_key in ("Clases", "Exámenes", "Trabajos", "Prácticas / Otros"):
                     prom_r = _prom_lista(notas_por_cat_cap.get((est_id, cap_id, rubro_key), []))
                     if prom_r is not None:
                         pct = float(pesos_rubros.get(rubro_key, 0.0))
                         if pct > 0:
-                            suma_rubros += prom_r * pct
-                            suma_pct += pct
+                            rubric_averages.append((prom_r,pct))
 
-                if suma_pct > 0:
-                    nota_final_cap = round(suma_rubros / suma_pct, 2)
+                nota_final_cap=weighted_average(rubric_averages)
+                if nota_final_cap is not None:
                     notas_capacidad[cap_id] = nota_final_cap
                     valores_caps_de_comp.append(nota_final_cap)
                 else:
@@ -1522,13 +1484,13 @@ def calcular_matriz_competencias_y_capacidades(
                     faltan_capacidades += 1
 
             if valores_caps_de_comp:
-                notas_competencia[cid] = round(sum(valores_caps_de_comp) / len(valores_caps_de_comp), 2)
+                notas_competencia[cid] = weighted_average([(v,1) for v in valores_caps_de_comp])
             else:
                 notas_competencia[cid] = None
 
         vals_comp_validos = [v for v in notas_competencia.values() if v is not None]
         promedio_general = (
-            round(sum(vals_comp_validos) / len(vals_comp_validos), 2) if vals_comp_validos else None
+            weighted_average([(v,1) for v in vals_comp_validos])
         )
 
         filas_matriz.append(
@@ -1686,6 +1648,7 @@ def exportar_matriz_completa_excel(
             fila["seccion"],
             fila["estado"],
         ]
+        from calculos import rounded,weighted_average
         for comp in estructura_comp:
             cid = comp["competencia_id"]
             for cap in comp["capacidades"]:
@@ -1946,10 +1909,9 @@ def obtener_historial_vertical_estudiantes(
             
             promedio = ""
             if notas_arr:
-                notas_num = [float(n.split(": ")[1]) for n in notas_arr if n.split(": ")[1] != "--"]
-                if notas_num:
-                    prom = sum(notas_num)/len(notas_num)
-                    promedio = f"{prom:.1f}"
+                from calculos import weighted_average
+                values=[d['nota'] for d in notas_detalle.get((eid,sid),[]) if d['nota'] is not None]
+                if values:promedio=f"{weighted_average([(v,1) for v in values]):.2f}"
             
             if True:
                 filas.append({
