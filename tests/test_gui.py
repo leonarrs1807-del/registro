@@ -207,6 +207,17 @@ class DesktopTests(unittest.TestCase):
         self.assertLessEqual(save.winfo_rootx()+save.winfo_width(),self.app.winfo_rootx()+self.app.winfo_width())
         self.assertFalse(self.errors)
 
+    def test_default_window_fits_small_screen_with_two_hundred_percent_dpi(self):
+        from vista import ViewTools
+        from types import SimpleNamespace
+        sizes=[]
+        screen=SimpleNamespace(_get_window_scaling=lambda:2,winfo_screenwidth=lambda:1366,winfo_screenheight=lambda:768,
+                               minsize=lambda *size:None,geometry=lambda value:sizes.append(value))
+        ViewTools.ajustar_pantalla(screen,reset=True)
+        width,height=map(int,sizes[0].split('+')[0].split('x'))
+        self.assertLessEqual(width*2,1366)
+        self.assertLessEqual(height*2,768)
+
     def test_signup_creates_local_account_and_selects_only_demo_course(self):
         from licencias import OfflineLicensing,course_key
         from licencias_ui import AccountDialog

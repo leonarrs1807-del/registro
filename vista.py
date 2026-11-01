@@ -12,8 +12,8 @@ import app_storage as storage
 class ViewTools:
     def ajustar_pantalla(self,reset=False):
         scale=self._get_window_scaling()
-        width=max(500,int(self.winfo_screenwidth()/scale*.95))
-        height=max(420,int(self.winfo_screenheight()/scale*.88))
+        width=max(320,int(self.winfo_screenwidth()/scale*.95))
+        height=max(240,int(self.winfo_screenheight()/scale*.88))
         self.minsize(min(800,width),min(520,height))
         if reset or not getattr(self,'_geometry_restored',False):self.geometry(f'{min(1420,width)}x{min(850,height)}+0+0')
 
