@@ -16,6 +16,8 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements-build.txt
       - run: python tools/run_tests.py
+        env:
+          PYTHONUTF8: '1'
       - run: python -m PyInstaller --noconfirm RegistroDocente.spec
       - name: Verify real executable and legacy migration
         run: python tools/smoke_windows.py dist/RegistroDocente/RegistroDocente.exe
