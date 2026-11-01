@@ -2,7 +2,13 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any, Dict, List, Optional, Tuple
 import customtkinter as ctk
-import tksheet
+import logging
+from pathlib import Path
+import app_storage
+from app_security import verify_license, license_public_key
+from db_safety import valid_number
+from desktop_ui import DesktopTools
+from db import actualizar_pesos_actividades
 
 from db import (
     actualizar_datos_estudiante,
@@ -172,8 +178,8 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         ctk.CTkLabel(f_cred, text="Contraseña / PIN:", font=ctk.CTkFont(weight="bold")).grid(
             row=0, column=1, sticky="w"
         )
-        self.ent_clave = ctk.CTkEntry(f_cred)
-        self.ent_clave.insert(0, cfg["clave"])
+        self.ent_clave = ctk.CTkEntry(f_cred, show="*")
+        self.ent_clave.configure(placeholder_text="Nueva clave (vacío: conservar)")
         self.ent_clave.grid(row=1, column=1, padx=(6, 0), sticky="ew")
 
         ctk.CTkButton(
@@ -191,9 +197,12 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         inst = self.ent_institucion.get().strip() or "I.E."
         esp = self.ent_esp.get().strip() or "Secundaria"
         usr = self.ent_usuario.get().strip() or "docente"
-        clv = self.ent_clave.get().strip() or "1234"
-
-        guardar_docente_config(nom, inst, esp, usr, clv)
+        clv = self.ent_clave.get()
+        try:
+            guardar_docente_config(nom, inst, esp, usr, clv)
+        except ValueError as exc:
+            messagebox.showwarning("Contraseña", str(exc), parent=self)
+            return
         self.app.edicion_desbloqueada = True
         self.app.actualizar_visual_candado_y_docente()
         messagebox.showinfo("Perfil Guardado", f"Datos actualizados.\nUsuario activo: {usr}")
@@ -248,9 +257,12 @@ class DialogoDesbloquearCandado(ctk.CTkToplevel):
 
     def _intentar_desbloqueo(self) -> None:
         if verificar_credenciales_docente(self.ent_usr.get(), self.ent_clv.get()):
-            self.app.edicion_desbloqueada = True
-            self.app.actualizar_visual_candado_y_docente()
             self.destroy()
+            if obtener_docente_config().get("requiere_cambio_clave"):
+                DialogoPerfilDocente(self.app)
+            else:
+                self.app.edicion_desbloqueada = True
+                self.app.actualizar_visual_candado_y_docente()
         else:
             messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
 
@@ -288,9 +300,13 @@ class DialogoEditarInstrumento(ctk.CTkToplevel):
         for ind, ent in self.entries:
             nuevos.append((ind['capacidad_id'], ent.get(), ind['puntaje_maximo']))
         from db import guardar_indicadores_instrumento_sesion
-        guardar_indicadores_instrumento_sesion(self.sesion_id, tipo, nuevos)
-        self.callback()
+        try:
+            guardar_indicadores_instrumento_sesion(self.sesion_id, tipo, nuevos)
+        except ValueError as exc:
+            messagebox.showwarning("Criterios", str(exc), parent=self)
+            return
         self.destroy()
+        self.callback()
 
 class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
     def __init__(
@@ -363,7 +379,7 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
                 if "brica" in tipo_inst:
                     ent = ctk.CTkEntry(f_matriz, width=60, justify="center")
                     ent.grid(row=row, column=col, padx=5, pady=2)
-                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "ent": ent, "tipo": "R"})
+                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "ent": ent, "tipo": "R", "maximo": ind["puntaje_maximo"]})
                 else:
                     cmb = ctk.CTkComboBox(f_matriz, values=["Sobresale (18)", "Logra (15)", "Proceso (12)", "No logra (08)", "No hace (05)"], width=130)
                     cmb.set("Logra (15)")
@@ -380,7 +396,7 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
                             c._entry.bind("<KeyPress>", _on_k)
                             c._entry.bind("<KeyRelease>", _on_k)
                     bind_key()
-                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "cmb": cmb, "tipo": "C"})
+                    self.controles[est_id].append({"cap_id": ind["capacidad_id"], "cmb": cmb, "tipo": "C", "maximo": ind["puntaje_maximo"]})
 
         f_bot = ctk.CTkFrame(self, fg_color="transparent")
         f_bot.pack(padx=16, pady=10, fill="x")
@@ -396,41 +412,55 @@ class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
             command=self._aplicar_calculo,
         ).pack(side="right", padx=4)
 
+    def abrir_editor(self):
+        if not self.app.verificar_permiso_edicion():
+            return
+        def reload():
+            self.destroy()
+            DialogoEvaluarInstrumentoMasivo(self.app, self.sesion, self.filas_estudiantes, self.tipo_inst)
+        DialogoEditarInstrumento(self, self.sesion["id"], self.indicadores_db, reload)
+
     def _aplicar_calculo(self) -> None:
-        for fila_est in self.filas_estudiantes:
-            est_id = fila_est.get("id_db") or fila_est.get("estudiante_id")
-            conts = self.controles.get(est_id, [])
-            notas_cap = {}
-            for c in conts:
-                if c["tipo"] == "R":
-                    try:
-                        val = float(c["ent"].get().strip())
-                    except ValueError:
-                        val = 0.0
-                else:
-                    v = c["cmb"].get()
-                    if "18" in v: val = 18.0
-                    elif "15" in v: val = 15.0
-                    elif "12" in v: val = 12.0
-                    elif "08" in v: val = 8.0
-                    else: val = 5.0
-                notas_cap.setdefault(c["cap_id"], []).append(val)
-                
-            for cap_id, lista in notas_cap.items():
-                if self.tipo_inst == "Rúbrica":
-                    prom_cap = round(sum(lista), 1)
-                    if prom_cap > 20: prom_cap = 20.0
-                else:
-                    if lista: prom_cap = round(sum(lista)/len(lista), 1)
-                    else: prom_cap = 0.0
-                ent = fila_est["entries_capacidad"].get(cap_id)
-                if ent is not None:
-                    ent.delete(0, "end")
-                    ent.insert(0, f"{prom_cap:.1f}".rstrip("0").rstrip("."))
-                    ent.event_generate("<KeyRelease>")
-
+        if not self.app.verificar_permiso_edicion():
+            return
+        calculated = {}
+        try:
+            for student in self.filas_estudiantes:
+                est_id = student.get("ID") or student.get("id_db") or student.get("estudiante_id")
+                by_cap = {}
+                for control in self.controles.get(est_id, []):
+                    if control["tipo"] == "R":
+                        raw = control["ent"].get().strip()
+                        if not raw:
+                            raise ValueError("Complete todos los indicadores; un campo vacío no equivale a cero.")
+                        value = valid_number(raw, 0, control["maximo"], "Puntaje del indicador")
+                    else:
+                        options = {"Sobresale (18)": 18, "Logra (15)": 15, "Proceso (12)": 12, "No logra (08)": 8, "No hace (05)": 5}
+                        text = control["cmb"].get()
+                        if text not in options:
+                            raise ValueError("Seleccione un nivel válido para cada indicador.")
+                        value = options[text]
+                    by_cap.setdefault(control["cap_id"], []).append((value, control["maximo"]))
+                for cap_id, values in by_cap.items():
+                    if self.tipo_inst == "Rúbrica":
+                        # Normalize by the total maximum instead of clipping totals at 20.
+                        grade = 20 * sum(v for v, _ in values) / sum(m for _, m in values)
+                    else:
+                        grade = sum(v for v, _ in values) / len(values)
+                    calculated[(est_id, cap_id)] = round(grade, 1)
+        except ValueError as exc:
+            messagebox.showwarning("Evaluación incompleta", str(exc), parent=self)
+            return
+        tree = self.app.planilla_nativa
+        for item in tree.get_children():
+            row = list(tree.item(item, "values"))
+            for index, cap in enumerate(self.sesion["capacidades"], 4):
+                key = (int(row[0]), cap["capacidad_id"])
+                if key in calculated:
+                    row[index] = str(calculated[key])
+            tree.item(item, values=row)
+        self.app.marcar_planilla_pendiente()
         self.destroy()
-
 
 
 class PlanillaNativaTreeview(ttk.Treeview):
@@ -461,6 +491,8 @@ class PlanillaNativaTreeview(ttk.Treeview):
         return "break"
 
     def on_double_click(self, event: tk.Event) -> None:
+        if not self.winfo_toplevel().verificar_permiso_edicion():
+            return
         item = self.identify_row(event.y)
         column = self.identify_column(event.x)
         if not item or not column:
@@ -512,23 +544,25 @@ class PlanillaNativaTreeview(ttk.Treeview):
         self._entry.selection_range(0, tk.END)
 
         def save_edit(e: tk.Event = None) -> None:
+            if self._entry is None:
+                return
             new_val = self._entry.get().strip()
             if new_val:
                 try:
-                    num = float(new_val)
-                    if 0 <= num <= 20:
-                        from db import nota_a_literal
-                        lit = nota_a_literal(num)
-                        new_val = f"{num:.1f} ({lit})"
-                except:
-                    pass
+                    num = valid_number(new_val.replace(",", "."))
+                    new_val = f"{num:.1f} ({nota_a_literal(num)})"
+                except ValueError:
+                    messagebox.showwarning("Nota inválida", "Ingrese una nota entre 0 y 20.")
+                    return False
             self._update_value(item, col_index, new_val)
-            self._entry.destroy()
-            self._entry = None
+            editor, self._entry = self._entry, None
+            editor.destroy()
+            return True
 
         def cancel_edit(e: tk.Event = None) -> None:
-            self._entry.destroy()
-            self._entry = None
+            if self._entry is not None:
+                editor, self._entry = self._entry, None
+                editor.destroy()
 
         self._entry.bind("<Return>", save_edit)
         self._entry.bind("<FocusOut>", save_edit)
@@ -536,7 +570,8 @@ class PlanillaNativaTreeview(ttk.Treeview):
         
         # Add arrow up/down inside entry to save and move
         def move_up(e):
-            save_edit()
+            if not save_edit():
+                return "break"
             prev_item = self.prev(item)
             if prev_item:
                 self.selection_set(prev_item)
@@ -545,7 +580,8 @@ class PlanillaNativaTreeview(ttk.Treeview):
             return "break"
             
         def move_down(e):
-            save_edit()
+            if not save_edit():
+                return "break"
             next_item = self.next(item)
             if next_item:
                 self.selection_set(next_item)
@@ -555,7 +591,8 @@ class PlanillaNativaTreeview(ttk.Treeview):
             
         def move_left(e):
             if self._entry and self._entry.index(tk.INSERT) != 0 and e.keysym == "Left": return
-            save_edit()
+            if not save_edit():
+                return "break"
             cols = self["columns"]
             if col_index > 4: # Can move left up to Cap 1 (index 4)
                 new_col_index = col_index - 1
@@ -565,7 +602,8 @@ class PlanillaNativaTreeview(ttk.Treeview):
 
         def move_right(e):
             if self._entry and self._entry.index(tk.INSERT) != len(self._entry.get()) and e.keysym == "Right": return
-            save_edit()
+            if not save_edit():
+                return "break"
             cols = self["columns"]
             if col_index < len(cols) - 2: # Last is Comentario, don't move into it with right arrow
                 new_col_index = col_index + 1
@@ -602,7 +640,12 @@ class PlanillaNativaTreeview(ttk.Treeview):
             self._update_value(item, col_index, new_val)
             top.destroy()
 
-        btn_guardar = ctk.CTkButton(top, text="Guardar Comentario", command=save_text)
+        original_text = txt.get("1.0", "end-1c")
+        def close_text():
+            if txt.get("1.0", "end-1c") == original_text or messagebox.askyesno("Comentario sin guardar", "¿Descartar los cambios del comentario?", parent=top):
+                top.destroy()
+        top.protocol("WM_DELETE_WINDOW", close_text)
+        btn_guardar = ctk.CTkButton(top, text="Pasar comentario a planilla", command=save_text)
         btn_guardar.pack(pady=10)
 
 
@@ -651,7 +694,7 @@ class PlanillaScrollXY(ctk.CTkFrame):
         self.canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
 
 
-class VentanaPrincipal(ctk.CTk):
+class VentanaPrincipal(DesktopTools, ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
 
@@ -660,10 +703,10 @@ class VentanaPrincipal(ctk.CTk):
         self.minsize(1060, 660)
         self.dev_mode = False
 
-        self.edicion_desbloqueada: bool = True
+        self.edicion_desbloqueada: bool = False
         cfg_ini = obtener_docente_config()
         self.tema_actual_nombre: str = cfg_ini.get("tema_visual", "Oscuro Noche")
-        self.tamano_letra_actual: str = "Muy Grande (18)"
+        self.tamano_letra_actual: str = cfg_ini.get("tamano_letra", "Normal (12)")
         if self.tema_actual_nombre not in TEMAS_INTERFAZ:
             self.tema_actual_nombre = "Oscuro Noche"
 
@@ -687,6 +730,7 @@ class VentanaPrincipal(ctk.CTk):
         self.cambiar_interfaz_visual(self.tema_actual_nombre)
         self.actualizar_visual_candado_y_docente()
         self.recargar_cursos_y_contexto()
+        self.iniciar_herramientas()
 
     # ==========================================================================
     # GESTIÓN DE LAS 3 INTERFACES / TEMAS VISUALES
@@ -711,10 +755,8 @@ class VentanaPrincipal(ctk.CTk):
         estilo = ttk.Style()
         estilo.theme_use("clam")
         
-        f_size = 11 # Default base
-        r_height = 30
-        f_size = 20  # Increased size per user request
-        r_height = 46 # Increased row height
+        f_size = {"Normal (12)": 12, "Grande (15)": 15, "Muy Grande (18)": 18}.get(self.tamano_letra_actual, 12)
+        r_height = max(30, f_size * 2 + 6)
                 
         estilo.configure(
             "Treeview",
@@ -758,11 +800,16 @@ class VentanaPrincipal(ctk.CTk):
             self.canvas_graficos.configure(bg=cfg_t["bg_main"])
             self.dibujar_graficos_estadisticos()
 
+    def editar_perfil_docente(self):
+        if self.verificar_permiso_edicion():
+            DialogoPerfilDocente(self)
+
     def verificar_permiso_edicion(self) -> bool:
         if self.edicion_desbloqueada:
             return True
-        DialogoDesbloquearCandado(self)
-        return False
+        dialog = DialogoDesbloquearCandado(self)
+        self.wait_window(dialog)
+        return self.edicion_desbloqueada
 
     def alternar_candado(self) -> None:
         if self.edicion_desbloqueada:
@@ -785,8 +832,8 @@ class VentanaPrincipal(ctk.CTk):
             return
             
         import tkinter.simpledialog as simpledialog
-        pwd = simpledialog.askstring("Dev Mode", "Ingrese la clave de desarrollador:", show="*")
-        if pwd == "leonarrs03050711":
+        pwd = simpledialog.askstring("Dev Mode", "Ingrese su contraseña docente para administrar cursos:", show="*")
+        if pwd and verificar_credenciales_docente(obtener_docente_config()["usuario"], pwd):
             self.dev_mode = True
             self.btn_toggle_curso.grid()
             self.btn_eliminar_curso.grid()
@@ -925,7 +972,7 @@ class VentanaPrincipal(ctk.CTk):
             width=200,
             fg_color="#334155",
             hover_color="#475569",
-            command=lambda: DialogoPerfilDocente(self),
+            command=self.editar_perfil_docente,
         ).pack(side="left", padx=16)
 
         self.btn_candado = ctk.CTkButton(
@@ -945,6 +992,10 @@ class VentanaPrincipal(ctk.CTk):
             hover_color="#7c3aed",
             command=self.activar_dev_mode,
         ).pack(side="left", padx=8)
+        sizes = ctk.CTkComboBox(self.tab_curriculo, values=["Normal (12)", "Grande (15)", "Muy Grande (18)"],
+                               state="readonly", command=self.cambiar_tamano_letra)
+        sizes.set(self.tamano_letra_actual)
+        sizes.grid(row=1, column=2, padx=12, pady=4, sticky="e")
         # --------------------------------------------
 
         ctk.CTkLabel(
@@ -1858,6 +1909,8 @@ class VentanaPrincipal(ctk.CTk):
             return
 
         is_dash = "Dashboard" in tipo
+        if hasattr(self, "fig_actual"):
+            plt.close(self.fig_actual)
         fig = plt.figure(figsize=(12, 8) if is_dash else (10, 5), dpi=100)
         
         # Info for PDF export
@@ -1886,12 +1939,10 @@ class VentanaPrincipal(ctk.CTk):
                 
             elif "Barras" in ax_tipo:
                 notas = [float(f["promedio"]) for f in filas if f["promedio"]]
-                rangos = {"C (0-10)": 0, "B (11-13)": 0, "A (14-17)": 0, "AD (18-20)": 0}
+                rangos = {"C (<10,5)": 0, "B (10,5–<13,5)": 0, "A (13,5–<17,5)": 0, "AD (17,5–20)": 0}
                 for n in notas:
-                    if n <= 10: rangos["C (0-10)"] += 1
-                    elif n <= 13: rangos["B (11-13)"] += 1
-                    elif n <= 17: rangos["A (14-17)"] += 1
-                    else: rangos["AD (18-20)"] += 1
+                    label = {"C": "C (<10,5)", "B": "B (10,5–<13,5)", "A": "A (13,5–<17,5)", "AD": "AD (17,5–20)"}[nota_a_literal(n)]
+                    rangos[label] += 1
                 ax.bar(rangos.keys(), rangos.values(), color=["#ef4444", "#f59e0b", "#3b82f6", "#10b981"])
                 ax.set_title("Distribución de Notas Literales")
                 ax.set_ylabel("Frecuencia")
@@ -2033,6 +2084,11 @@ class VentanaPrincipal(ctk.CTk):
         self._al_cambiar_curso_global(self.combo_curso_global.get())
 
     def _al_cambiar_curso_global(self, _nombre_curso: str) -> None:
+        if hasattr(self, "_contexto_guardado") and not self.confirmar_descartar():
+            for widget, value in zip((self.combo_curso_global, self.combo_grado_global, self.combo_seccion_global), self._contexto_guardado):
+                widget.set(value)
+            return
+        self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
         curso_id = self.obtener_curso_activo_id()
         if curso_id is None:
             return
@@ -2089,6 +2145,10 @@ class VentanaPrincipal(ctk.CTk):
         self.recargar_matriz_completa()
 
     def _al_cambiar_salon_global(self) -> None:
+        if not self.confirmar_descartar():
+            for widget, value in zip((self.combo_curso_global, self.combo_grado_global, self.combo_seccion_global), self._contexto_guardado):
+                widget.set(value)
+            return
         self.est_entry_grado.set(self.combo_grado_global.get())
         self.est_entry_seccion.set(self.combo_seccion_global.get())
         self._al_cambiar_curso_global(self.combo_curso_global.get())
@@ -2113,12 +2173,18 @@ class VentanaPrincipal(ctk.CTk):
             self.tree_capacidades.insert("", "end", values=(idx, nom))
 
     def _obtener_comp_id_desde_texto(self, texto: str) -> Optional[int]:
-        if not texto or not self.competencias_curso_actual:
+        if not texto:
             return None
-        for cid, nom in self.competencias_curso_actual:
-            if nom == texto:
+        for cid, nombre in self.competencias_curso_actual:
+            if texto == nombre:
                 return cid
-        return self.competencias_curso_actual[0][0]
+        numero, separador, nombre = texto.partition(". ")
+        if separador and numero.isdigit():
+            for cid, candidato in self.competencias_curso_actual:
+                if nombre == candidato:
+                    return cid
+        return None
+
 
     # ==========================================================================
     # ACCIONES PESTAÑA 1 Y PESTAÑA 2
@@ -2134,7 +2200,7 @@ class VentanaPrincipal(ctk.CTk):
             self.recargar_cursos_y_contexto()
 
     def _toggle_curso_activo(self) -> None:
-        if not self.dev_mode: return
+        if not self.dev_mode or not self.verificar_permiso_edicion(): return
         sel = self.tree_cursos.selection()
         if not sel:
             messagebox.showwarning("Aviso", "Seleccione un curso de la lista.")
@@ -2145,7 +2211,7 @@ class VentanaPrincipal(ctk.CTk):
         self.recargar_cursos_y_contexto()
 
     def _eliminar_curso(self) -> None:
-        if not self.dev_mode: return
+        if not self.dev_mode or not self.verificar_permiso_edicion(): return
         sel = self.tree_cursos.selection()
         if not sel:
             messagebox.showwarning("Aviso", "Seleccione un curso para eliminar.")
@@ -2211,9 +2277,11 @@ class VentanaPrincipal(ctk.CTk):
         ruta = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
         if ruta:
             try:
-                cant = importar_estudiantes_desde_excel(
+                cant = self._importar_con_vista_previa(importar_estudiantes_desde_excel,
                     ruta, self.combo_grado_global.get(), self.combo_seccion_global.get()
                 )
+                if cant is None:
+                    return
                 self.recargar_cursos_y_contexto()
                 messagebox.showinfo(
                     "Importación Exitosa",
@@ -2248,6 +2316,7 @@ class VentanaPrincipal(ctk.CTk):
             "",
             self.est_combo_estado.get(),
         )
+        self._formularios_pendientes.discard(str(self.tab_estudiantes))
         self.est_entry_apellidos.delete(0, "end")
         self.est_entry_nombres.delete(0, "end")
         self.recargar_tabla_estudiantes()
@@ -2256,6 +2325,8 @@ class VentanaPrincipal(ctk.CTk):
         self.recargar_matriz_completa()
 
     def _al_seleccionar_estudiante_tabla(self, _event: tk.Event) -> None:
+        if str(self.tab_estudiantes) in self._formularios_pendientes and not self.confirmar_descartar():
+            return
         sel = self.tree_estudiantes.selection()
         if sel:
             vals = self.tree_estudiantes.item(sel[0], "values")
@@ -2282,6 +2353,7 @@ class VentanaPrincipal(ctk.CTk):
                 self.est_entry_seccion.get(),
                 self.est_combo_estado.get(),
             )
+            self._formularios_pendientes.discard(str(self.tab_estudiantes))
             self.recargar_tabla_estudiantes()
             self.dibujar_planilla_calificacion(forzar=True)
             self.recargar_buscador_alumnos()
@@ -2305,6 +2377,10 @@ class VentanaPrincipal(ctk.CTk):
     # ==========================================================================
 
     def _al_cambiar_comp_en_creacion(self, texto_comp: str) -> None:
+        if str(self.tab_crear) in getattr(self, "_formularios_pendientes", set()) and not self.confirmar_descartar():
+            self.crear_combo_comp.set(getattr(self, "_comp_form_actual", texto_comp))
+            return
+        self._comp_form_actual = texto_comp
         for w in self.scroll_caps_creacion.winfo_children():
             w.destroy()
         self.widgets_caps_creacion.clear()
@@ -2354,11 +2430,7 @@ class VentanaPrincipal(ctk.CTk):
 
     def _extraer_peso_creacion(self) -> float:
         raw = self.crear_combo_peso.get().strip().split()[0].replace("x", "").replace("%", "")
-        try:
-            val = float(raw)
-            return val if val > 0 else 1.0
-        except ValueError:
-            return 1.0
+        return valid_number(raw, 0.000001, 1000000, "Peso")
 
     def accion_exportar_plantilla_instrumento(self, tipo_instrumento: str) -> None:
         """
@@ -2435,9 +2507,12 @@ class VentanaPrincipal(ctk.CTk):
         if not ruta:
             return
         try:
-            ind_cant, alum_cant = importar_rubrica_o_cotejo_desde_excel(
+            resultado = self._importar_con_vista_previa(importar_rubrica_o_cotejo_desde_excel,
                 sesion_id, ruta, self.combo_grado_global.get(), self.combo_seccion_global.get()
             )
+            if resultado is None:
+                return
+            ind_cant, alum_cant = resultado
             inds = obtener_indicadores_instrumento_sesion(sesion_id)
             if inds and "Rúbrica" in inds[0]["tipo"]:
                 self.calif_combo_modo_inst.set("📝 Evaluar con Rúbrica")
@@ -2457,6 +2532,8 @@ class VentanaPrincipal(ctk.CTk):
             messagebox.showerror("Error al cargar instrumento", f"Detalle: {e}")
 
     def accion_limpiar_formulario_actividad(self) -> None:
+        if str(self.tab_crear) in getattr(self, "_formularios_pendientes", set()) and not self.confirmar_descartar():
+            return
         self.id_actividad_editando = None
         self.lbl_modo_creacion.configure(text="1° Crear Actividad (Clase, Examen, Trabajo o Práctica)")
         self.crear_entry_titulo.delete(0, "end")
@@ -2516,6 +2593,7 @@ class VentanaPrincipal(ctk.CTk):
             categoria=self.crear_combo_categoria.get(),
             fecha_str=self.crear_ent_fecha.get().strip() or None,
         )
+        self._formularios_pendientes.discard(str(self.tab_crear))
         self.id_actividad_calificando = sid
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
@@ -2588,6 +2666,8 @@ class VentanaPrincipal(ctk.CTk):
             self.dibujar_planilla_calificacion(forzar=True)
 
     def _al_seleccionar_actividad_en_tabla(self, _event: tk.Event) -> None:
+        if str(self.tab_crear) in self._formularios_pendientes and not self.confirmar_descartar():
+            return
         sel = self.tree_actividades.selection()
         if not sel:
             return
@@ -2651,6 +2731,8 @@ class VentanaPrincipal(ctk.CTk):
         self.abrir_actividad_en_pestana_calificar(int(sel[0]))
 
     def abrir_actividad_en_pestana_calificar(self, sesion_id: int) -> None:
+        if getattr(self, "_planilla_pendiente", False) and not self.confirmar_descartar():
+            return
         self.id_actividad_calificando = sesion_id
         self.tabview.set("Ingresar Calificativos")
         for et, sid in getattr(self, "combo_calif_etiqueta_a_id", {}).items():
@@ -2664,6 +2746,12 @@ class VentanaPrincipal(ctk.CTk):
     # ==========================================================================
 
     def _al_cambiar_actividad_en_calificar(self, etiqueta: str) -> None:
+        if getattr(self, "_planilla_pendiente", False) and not self.confirmar_descartar():
+            for label, session in getattr(self, "combo_calif_etiqueta_a_id", {}).items():
+                if session == self.id_actividad_calificando:
+                    self.calif_combo_actividad.set(label)
+                    break
+            return
         sid = getattr(self, "combo_calif_etiqueta_a_id", {}).get(etiqueta)
         self.id_actividad_calificando = sid
         if sid and sid in getattr(self, "actividades_creadas_map", {}):
@@ -2678,6 +2766,12 @@ class VentanaPrincipal(ctk.CTk):
         self.dibujar_planilla_calificacion(forzar=True)
 
     def dibujar_planilla_calificacion(self, forzar: bool = False) -> None:
+        if getattr(self, "_planilla_pendiente", False) and not self.confirmar_descartar():
+            previous = getattr(self, "_ultimo_estado_planilla", None)
+            if previous:
+                self.calif_combo_modo_inst.set(previous[1])
+                self.calif_combo_orden.set(previous[2])
+            return
         modo_str = self.calif_combo_modo_inst.get() if hasattr(self, "calif_combo_modo_inst") else ""
         orden_elegido = self.calif_combo_orden.get() if hasattr(self, "calif_combo_orden") else ""
         estado_actual = (self.id_actividad_calificando, modo_str, orden_elegido)
@@ -2738,6 +2832,7 @@ class VentanaPrincipal(ctk.CTk):
         self.f_tabla_planilla.grid_rowconfigure(0, weight=1)
         
         tree = PlanillaNativaTreeview(self.f_tabla_planilla, columns=headers, show="headings")
+        tree.on_edit_complete = self.marcar_planilla_pendiente
         tree.pack(fill="both", expand=True)
         self.planilla_nativa = tree
         tree.tag_configure("odd", background=getattr(self, "stripe_color", ""))
@@ -2782,9 +2877,14 @@ class VentanaPrincipal(ctk.CTk):
             btn.place(relx=0.98, rely=0.02, anchor="ne")
 
     def _abrir_dialogo_masivo_desde_nativa(self, act, estudiantes, tipo_inst):
+        if not self.verificar_permiso_edicion():
+            return
         DialogoEvaluarInstrumentoMasivo(self, act, estudiantes, tipo_inst)
 
     def accion_marcar_asistencia_todos(self) -> None:
+        if not self.verificar_permiso_edicion():
+            return
+        self.marcar_planilla_pendiente()
         if not hasattr(self, 'planilla_nativa') or not self.planilla_nativa:
             return
             
@@ -2805,12 +2905,10 @@ class VentanaPrincipal(ctk.CTk):
         
         try:
             nuevo_peso = float(self.calif_entry_peso.get().strip() or 1.0)
-            if nuevo_peso <= 0: raise ValueError
+            nuevo_peso = valid_number(nuevo_peso, 0.000001, 1000000, "Peso")
         except:
             messagebox.showwarning("Peso inválido", "El peso debe ser > 0.")
             return
-
-        actualizar_peso_actividad(self.id_actividad_calificando, nuevo_peso)
 
         datos_guardar = []
         for item in self.planilla_nativa.get_children():
@@ -2842,7 +2940,8 @@ class VentanaPrincipal(ctk.CTk):
                 "notas_por_capacidad": notas_cap
             })
             
-        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar)
+        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso)
+        self._planilla_pendiente = False
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
         self.cargar_lista_pesos_por_categoria_en_graficos()
@@ -3057,15 +3156,14 @@ class VentanaPrincipal(ctk.CTk):
         if not self.entries_pesos_individuales_cat:
             return
 
-        for sid, ent in self.entries_pesos_individuales_cat:
-            try:
-                val = float(ent.get().strip())
-                if val <= 0:
-                    raise ValueError
-                actualizar_peso_actividad(sid, val)
-            except ValueError:
-                messagebox.showwarning("Peso inválido", f"El peso de la actividad #{sid} debe ser un número mayor a 0.")
-                return
+        try:
+            changes = [(sid, valid_number(ent.get().strip(), 0.000001, 1000000, "Peso"))
+                       for sid, ent in self.entries_pesos_individuales_cat]
+            actualizar_pesos_actividades(changes)
+            self._formularios_pendientes.discard(str(self.tab_graficos))
+        except ValueError as exc:
+            messagebox.showwarning("Peso inválido", str(exc))
+            return
 
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
@@ -3091,7 +3189,12 @@ class VentanaPrincipal(ctk.CTk):
             messagebox.showwarning("Valores inválidos", "Los porcentajes deben ser valores numéricos.")
             return
 
-        guardar_pesos_rubros_curso(curso_id, p_clases, p_exam, p_trab, p_prac)
+        try:
+            guardar_pesos_rubros_curso(curso_id, p_clases, p_exam, p_trab, p_prac)
+        except ValueError as exc:
+            messagebox.showwarning("Porcentajes inválidos", str(exc))
+            return
+        self._formularios_pendientes.discard(str(self.tab_graficos))
         self.dibujar_graficos_estadisticos()
         self.recargar_matriz_completa()
         suma = p_clases + p_exam + p_trab + p_prac
@@ -3446,9 +3549,12 @@ class VentanaPrincipal(ctk.CTk):
         if not ruta:
             return
         try:
-            est_proc, notas_proc = importar_matriz_notas_desde_excel(
+            resultado = self._importar_con_vista_previa(importar_matriz_notas_desde_excel,
                 ruta, self.combo_grado_global.get(), self.combo_seccion_global.get()
             )
+            if resultado is None:
+                return
+            est_proc, notas_proc = resultado
             self.recargar_cursos_y_contexto()
             messagebox.showinfo(
                 "Excel con Notas Cargado",
@@ -3459,67 +3565,54 @@ class VentanaPrincipal(ctk.CTk):
 
 
 class DialogoLicencia(ctk.CTk):
-    def __init__(self) -> None:
+    def __init__(self, public_key):
         super().__init__()
-        self.title("Activación del Sistema (Desarrollador)")
-        self.geometry("450x250")
-        self.eval('tk::PlaceWindow . center')
-        
-        ctk.CTkLabel(self, text="🔒 SISTEMA BLOQUEADO", font=ctk.CTkFont(size=20, weight="bold"), text_color="#ef4444").pack(pady=20)
-        ctk.CTkLabel(self, text="Este software requiere activación por parte del desarrollador.\nIngrese el código de acceso:").pack(pady=5)
-        
-        self.entry_codigo = ctk.CTkEntry(self, show="*", width=250)
-        self.entry_codigo.pack(pady=10)
-        self.entry_codigo.bind("<Return>", lambda e: self.verificar())
-        
-        ctk.CTkButton(self, text="Desbloquear Sistema", command=self.verificar).pack(pady=10)
-        
-    def verificar(self) -> None:
-        codigo = self.entry_codigo.get()
-        if codigo == "leonarrs03050711":  # Código de desarrollador
-            import json, os
-            with open("licencia.json", "w") as f:
-                json.dump({"activado": True}, f)
-            messagebox.showinfo("Éxito", "Sistema desbloqueado permanentemente.")
+        self.public_key = public_key
+        self.validada = False
+        self.title("Activar Registro Docente")
+        self.geometry("460x220")
+        ctk.CTkLabel(self, text="Seleccione la licencia firmada entregada por el emisor.", wraplength=400).pack(pady=30)
+        ctk.CTkButton(self, text="Importar licencia", command=self.verificar).pack(pady=15)
+
+    def verificar(self):
+        import json
+        ruta = filedialog.askopenfilename(filetypes=[("Licencia", "*.json")])
+        if not ruta:
+            return
+        try:
+            document = json.loads(Path(ruta).read_text(encoding="utf-8"))
+            verify_license(document, self.public_key)
+            target = app_storage.data_dir() / "licencia-firmada.json"
+            target.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            self.validada = True
             self.destroy()
-        else:
-            messagebox.showerror("Error", "Código incorrecto. Acceso denegado.")
+        except Exception:
+            messagebox.showerror("Licencia", "Licencia inválida, vencida o de otro producto.", parent=self)
+
 
 def main() -> None:
-    import json, os
-    activado = False
-    if os.path.exists("licencia.json"):
+    import json
+    from db import DB_PATH
+    app_storage.configure_logging()
+    # A free build has no activation requirement. Commercial builds embed only
+    # the issuer's public key; legacy {activado:true} files are never trusted.
+    public_key = license_public_key()
+    if public_key:
         try:
-            with open("licencia.json", "r") as f:
-                data = json.load(f)
-                activado = data.get("activado", False)
-        except:
-            pass
-            
-    if not activado:
-        app_lic = DialogoLicencia()
-        app_lic.mainloop()
-        
-        # Volver a verificar tras cerrar el diálogo
-        if os.path.exists("licencia.json"):
-            try:
-                with open("licencia.json", "r") as f:
-                    if not json.load(f).get("activado", False):
-                        return
-            except:
+            document = json.loads((app_storage.data_dir() / "licencia-firmada.json").read_text(encoding="utf-8"))
+            verify_license(document, public_key)
+        except Exception:
+            dialog = DialogoLicencia(public_key)
+            dialog.mainloop()
+            if not dialog.validada:
                 return
-        else:
-            return
-
+    app_storage.prepare_storage(DB_PATH)
     inicializar_db()
     app = VentanaPrincipal()
+    if obtener_docente_config().get("requiere_cambio_clave"):
+        app.after(100, lambda: DialogoPerfilDocente(app))
     app.mainloop()
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
