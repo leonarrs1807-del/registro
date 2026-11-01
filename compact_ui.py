@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox,simpledialog
 import customtkinter as ctk
 from ui_icons import icon
-from widgets import Tooltip
+from widgets import Tooltip,SafeDialog
 from interfaz import pixel_scale
 
 
@@ -103,7 +103,7 @@ class CompactTools:
         self._texto_emergente('Detalles de la actividad','\n'.join(lines))
 
     def _texto_emergente(self,title,text,save=None):
-        window=ctk.CTkToplevel(self);window.title(title)
+        window=SafeDialog(self);window.title(title)
         scale=window._get_window_scaling()
         width=min(650,int(self.winfo_screenwidth()/scale*.9));height=min(500,int(self.winfo_screenheight()/scale*.8))
         window.geometry(f'{width}x{height}');window.transient(self)

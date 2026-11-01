@@ -4,7 +4,7 @@ import customtkinter as ctk
 import db,app_storage
 from db_safety import valid_number
 from escala import thresholds,save_thresholds
-from widgets import scroll_area,wrap_label
+from widgets import scroll_area,wrap_label,SafeDialog
 from grade_cells import PALETTE,grade_number
 
 
@@ -14,7 +14,7 @@ def fit_dialog(window,root,width,height):
     window.transient(root)
 
 
-class ScaleDialog(ctk.CTkToplevel):
+class ScaleDialog(SafeDialog):
     def __init__(self,app):
         super().__init__(app);self.app=app;self.title('Niveles de logro')
         fit_dialog(self,app,560,470)
@@ -52,7 +52,7 @@ class ScaleDialog(ctk.CTkToplevel):
         self.destroy()
 
 
-class InstrumentEditor(ctk.CTkToplevel):
+class InstrumentEditor(SafeDialog):
     def __init__(self,master,session,indicators,callback):
         super().__init__(master);self.app=getattr(master,'app',master)
         self.title('Editar indicadores');fit_dialog(self,self.app,850,650)

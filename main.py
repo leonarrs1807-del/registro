@@ -8,7 +8,7 @@ import app_storage
 from app_security import license_public_key, commercial_edition
 from db_safety import valid_number
 from desktop_ui import DesktopTools
-from widgets import scroll_area, wrap_label, Tooltip
+from widgets import scroll_area, wrap_label, Tooltip, SafeDialog
 from ui_icons import icon
 from grade_cells import GradeTreeview
 from instrumentos import normalized_grade
@@ -121,7 +121,7 @@ PALETA_COLORES = [
 ]
 
 
-class DialogoPerfilDocente(ctk.CTkToplevel):
+class DialogoPerfilDocente(SafeDialog):
     def __init__(self, master: "VentanaPrincipal") -> None:
         super().__init__(master)
         self.app = master
@@ -219,7 +219,7 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         self.destroy()
 
 
-class DialogoDesbloquearCandado(ctk.CTkToplevel):
+class DialogoDesbloquearCandado(SafeDialog):
     def __init__(self, master: "VentanaPrincipal") -> None:
         super().__init__(master)
         self.app = master
@@ -282,7 +282,7 @@ from dialogs_ui import InstrumentEditor
 class DialogoEditarInstrumento(InstrumentEditor):
     pass
 
-class DialogoEvaluarInstrumentoMasivo(ctk.CTkToplevel):
+class DialogoEvaluarInstrumentoMasivo(SafeDialog):
     def __init__(
         self,
         master: "VentanaPrincipal",
@@ -594,7 +594,7 @@ class PlanillaNativaTreeview(GradeTreeview):
         self._entry.bind("<Left>", move_left)
 
     def _open_text_popup(self, item: str, col_index: int, current_text: str) -> None:
-        top = ctk.CTkToplevel(self)
+        top = SafeDialog(self)
         top.title("Editar Comentario")
         top.geometry("500x350")
         top.transient(self.winfo_toplevel())

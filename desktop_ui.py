@@ -46,7 +46,10 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
         self.fuentes_menu(menu)
 
     def destroy(self):
+        if getattr(self,'_closing_ui',False):return
         self._closing_ui=True
+        from widgets import prepare_destroy
+        prepare_destroy(self)
         # Tk timers outlive deleted child widgets unless explicitly cancelled.
         # This matters when restarting windows and for clean shutdown in tests.
         for timer in self.tk.splitlist(self.tk.call('after', 'info')):

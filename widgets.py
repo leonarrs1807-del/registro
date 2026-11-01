@@ -4,6 +4,27 @@ from tkinter import ttk
 import customtkinter as ctk
 
 
+def prepare_destroy(widget):
+    """Stop CTk 6 redraws before Tk starts deleting child windows.
+
+    CTkScrollbar._draw calls update_idletasks. Pending Configure events can
+    otherwise reenter Windows Tk during destruction and cause an access violation.
+    """
+    try:children=widget.winfo_children()
+    except tk.TclError:return
+    for child in children:prepare_destroy(child)
+    if callable(getattr(widget,'_draw',None)):
+        widget._draw=lambda *args,**kwargs:None
+
+
+class SafeDialog(ctk.CTkToplevel):
+    def destroy(self):
+        if getattr(self,'_destroying',False):return
+        self._destroying=True
+        prepare_destroy(self)
+        super().destroy()
+
+
 def scroll_area(master, scrollbar_width=22, auto_hide=False, horizontal=False, min_width=0, **kwargs):
     outer=ctk.CTkFrame(master,**kwargs)
     color=outer._apply_appearance_mode(outer.cget('fg_color'))

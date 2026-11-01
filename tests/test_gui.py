@@ -36,6 +36,15 @@ class DesktopTests(unittest.TestCase):
         self.app.mainloop()
         self.assertFalse(self.errors)
 
+    def test_close_with_pending_instrument_layout_does_not_reenter_redraw(self):
+        self.app.edicion_desbloqueada=True
+        act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
+        dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Rúbrica')
+        dialog.abrir_editor()
+        # Leave Configure events pending, as when closing just after opening.
+        self.app.destroy()
+        self.assertFalse(self.errors)
+
     def test_create_activity_uses_selected_competence_not_first_one(self):
         self.app.edicion_desbloqueada = True
         comp, name = db.obtener_competencias_por_curso(self.course)[1]
