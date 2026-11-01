@@ -14,11 +14,24 @@ def report(text):
     if summary:
         with open(summary,'a',encoding='utf-8') as file:file.write(text+'\n')
 
-if '--child' not in sys.argv:
+root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(root))
+names=[arg for arg in sys.argv[1:] if arg not in ('--child','--isolate-gui')]
+
+def load_suite(names):
+    if names:return unittest.defaultTestLoader.loadTestsFromNames(names)
+    return unittest.defaultTestLoader.discover(str(root / 'tests'), top_level_dir=str(root))
+
+def case_ids(suite):
+    for test in suite:
+        if isinstance(test,unittest.TestSuite):yield from case_ids(test)
+        else:yield test.id()
+
+def run_child(batch):
     # A native Tcl/Tk crash cannot be caught by Python. Keep the reporter outside
     # the GUI process so Windows failures still include the active test/stack.
     try:
-        completed=subprocess.run([sys.executable,'-X','faulthandler',str(Path(__file__).resolve()),'--child'],
+        completed=subprocess.run([sys.executable,'-X','faulthandler',str(Path(__file__).resolve()),'--child',*batch],
             stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',timeout=600)
         output=completed.stdout;code=completed.returncode
     except subprocess.TimeoutExpired as exc:
@@ -35,12 +48,27 @@ if '--child' not in sys.argv:
         for index,piece in reversed(list(enumerate(pieces,1))):
             message=piece.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
             print(f'::error title=Diagnóstico del proceso ({index}/{len(pieces)})::'+message,flush=True)
-    raise SystemExit(0 if code==0 else 1)
+    return code==0
 
-root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(root))
+if '--child' not in sys.argv:
+    if os.name=='nt' or '--isolate-gui' in sys.argv:
+        # Windows Tk keeps native per-process state after destroying a root.
+        # Each GUI launch gets the same isolation as starting the actual app;
+        # no test is omitted and native failures still fail the whole suite.
+        ids=list(case_ids(load_suite(names)))
+        graphical=[name for name in ids if name.startswith('tests.test_gui.')]
+        backend=[name for name in ids if name not in graphical]
+        batches=([backend] if backend else [])+[[name] for name in graphical]
+        success=True
+        for batch in batches:
+            print('Proceso de pruebas:',batch[0] if len(batch)==1 else f'{len(batch)} pruebas de datos y licencias',flush=True)
+            if not run_child(batch):success=False
+        report(f'Comprobaciones incluidas: {len(ids)}. Resultado: '+('correcto.' if success else 'fallido.'))
+    else:success=run_child(names)
+    raise SystemExit(0 if success else 1)
+
 try:
-    suite = unittest.defaultTestLoader.discover(str(root / 'tests'), top_level_dir=str(root))
+    suite = load_suite(names)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 except BaseException:
     details=traceback.format_exc()

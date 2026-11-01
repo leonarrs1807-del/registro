@@ -114,12 +114,12 @@ class DesktopTests(unittest.TestCase):
     def test_font_setting_survives_restart(self):
         self.app.cambiar_tamano_letra('Grande (15)')
         self.assertEqual(db.obtener_docente_config()['tamano_letra'], 'Grande (15)')
-        # A second window reads the preference from storage.
-        other = self.main.VentanaPrincipal()
-        try:
-            self.assertEqual(other.tamano_letra_actual, 'Grande (15)')
-        finally:
-            other.destroy()
+        # A real restart uses a fresh Tcl interpreter/process, just like _reiniciar.
+        import subprocess,sys
+        code="import main; app=main.VentanaPrincipal(); print('FONT_PREF='+app.tamano_letra_actual,flush=True); app.destroy()"
+        result=subprocess.run([sys.executable,'-X','faulthandler','-c',code],capture_output=True,text=True,timeout=60)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('FONT_PREF=Grande (15)',result.stdout)
 
     def test_import_cancel_does_not_write(self):
         file = app_storage.data_dir() / 'preview.xlsx'
