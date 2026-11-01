@@ -45,6 +45,16 @@ class DesktopTests(unittest.TestCase):
         self.app.destroy()
         self.assertFalse(self.errors)
 
+    def test_closed_dialog_cancels_its_callbacks_and_keeps_parent_callbacks(self):
+        from widgets import SafeDialog
+        called=[];dialog=SafeDialog(self.app)
+        own=dialog.after(100,lambda:called.append('diálogo cerrado'))
+        self.app.after(100,lambda:called.append('principal'))
+        dialog.destroy()
+        self.assertNotIn(own,self.app.tk.splitlist(self.app.tk.call('after','info')))
+        self.app.after(180,self.app.quit);self.app.mainloop()
+        self.assertEqual(called,['principal']);self.assertFalse(self.errors)
+
     def test_create_activity_uses_selected_competence_not_first_one(self):
         self.app.edicion_desbloqueada = True
         comp, name = db.obtener_competencias_por_curso(self.course)[1]
@@ -438,7 +448,7 @@ class DesktopTests(unittest.TestCase):
         inspected=[]
         def decide(confirm):
             for widget in self.app.winfo_children():
-                if isinstance(widget,InstrumentPreview):
+                if isinstance(widget,InstrumentPreview) and widget.ready:
                     inspected.append(widget.instrument_grid.indicators[0]['descriptores']['AD'])
                     widget.confirmed=confirm;widget.destroy();return
             self.app.after(50,lambda:decide(confirm))

@@ -18,9 +18,19 @@ def prepare_destroy(widget):
 
 
 class SafeDialog(ctk.CTkToplevel):
+    # CTk's custom Windows titlebar calls update() inside its constructor.
+    # Keep the native titlebar so callbacks cannot reenter a half-built dialog.
+    _deactivate_windows_window_header_manipulation=True
+
     def destroy(self):
         if getattr(self,'_destroying',False):return
         self._destroying=True
+        owned=set(getattr(self,'_tclCommands',None) or ())
+        for timer in self.tk.splitlist(self.tk.call('after','info')):
+            try:
+                script,_=self.tk.splitlist(self.tk.call('after','info',timer))
+                if str(script).split()[0] in owned:self.tk.call('after','cancel',timer)
+            except (tk.TclError,IndexError):pass
         prepare_destroy(self)
         super().destroy()
 

@@ -50,6 +50,7 @@ class InstrumentView(SafeDialog):
 
 class InstrumentPreview(SafeDialog):
     def __init__(self,app,staged,session,result):
+        self.ready=False
         super().__init__(app);self.title('Revisar evaluación antes de importar');fit(self,app)
         self.confirmed=False;context=activity(session,staged);items=get_indicators(session,staged)
         header(self,context)
@@ -82,6 +83,7 @@ class InstrumentPreview(SafeDialog):
         def confirm():self.confirmed=True;self.destroy()
         ctk.CTkButton(bar,text='Confirmar importación',height=38,command=confirm).pack(side='right')
         self.grab_set()
+        self.ready=True
 
 
 class InstrumentEditor(SafeDialog):
