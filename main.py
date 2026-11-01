@@ -1652,6 +1652,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._stats_resize_job=self.after(220,self.accion_generar_grafico_estadisticas)
 
     def accion_generar_grafico_estadisticas(self) -> None:
+        if getattr(self,"_closing_ui",False):return
+        self.update_idletasks()
         curso_id = self.obtener_curso_activo_id()
         if not curso_id: return
         grado = self.combo_grado_global.get()
@@ -1672,7 +1674,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for widget in self.f_grafico.winfo_children():
             widget.destroy()
             
-        import matplotlib.pyplot as plt
+        from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         import numpy as np
         
@@ -1689,12 +1691,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._stats_resize_job=None
         is_dash = "Dashboard" in tipo
         if hasattr(self, "fig_actual"):
-            plt.close(self.fig_actual)
+            self.fig_actual.clear()
         plot_width=max(600,self.f_grafico.winfo_width()/pixel_scale(self))
         self._stats_plot_width=plot_width
         cap_count=len({i['id'] for row in filas for i in row.get('notas_detalle',[]) if i['nota'] is not None})
         plot_height=((900 if plot_width<950 else 620)+max(180,cap_count*66+60)) if is_dash else max(360,cap_count*66+100) if "Capacidades" in tipo else max(360,min(520,plot_width*.52))
-        fig = plt.figure(figsize=(plot_width/100,plot_height/100), dpi=100*pixel_scale(self),layout="constrained")
+        fig = Figure(figsize=(plot_width/100,plot_height/100), dpi=100*pixel_scale(self),layout="constrained")
         fig.set_layout_engine("constrained",w_pad=.15,h_pad=.15,hspace=.1,wspace=.12)
         
         # Info for PDF export
@@ -1732,11 +1734,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 from escala import thresholds
                 from db import DB_PATH
                 b_min,a_min,ad_min=thresholds(DB_PATH)
-                labels={"C":f"C\n<{b_min:g}","B":f"B\n{b_min:g}–<{a_min:g}","A":f"A\n{a_min:g}–<{ad_min:g}","AD":f"AD\n{ad_min:g}–20"}
+                labels={level:level for level in ("C","B","A","AD")}
                 rangos={label:0 for label in labels.values()}
                 for n in notas:rangos[labels[nota_a_literal(n)]]+=1
                 ax.bar(rangos.keys(), rangos.values(), color=["#ef4444", "#f59e0b", "#22c55e", "#3b82f6"])
                 ax.set_title("Distribución de Notas Literales")
+                ax.set_xlabel(f"C: <{b_min:g} · B: {b_min:g}–<{a_min:g}\nA: {a_min:g}–<{ad_min:g} · AD: {ad_min:g}–20",fontsize=10)
                 ax.set_ylabel("Frecuencia")
                 
             elif "Polígono" in ax_tipo:
@@ -3036,7 +3039,6 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
         from graficos import category_figure, frequency_figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-        import matplotlib.pyplot as plt
         weights = obtener_pesos_rubros_curso(course)
         comps, caps = obtener_estadisticas_frecuencia_evaluacion(course, self.combo_grado_global.get(), self.combo_seccion_global.get())
         state=(course,self.combo_grado_global.get(),self.combo_seccion_global.get(),tuple(weights.items()),tuple(comps),tuple(caps),pixel_scale(self))
@@ -3044,7 +3046,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._graph_state=state
         self._plot_data=(weights,comps,caps)
         self._plot_widths={}
-        for fig in getattr(self,"figuras_porcentajes",[]):plt.close(fig)
+        for fig in getattr(self,"figuras_porcentajes",[]):fig.clear()
         self.figuras_porcentajes = [category_figure(weights), frequency_figure(comps, "Actividades por competencia"), frequency_figure([(name, count) for name,count,_ in caps], "Actividades por capacidad")]
         for host in self.graficos_hosts:
             for child in host.winfo_children():child.destroy()
@@ -3073,8 +3075,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if index==0:figure=category_figure(weights,width)
         elif index==1:figure=frequency_figure(comps,"Actividades por competencia",width)
         else:figure=frequency_figure([(name,count) for name,count,_ in caps],"Actividades por capacidad",width)
-        import matplotlib.pyplot as plt
-        plt.close(self.figuras_porcentajes[index]);self.figuras_porcentajes[index]=figure
+        self.figuras_porcentajes[index].clear();self.figuras_porcentajes[index]=figure
         self._plot_widths[index]=width
         figure.set_dpi(100*pixel_scale(self))
         canvas=FigureCanvasTkAgg(figure,master=host)

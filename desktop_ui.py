@@ -56,8 +56,7 @@ class DesktopTools(EvaluationTools,CompactTools,ViewTools,LicenseTools,Classroom
             # Cancel the Tcl timer, leaving command deletion to its owning widget.
             self.tk.call('after', 'cancel', timer)
         if hasattr(self, 'fig_actual'):
-            import matplotlib.pyplot as plt
-            plt.close(self.fig_actual)
+            self.fig_actual.clear()
         super().destroy()
 
     @property

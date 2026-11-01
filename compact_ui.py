@@ -23,6 +23,8 @@ class CompactTools:
                     dropdown_fg_color=('#ffffff','#1e293b'))
             elif isinstance(widget,ctk.CTkEntry):
                 widget.configure(border_width=1,corner_radius=6,border_color=('#cbd5e1','#475569'),height=36)
+            elif isinstance(widget,ctk.CTkButton) and widget.cget('fg_color')=='transparent' and widget.cget('text'):
+                widget.configure(text_color=('#334155','#e2e8f0'))
             for child in widget.winfo_children():visit(child)
         visit(self)
         self.fuentes_nativas()
