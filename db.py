@@ -489,6 +489,8 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
         migrate(conn)
         from niveles import migrate_levels
         migrate_levels(conn, CATALOGO_INICIAL)
+        from puntos import ensure_schema
+        ensure_schema(conn)
 
     sincronizar_codigos_por_seccion(db_path)
 
@@ -2043,6 +2045,9 @@ def importar_matriz_notas_desde_excel(
 
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
+        allowed = {r[0] for r in conn.execute("SELECT a.id FROM Capacidades a JOIN Competencias c ON c.id=a.competencia_id JOIN Cursos u ON u.id=c.curso_id WHERE u.nivel=(SELECT nivel_educativo FROM Docente_Config WHERE id=1)")}
+        if not set(mapa_col_cap.values()) <= allowed:
+            raise ValueError("La matriz contiene capacidades que no pertenecen al nivel activo.")
         for row_number, fila in enumerate(filas[fila_header_idx + 1 :], fila_header_idx + 2):
             if not fila or all(c is None or str(c).strip() == "" for c in fila):
                 continue
@@ -2082,7 +2087,7 @@ def importar_matriz_notas_desde_excel(
                 )
             else:
                 cur.execute(
-                    "INSERT INTO Estudiantes (Nombres, Apellidos, Grado, Seccion, Estado) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO Estudiantes (Nombres, Apellidos, Grado, Seccion, Estado,nivel) VALUES (?, ?, ?, ?, ?,(SELECT nivel_educativo FROM Docente_Config WHERE id=1))",
                     (nombres, apellidos, grado, seccion, estado),
                 )
                 est_id = cur.lastrowid

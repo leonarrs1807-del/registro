@@ -1,0 +1,88 @@
+"""Readable, persistent layouts and explicit file destinations."""
+from pathlib import Path
+from datetime import datetime
+import json,re
+import tkinter as tk
+from tkinter import filedialog,messagebox
+import tkinter.font as tkfont
+import customtkinter as ctk
+import app_storage as storage
+
+
+class ViewTools:
+    def ajustar_pantalla(self,reset=False):
+        scale=self._get_window_scaling()
+        width=max(500,int(self.winfo_screenwidth()/scale*.95))
+        height=max(420,int(self.winfo_screenheight()/scale*.88))
+        self.minsize(min(800,width),min(520,height))
+        if reset or not getattr(self,'_geometry_restored',False):self.geometry(f'{min(1420,width)}x{min(850,height)}+0+0')
+
+    def restaurar_vista(self):
+        self.tamano_letra_actual='Personalizado (16)'
+        import db
+        db.guardar_tamano_letra_preferido(self.tamano_letra_actual)
+        self.cambiar_zoom(1)
+        self.ajustar_pantalla(reset=True)
+        for name,pane in getattr(self,'_split_panes',{}).items():
+            if pane.winfo_exists():
+                size=pane.winfo_width() if str(pane.cget('orient'))=='horizontal' else pane.winfo_height()
+                self.after(100,lambda p=pane,n=name,s=size:self._colocar_divisor(p,s*(.23 if n=='navegacion' else .4)))
+        self._guardar_ventana()
+
+    def _colocar_divisor(self,pane,position):
+        if not pane.winfo_exists() or len(pane.panes())<2:return
+        vertical=str(pane.cget('orient'))=='vertical'
+        size=pane.winfo_height() if vertical else pane.winfo_width()
+        position=max(100,min(int(position),max(100,size-180)))
+        pane.sash_place(0,0 if vertical else position,position if vertical else 0)
+
+    def restaurar_divisor(self,name):
+        pane=getattr(self,'_split_panes',{}).get(name)
+        if pane is None:return
+        saved=self._preferencias().get('panes',{}).get(name)
+        if isinstance(saved,(int,float)) and 0<saved<1:
+            def apply():
+                if pane.winfo_exists():
+                    size=pane.winfo_height() if str(pane.cget('orient'))=='vertical' else pane.winfo_width()
+                    self._colocar_divisor(pane,size*saved)
+            self.after(150,apply)
+        pane.bind('<ButtonRelease-1>',lambda e:self._guardar_ventana(),add='+')
+
+    def fuentes_menu(self,menu):
+        font=tkfont.nametofont('TkMenuFont',root=self)
+        font.configure(size=14)
+        menu.configure(font=font)
+        end=menu.index('end')
+        if end is not None:
+            for index in range(end+1):
+                if menu.type(index)=='cascade':
+                    child=self.nametowidget(menu.entrycget(index,'menu'))
+                    self.fuentes_menu(child)
+
+    def elegir_destino(self,**kwargs):
+        prefs=self._preferencias()
+        default=Path(prefs.get('save_dir',''))
+        if not prefs.get('save_dir') or not default.is_dir():
+            default=Path.home()/'Documents'
+            if not default.is_dir():default=Path.home()
+        kwargs.setdefault('initialdir',str(default))
+        kwargs.setdefault('title','Elija la carpeta y el nombre del archivo')
+        path=filedialog.asksaveasfilename(**kwargs)
+        if path:
+            self._save_dir=str(Path(path).resolve().parent)
+            self._guardar_ventana()
+        return path
+
+    def archivo_guardado(self,path,detail='Archivo guardado correctamente.'):
+        path=Path(path).resolve()
+        if hasattr(self,'lbl_estado'):self.lbl_estado.configure(text=f'Archivo guardado: {path}')
+        messagebox.showinfo('Archivo guardado',detail+'\n\nUbicación:\n'+str(path))
+
+    def abrir_instrucciones(self,topic='Empezar y guardar'):
+        self.tabview.set('Instrucciones');self.tutorial.open(topic)
+
+    def barra_acciones(self):
+        frame=ctk.CTkFrame(self.barra_top,fg_color='transparent')
+        frame.grid(row=1,column=2,columnspan=5,sticky='e',padx=6,pady=5)
+        for i,(title,callback) in enumerate([('Guardar archivo…',self.guardar_documento),('Restablecer vista',self.restaurar_vista),('Instrucciones',self.abrir_instrucciones)]):
+            ctk.CTkButton(frame,text=title,command=callback,width=135,height=34,font=ctk.CTkFont(size=14)).grid(row=0,column=i,padx=4)

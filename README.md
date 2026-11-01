@@ -17,12 +17,13 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La primera ejecución solicita establecer una contraseña docente de al menos
-8 caracteres. Las instalaciones antiguas conservan su usuario y contraseña;
-las contraseñas se migran a PBKDF2 con sal aleatoria. Si todavía usan la clave
-inicial, deberán cambiarla. Las siguientes ejecuciones empiezan con la edición
-bloqueada: el botón de candado permite autenticarse. La administración de cursos
-usa la misma contraseña docente, sin una clave de desarrollador incorporada.
+La primera ejecución solicita crear una cuenta local y elegir el único curso
+habilitado durante una demo de 30 días. La contraseña requiere al menos 8
+caracteres y se guarda mediante PBKDF2 con sal. El correo identifica al comprador
+sin verificación online. Las siguientes ejecuciones empiezan con la edición
+bloqueada y requieren autenticación mediante el candado. Las bases anteriores
+conservan sus notas; la cuenta comercial se crea aparte y se usa también al abrir
+otros documentos. La administración de cursos usa esa misma autenticación.
 
 ## Datos, migración y respaldos
 
@@ -134,24 +135,60 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Licencias comerciales opcionales
+## Licencias comerciales offline
 
-La versión predeterminada es de uso libre, sin una activación ficticia. El antiguo
-`licencia.json` con `activado: true` y la clave incrustada se han retirado del flujo.
-Para una edición comercial, el emisor genera una clave Ed25519 con
-`tools/license_tool.py` y compila incluyendo únicamente `license_public_key.pem`.
-Su presencia activa la verificación obligatoria de licencias firmadas.
+La versión 1.3 utiliza cuentas locales y una demo de **30 días con un solo curso
+y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se
+permite consultar, guardar documentos y exportar; se bloquean las modificaciones.
+Los cursos no comprados también se conservan en modo de consulta. Los controles
+se aplican en la interfaz y en las conexiones SQLite de producción, incluidas las
+importaciones. No hay servidor, procesador de pagos ni sincronización con Drive.
+
+El comprador exporta una solicitud `.solicitud` con su cuenta, correo, identidad
+hash de la instalación de Windows y catálogo de cursos, sin contraseña ni datos
+de estudiantes. El vendedor verifica el pago y firma una `.licencia` con uno o
+varios cursos, o `*` para todos. La licencia puede ser permanente o tener una fecha
+de vencimiento. Las compras adicionales agregan cursos. La firma Ed25519 liga
+cada licencia a la cuenta y equipo de esa solicitud; no basta copiarla a otra PC.
+
+**Configuración pendiente del propietario:** el repositorio no incluye claves
+del emisor. El instalador sin clave pública permite probar la demo, pero informa
+que aún no admite compras. Para finalizar la edición comercial, genere sus claves
+con la herramienta separada **RegistroLicencias.exe**, conserve la privada cifrada
+y comparta únicamente `license_public_key.pem`. Debe incorporarse al código antes
+de compilar; al estar ignorada por Git se debe añadir explícitamente con
+`git add -f license_public_key.pem`. Es pública y se integra en el ejecutable con
+un runtime hook. Quitar un archivo PEM externo no desactiva la demo ni convierte
+el programa en una edición gratuita. La privada nunca se incluye en artefactos.
+
+La [guía del vendedor](docs/LEEME-VENDEDOR.txt) explica los pasos completos.
+RegistroLicencias se compila por separado con `RegistroLicencias.spec` y se
+entrega en el artefacto **RegistroLicencias-SoloVendedor**. Al cliente solo se
+entrega **RegistroDocente-Setup.exe** y su licencia comprada.
+
+También existe una alternativa por consola:
 
 ```powershell
-.venv\Scripts\python tools\license_tool.py keygen --private C:\claves-privadas\registro.pem --public license_public_key.pem
-.venv\Scripts\python tools\license_tool.py issue --private C:\claves-privadas\registro.pem --licensee "Titular" --expires 2027-12-31 --output licencia-cliente.json
+.venv\Scripts\python tools\license_tool.py keygen --private C:\claves-privadas\registro_privada.pem --public license_public_key.pem
+.venv\Scripts\python tools\license_tool.py issue --private C:\claves-privadas\registro_privada.pem --request cliente.solicitud --courses secundaria:matematica --output cliente.licencia
 ```
 
-La herramienta pide la contraseña de la clave privada por entrada oculta y la
-guarda cifrada. Nunca distribuya ni suba la clave privada. No se han generado
-claves de emisor para este proyecto. La activación comercial está implementada
-y probada con claves temporales; requiere que el propietario configure su clave
-pública antes de compilar. Las licencias offline no incluyen revocación remota.
+La contraseña de la privada se solicita por entrada oculta. Nunca distribuya ni
+suba la privada o su contraseña. Perderlas impide emitir nuevas licencias para
+ese instalador. Haga un respaldo privado y seguro.
+
+Windows protege la cuenta local con DPAPI del usuario actual y conserva una
+copia en HKCU para recordar la demo tras una reinstalación del programa. Se
+detectan retrocesos del reloj. Las cuentas y licencias no viajan en el documento
+`.registro`; el respaldo `.activacion` corresponde al mismo equipo y perfil de
+Windows. Linux usa una protección local para desarrollo y pruebas, sin equivaler
+a las garantías DPAPI de la edición Windows. El instalador no cifra las notas.
+
+Sin servidor no hay revocación remota, verificación de correo, recuperación de
+contraseña por correo ni prueba de identidad de la persona. El vendedor gestiona
+manualmente cambios de equipo y reemisiones: no puede desactivar a distancia la
+licencia antigua. Formatear, clonar una máquina o modificar deliberadamente el
+programa puede eludir controles offline; no se promete protección absoluta.
 
 ## Pruebas
 
@@ -229,3 +266,31 @@ límites B/A/AD por nivel: se conserva por defecto la escala anterior, los cambi
 requieren confirmación y quedan en un historial de reglas. Cambiar la escala no
 modifica notas numéricas ni ponderaciones. En una institución con criterios de
 logro propios, el docente debe configurar y validar esa escala.
+
+## Versión 1.3: prácticas acumuladas, pantalla y tutorial
+
+**Prácticas y puntos** organiza temas por curso, salón y competencia. Cada práctica
+registra fecha, duración y ejercicios con máximos propios. La nota se calcula
+como `20 × suma de obtenidos / suma de máximos`, redondeada a dos decimales.
+6/10 + 8/10 produce 14/20. Los vacíos permanecen pendientes; un cero explícito
+sí se evalúa. No se consolida hasta completar los estudiantes activos.
+
+**Crear nota de examen** genera una sola actividad de Exámenes por tema y asigna
+su nota global a las capacidades elegidas. No modifica porcentajes ni borra otras
+notas. Reabrir permite corregir puntos; volver a consolidar actualiza la misma
+actividad y conserva la asistencia/comentarios. Excluir una práctica conserva sus
+puntos y cambia el denominador. Un documento .registro incluye los puntos; un
+periodo nuevo empieza sin ellos.
+
+La navegación lateral se desplaza verticalmente. Las divisiones de nombres/notas,
+formularios, temas y gráficos son anchas y se pueden arrastrar. Las barras de
+desplazamiento son más anchas y los controles se distribuyen en varias filas al
+reducir la ventana. **Restablecer vista** recupera la distribución. Se guardan
+las proporciones de los paneles y el último directorio de exportación.
+
+**Guardar archivo** abre siempre un selector de carpeta/nombre y muestra la ruta
+completa al terminar. Guardar notas/puntos confirma datos en la base de trabajo;
+guardar .registro crea un documento transportable. Los respaldos manuales también
+permiten elegir ubicación. **Instrucciones** incorpora tutoriales con ejemplos de
+prácticas, porcentajes, formatos, seguridad, cuenta y compras. Los pesos los elige
+el docente: los valores iniciales no se deducen de los archivos importados.

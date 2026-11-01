@@ -8,6 +8,82 @@ from pathlib import Path
 import sqlite3
 
 _connections = ContextVar('registro_connections', default={})
+_license_service = None
+_license_required = False
+
+
+def set_license_policy(service=None, required=False):
+    """Production entry point installs this policy after migration, before editing."""
+    global _license_service, _license_required
+    _license_service, _license_required = service, required
+
+
+def _license_guards(conn):
+    if not _license_required:
+        return
+    from licencias import course_key
+    allowed = _license_service.status()['courses'] if _license_service else set()
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    courses = {r[0]: (r[1], r[2]) for r in conn.execute('SELECT id,nombre,nivel FROM Cursos')}
+    lookups = {
+        'competencia': 'SELECT id,curso_id FROM Competencias',
+        'capacidad': 'SELECT a.id,c.curso_id FROM Capacidades a JOIN Competencias c ON c.id=a.competencia_id',
+        'sesion': 'SELECT id,curso_id FROM Sesiones_Clase',
+        'bloque': 'SELECT id,curso_id FROM Puntos_Bloques',
+        'practica': 'SELECT p.id,b.curso_id FROM Puntos_Practicas p JOIN Puntos_Bloques b ON b.id=p.bloque_id',
+        'ejercicio': 'SELECT e.id,b.curso_id FROM Puntos_Ejercicios e JOIN Puntos_Practicas p ON p.id=e.practica_id JOIN Puntos_Bloques b ON b.id=p.bloque_id',
+    }
+    cached = {}
+    for kind, query in lookups.items():
+        if kind in ('bloque', 'practica', 'ejercicio') and 'Puntos_Bloques' not in tables:
+            continue
+        cached[kind] = dict(conn.execute(query))
+
+    def area(name, level):
+        try:return int('*' in allowed or course_key(name, level) in allowed)
+        except (ValueError, TypeError):return 0
+
+    def scope(kind, identifier):
+        if kind == 'nivel':
+            return int('*' in allowed or any(c.startswith(str(identifier).casefold()+':') for c in allowed))
+        course = identifier
+        if kind != 'curso':
+            # Live lookups include newly inserted rows. The snapshot also resolves
+            # parent identities while foreign-key cascades remove their children.
+            query = lookups[kind]
+            row = conn.execute('SELECT curso_id FROM ('+query+') WHERE id=?',(identifier,)).fetchone()
+            course = row[0] if row else cached.get(kind, {}).get(identifier)
+        row = conn.execute('SELECT nombre,nivel FROM Cursos WHERE id=?', (course,)).fetchone()
+        row = tuple(row) if row else courses.get(course)
+        return area(*row) if row else 0
+
+    conn.create_function('registro_area', 2, area)
+    conn.create_function('registro_permiso', 2, scope)
+    guards = {
+        'Cursos': "registro_area({r}.nombre,{r}.nivel)",
+        'Competencias': "registro_permiso('curso',{r}.curso_id)",
+        'Capacidades': "registro_permiso('competencia',{r}.competencia_id)",
+        'Estudiantes': "registro_permiso('nivel',{r}.nivel)",
+        'Sesiones_Clase': "registro_permiso('curso',{r}.curso_id)",
+        'Sesion_Capacidades': "registro_permiso('sesion',{r}.sesion_id)",
+        'Instrumento_Indicadores': "registro_permiso('sesion',{r}.sesion_id)",
+        'Asistencia_Y_Comentarios_Clase': "registro_permiso('sesion',{r}.sesion_id)",
+        'Notas_Sesion_Capacidad': "registro_permiso('sesion',{r}.sesion_id)",
+        'Notas_Manuales_Capacidad': "registro_permiso('capacidad',{r}.capacidad_id)",
+        'Pesos_Rubros_Curso': "registro_permiso('curso',{r}.curso_id)",
+        'Puntos_Bloques': "registro_permiso('curso',{r}.curso_id)",
+        'Puntos_Capacidades': "registro_permiso('bloque',{r}.bloque_id)",
+        'Puntos_Practicas': "registro_permiso('bloque',{r}.bloque_id)",
+        'Puntos_Ejercicios': "registro_permiso('practica',{r}.practica_id)",
+        'Puntos_Registro': "registro_permiso('ejercicio',{r}.ejercicio_id)",
+    }
+    for table, expression in guards.items():
+        if table not in tables:
+            continue
+        for operation, refs in [('INSERT', ['NEW']), ('UPDATE', ['OLD', 'NEW']), ('DELETE', ['OLD'])]:
+            condition = ' AND '.join(expression.format(r=ref) for ref in refs)
+            conn.execute(f'''CREATE TEMP TRIGGER licencia_{table}_{operation} BEFORE {operation} ON main.{table}
+                WHEN NOT ({condition}) BEGIN SELECT RAISE(ABORT,'Licencia: curso o nivel sin habilitar. Puede consultar y exportar sus datos.'); END''')
 
 
 class _Connection(sqlite3.Connection):
@@ -32,6 +108,7 @@ def connection(path):
     token = _connections.set({**_connections.get(), key: conn})
     try:
         conn.execute('BEGIN')
+        _license_guards(conn)
         yield conn
         sqlite3.Connection.commit(conn)
     except BaseException:

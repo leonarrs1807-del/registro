@@ -19,6 +19,7 @@ class ClassroomTools:
             work.add_command(label=title,command=callback)
         menu.add_cascade(label='Trabajo docente',menu=work)
         view=tk.Menu(menu,tearoff=False)
+        view.add_command(label='Restablecer vista y paneles',command=self.restaurar_vista)
         for size in (16,18,20,24):view.add_command(label=f'Letra de tablas: {size}',command=lambda n=size:self.cambiar_tamano_letra(f'Personalizado ({n})'))
         for factor in (1,1.25,1.5,1.75):view.add_command(label=f'Zoom: {factor:.0%}',command=lambda n=factor:self.cambiar_zoom(n))
         menu.add_cascade(label='Lectura',menu=view)
@@ -41,8 +42,15 @@ class ClassroomTools:
         self.bind('<Control-minus>',lambda e:self.cambiar_zoom(max(1,getattr(self,'_zoom',1)-.25)))
         self.bind('<Configure>',self._guardar_ventana,add='+')
         prefs=self._preferencias()
-        if prefs.get('geometry'):self.geometry(prefs['geometry'])
+        if prefs.get('view_version')==2 and prefs.get('geometry'):
+            self.geometry(prefs['geometry']);self._geometry_restored=True
+        else:
+            prefs['zoom']=1
+            self.tamano_letra_actual='Personalizado (16)'
+        self.ajustar_pantalla()
+        for name in getattr(self,'_split_panes',{}):self.restaurar_divisor(name)
         self._lock_minutes=prefs.get('lock_minutes',15)
+        self._save_dir=prefs.get('save_dir','')
         self.cambiar_zoom(prefs.get('zoom',1),save=False)
         self.after(15000,self.autoguardar_borrador)
         self.after(500,self._ofrecer_borrador)
@@ -57,8 +65,9 @@ class ClassroomTools:
 
     def cambiar_nivel(self,nivel):
         import db
-        if not self.confirmar_descartar():
+        if not self.confirmar_descartar(include_points=True):
             self.combo_nivel.set(db.obtener_docente_config().get('nivel_educativo','Secundaria'));return
+        self.combo_nivel.set(nivel)
         with db.obtener_conexion() as conn:conn.execute('UPDATE Docente_Config SET nivel_educativo=? WHERE id=1',(nivel,))
         self.id_actividad_calificando=None;self.id_actividad_editando=None
         self.recargar_cursos_y_contexto()
@@ -66,14 +75,26 @@ class ClassroomTools:
 
     def _preferencias(self):
         file=storage.data_dir()/'vista.json'
-        try:return json.loads(file.read_text(encoding='utf-8'))
+        try:
+            data=json.loads(file.read_text(encoding='utf-8'))
+            return data if isinstance(data,dict) else {}
         except (OSError,ValueError):return {}
 
     def _guardar_ventana(self,event=None):
         if event is not None and event.widget is not self:return
         if not hasattr(self,'_zoom'):return
-        file=storage.data_dir()/'vista.json'
-        file.write_text(json.dumps({'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes}),encoding='utf-8')
+        data=self._preferencias()
+        data.update({'view_version':2,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
+        panes={}
+        for name,pane in getattr(self,'_split_panes',{}).items():
+            if pane.winfo_exists() and len(pane.panes())>=2:
+                vertical=str(pane.cget('orient'))=='vertical'
+                size=pane.winfo_height() if vertical else pane.winfo_width()
+                position=pane.sash_coord(0)[1 if vertical else 0]
+                if size>10 and position>0:panes[name]=position/size
+        data['panes']={**data.get('panes',{}),**panes}
+        file=storage.data_dir()/'vista.json';temporary=file.with_suffix('.tmp')
+        temporary.write_text(json.dumps(data),encoding='utf-8');temporary.replace(file)
 
     def cambiar_zoom(self,factor,save=True):
         self._zoom=factor;ctk.set_widget_scaling(factor)
@@ -92,18 +113,22 @@ class ClassroomTools:
         return image if image and messagebox.askyesno('Insignia del colegio','¿Incluir la insignia en este reporte?') else None
 
     def guardar_documento(self):
+        panel=getattr(self,'puntos_panel',None)
+        if panel and panel.pending:
+            if not messagebox.askyesno('Puntos pendientes','¿Guardar los puntos antes de crear el archivo completo?'):return
+            if not panel.save():return
         if self._formularios_pendientes and not messagebox.askyesno('Formularios pendientes','Hay formularios sin guardar. ¿Guardar el documento solo con los datos ya confirmados?'):return
         if getattr(self,'_planilla_pendiente',False):
             if not messagebox.askyesno('Notas pendientes','El documento guardará las notas confirmadas. ¿Desea guardar primero las notas de la planilla?'):return
             self.accion_guardar_planilla_calificacion_completa()
             if self._planilla_pendiente:return
-        path=filedialog.asksaveasfilename(defaultextension='.registro',filetypes=[('Documento de Registro Docente','*.registro')])
+        path=self.elegir_destino(title='Guardar todo el registro: elija carpeta y nombre',initialfile='Mi_registro.registro',defaultextension='.registro',filetypes=[('Documento de Registro Docente','*.registro')])
         if path:
             documento.save_document(path,self._db_path)
-            messagebox.showinfo('Documento guardado','Se guardaron todos los datos del periodo, incluidos instrumentos e insignia.')
+            self.archivo_guardado(path,'Se guardaron todos los datos del periodo, incluidos puntos, instrumentos e insignia.')
 
     def abrir_documento(self):
-        if not self.confirmar_descartar():return
+        if not self.confirmar_descartar(include_points=True):return
         path=filedialog.askopenfilename(filetypes=[('Documento de Registro Docente','*.registro')])
         if path:
             target=storage.data_dir()/f'documento-{time.time_ns()}.db'
@@ -114,18 +139,19 @@ class ClassroomTools:
         if not course:return
         if self._planilla_pendiente:
             messagebox.showinfo('Notas pendientes','Guarde la planilla antes de exportar para incluir sus últimos cambios.');return
-        path=filedialog.asksaveasfilename(defaultextension='.xlsx',filetypes=[('Excel y Google Sheets','*.xlsx'),('CSV para Google Sheets','*.csv'),('Reporte PDF','*.pdf'),('Datos JSON','*.json')])
+        path=self.elegir_destino(defaultextension='.xlsx',filetypes=[('Excel y Google Sheets','*.xlsx'),('CSV para Google Sheets','*.csv'),('Reporte PDF','*.pdf'),('Datos JSON','*.json')])
         if path:
             logo=self.insignia_exportacion() if Path(path).suffix.lower() in ('.xlsx','.pdf') else None
             count=reportes.export_grades(path,self._db_path,course,self.combo_grado_global.get(),self.combo_seccion_global.get(),logo)
-            messagebox.showinfo('Notas exportadas',f'Se exportaron {count} registros. En Google Sheets use Archivo → Importar → Subir. El documento .registro conserva toda la base para volver a abrirla aquí.')
+            self.archivo_guardado(path,f'Se exportaron {count} registros. En Google Sheets use Archivo → Importar → Subir.')
 
     def respaldo_externo(self):
         folder=filedialog.askdirectory(title='Carpeta para el respaldo externo')
         if folder:
             source=storage.backup_database(self._db_path)
-            shutil.copy2(source,Path(folder)/source.name)
-            messagebox.showinfo('Respaldo guardado','Se verificó y copió el respaldo a la carpeta elegida.')
+            target=Path(folder)/source.name
+            shutil.copy2(source,target)
+            self.archivo_guardado(target,"Respaldo verificado.")
 
     def _filas_planilla(self):
         tree=getattr(self,'planilla_nativa',None)
@@ -249,6 +275,7 @@ class ClassroomTools:
     def alternar_periodo(self):
         import db
         from main import DialogoDesbloquearCandado
+        if not self.licencia_permite():return
         # Always authenticate, including when reopening a closed period.
         self.edicion_desbloqueada=False
         dialog=DialogoDesbloquearCandado(self);self.wait_window(dialog)
@@ -280,8 +307,10 @@ class ClassroomTools:
         if not getattr(self,'figuras_porcentajes',None):return
         name=simpledialog.askinteger('Gráfico','1. Ponderaciones\n2. Competencias\n3. Capacidades',minvalue=1,maxvalue=3)
         if name:
-            path=filedialog.asksaveasfilename(defaultextension='.pdf',filetypes=[('PDF','*.pdf'),('Imagen PNG','*.png')])
-            if path:reportes.save_figure(self.figuras_porcentajes[name-1],path,self.insignia_exportacion())
+            path=self.elegir_destino(defaultextension='.pdf',filetypes=[('PDF','*.pdf'),('Imagen PNG','*.png')])
+            if path:
+                reportes.save_figure(self.figuras_porcentajes[name-1],path,self.insignia_exportacion())
+                self.archivo_guardado(path)
 
     def importar_google(self):
         if not self.verificar_permiso_edicion() or not self.confirmar_descartar():return
@@ -329,7 +358,8 @@ class ClassroomTools:
         if not isinstance(widget,ttk.Treeview):return
         row=widget.identify_row(event.y);col=widget.identify_column(event.x)
         if col and not row:
-            messagebox.showinfo('Encabezado completo',widget.heading(widget.column(col,'id'),'text'));return
+            name=widget.column(col,'id')
+            messagebox.showinfo('Encabezado completo',getattr(widget,'full_headers',{}).get(name,widget.heading(name,'text')));return
         if row and col:
             name=widget.column(col,'id');value=widget.set(row,name)
             messagebox.showinfo(widget.heading(name,'text'),value or 'Sin dato')
@@ -352,5 +382,7 @@ class ClassroomTools:
         if not students:return
         choice=simpledialog.askinteger('Reporte individual','\n'.join(f"{i+1}. {s['Apellidos']}, {s['Nombres']}" for i,s in enumerate(students)),minvalue=1,maxvalue=len(students))
         if choice:
-            path=filedialog.asksaveasfilename(defaultextension='.pdf',filetypes=[('Reporte individual PDF','*.pdf')])
-            if path:reportes.export_grades(path,self._db_path,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get(),self.insignia_exportacion(),student=students[choice-1]['ID'])
+            path=self.elegir_destino(defaultextension='.pdf',filetypes=[('Reporte individual PDF','*.pdf')])
+            if path:
+                reportes.export_grades(path,self._db_path,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get(),self.insignia_exportacion(),student=students[choice-1]['ID'])
+                self.archivo_guardado(path)

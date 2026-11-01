@@ -13,6 +13,11 @@ if sys.platform.startswith('linux'):
         binaries.extend((str(path), '.') for path in (Path(sys.base_prefix) / 'lib').glob(pattern))
 key_file = root / 'license_public_key.pem'
 public_key = key_file.read_bytes() if key_file.exists() else b''
+if public_key:
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    if not isinstance(load_pem_public_key(public_key), Ed25519PublicKey):
+        raise ValueError('license_public_key.pem debe contener únicamente la clave pública Ed25519 del vendedor.')
 # Embed the edition policy and public key in the executable's runtime hook.
 # Deleting a loose PEM file must not turn a commercial build into a free build.
 license_hook = root / 'build' / 'registro_license_hook.py'

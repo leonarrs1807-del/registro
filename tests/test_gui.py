@@ -182,3 +182,57 @@ class DesktopTests(unittest.TestCase):
         with db.obtener_conexion() as conn:conn.execute('INSERT OR REPLACE INTO Estado_Periodo VALUES(1,1)')
         self.app.edicion_desbloqueada=True
         with patch('tkinter.messagebox.showinfo'):self.assertFalse(self.app.verificar_permiso_edicion())
+
+    def test_names_divider_can_be_dragged_and_is_remembered(self):
+        import json
+        pane=self.app._split_panes['nombres_notas']
+        old=pane.sash_coord(0)[0]
+        pane.sash_place(0,old+65,0)
+        self.app.update_idletasks()
+        self.assertGreater(pane.sash_coord(0)[0],old+30)
+        self.app._guardar_ventana()
+        saved=json.loads((app_storage.data_dir()/'vista.json').read_text())
+        self.assertGreater(saved['panes']['nombres_notas'],0)
+
+    def test_compact_window_keeps_grade_actions_within_view(self):
+        self.app.geometry('1024x740')
+        self.app.after(300,self.app.quit);self.app.mainloop()
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        buttons=[w for w in descendants(self.app.tab_calificar) if isinstance(w,self.main.ctk.CTkButton)]
+        save=next(w for w in buttons if w.cget('text')=='Guardar notas')
+        self.assertTrue(save.winfo_ismapped())
+        self.assertLessEqual(save.winfo_rootx()+save.winfo_width(),self.app.winfo_rootx()+self.app.winfo_width())
+        self.assertFalse(self.errors)
+
+    def test_signup_creates_local_account_and_selects_only_demo_course(self):
+        from licencias import OfflineLicensing,course_key
+        from licencias_ui import AccountDialog
+        service=OfflineLicensing(app_storage.data_dir()/'cuenta-gui',device='a'*64,registry=False)
+        self.app.licensing=service;self.app._license_required=True
+        dialog=AccountDialog(self.app)
+        for label,value in [('Nombre y apellidos','Docente de Prueba'),('Correo de compra','prueba@example.com'),('Usuario','docente-prueba'),('Contraseña','TemporalPrueba123'),('Repetir contraseña','TemporalPrueba123')]:
+            dialog.entries[label].insert(0,value)
+        label=next(label for label,key in dialog.course_map.items() if key==course_key(self.course_name,'Secundaria'))
+        dialog.course_choice.set(label)
+        with patch('tkinter.messagebox.askyesno',return_value=True):dialog.register()
+        self.assertTrue(service.authenticate('docente-prueba','TemporalPrueba123'))
+        self.assertTrue(self.app.licencia_permite(show=False))
+        other=db.obtener_cursos()[1][0]
+        self.assertFalse(self.app.licencia_permite(other,show=False))
+        self.assertEqual(service.status()['days'],30)
+
+    def test_points_ui_shows_normalized_total_without_publishing_early(self):
+        import puntos
+        block=puntos.create_block(self.app._db_path,self.course,self.comp,'3°','A','Ecuaciones',[self.cap])
+        puntos.add_practice(self.app._db_path,block,'Primera',[('E1',10)])
+        puntos.add_practice(self.app._db_path,block,'Segunda',[('E1',15)])
+        self.app.tabview.set('Prácticas y puntos');self.app.puntos_panel.refresh(select=block)
+        tree=self.app.puntos_panel.grid_view
+        row=tree.get_children()[0]
+        tree.set(row,tree['columns'][3],'10');tree.set(row,tree['columns'][4],'10')
+        self.app.puntos_panel._changed()
+        self.assertEqual(tree.item(row,'values')[-2],'16.00')
+        with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Sesiones_Clase').fetchone()[0],1)

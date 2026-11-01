@@ -22,9 +22,19 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\windows.iss'
+      - name: Build separate seller tool
+        run: python -m PyInstaller --noconfirm RegistroLicencias.spec
+      - name: Verify seller executable
+        run: python tools/smoke_windows.py --seller dist/RegistroLicencias/RegistroLicencias.exe
       - uses: actions/upload-artifact@v4
         with:
           name: RegistroDocente-Windows
           path: |
             dist/installer/*.exe
             dist/RegistroDocente/**
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RegistroLicencias-SoloVendedor
+          path: |
+            dist/RegistroLicencias/**
+            docs/LEEME-VENDEDOR.txt

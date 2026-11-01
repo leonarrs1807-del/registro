@@ -5,10 +5,11 @@ import customtkinter as ctk
 import logging
 from pathlib import Path
 import app_storage
-from app_security import verify_license, license_public_key
+from app_security import license_public_key
 from db_safety import valid_number
 from desktop_ui import DesktopTools
 from widgets import scroll_area, wrap_label
+from interfaz import PageBook, split, grade_panels, pixel_scale, scrollbar, flow_toolbar
 from db import actualizar_pesos_actividades
 
 from db import (
@@ -204,6 +205,8 @@ class DialogoPerfilDocente(ctk.CTkToplevel):
         clv = self.ent_clave.get()
         try:
             guardar_docente_config(nom, inst, esp, usr, clv)
+            if self.app.licensing and self.app.licensing.state:
+                self.app.licensing.update_profile(nom,usr,clv)
         except ValueError as exc:
             messagebox.showwarning("Contraseña", str(exc), parent=self)
             return
@@ -218,7 +221,7 @@ class DialogoDesbloquearCandado(ctk.CTkToplevel):
         super().__init__(master)
         self.app = master
         self.title("🔓 Desbloquear Edición")
-        self.geometry("380x260")
+        self.geometry("460x360")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
@@ -242,7 +245,7 @@ class DialogoDesbloquearCandado(ctk.CTkToplevel):
 
         ctk.CTkLabel(self, text="Usuario:").pack(padx=20, anchor="w")
         self.ent_usr = ctk.CTkEntry(self)
-        self.ent_usr.insert(0, cfg["usuario"])
+        self.ent_usr.insert(0, self.app.credenciales_actuales())
         self.ent_usr.pack(padx=20, pady=(0, 8), fill="x")
 
         ctk.CTkLabel(self, text="Contraseña / PIN:").pack(padx=20, anchor="w")
@@ -260,7 +263,7 @@ class DialogoDesbloquearCandado(ctk.CTkToplevel):
         ).pack(padx=20, fill="x")
 
     def _intentar_desbloqueo(self) -> None:
-        if verificar_credenciales_docente(self.ent_usr.get(), self.ent_clv.get()):
+        if self.app.autenticar(self.ent_usr.get(), self.ent_clv.get()):
             self.destroy()
             if obtener_docente_config().get("requiere_cambio_clave"):
                 DialogoPerfilDocente(self.app)
@@ -672,8 +675,8 @@ class PlanillaScrollXY(ctk.CTkFrame):
         self.grid_rowconfigure(0, weight=1)
 
         self.canvas = tk.Canvas(self, bg="#0f172a", highlightthickness=0)
-        self.scroll_y = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.scroll_x = ttk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
+        self.scroll_y = scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scroll_x = scrollbar(self, orient="horizontal", command=self.canvas.xview)
 
         self.interior = ctk.CTkFrame(self.canvas, fg_color="#0f172a", corner_radius=0)
         self.interior_id = self.canvas.create_window((0, 0), window=self.interior, anchor="nw")
@@ -711,12 +714,15 @@ class PlanillaScrollXY(ctk.CTkFrame):
 
 
 class VentanaPrincipal(DesktopTools, ctk.CTk):
-    def __init__(self) -> None:
+    def __init__(self, licensing=None, license_required=False, license_error="") -> None:
         super().__init__()
+        self.licensing=licensing
+        self._license_required=license_required
+        self._license_error=license_error
+        if licensing and licensing.state:self.sincronizar_cuenta()
 
         self.title("Sistema Docente de Evaluación por Competencias, Capacidades y Rúbricas (Secundaria)")
-        self.geometry("1420x850")
-        self.minsize(1060, 660)
+        self.ajustar_pantalla(reset=True)
         self.dev_mode = False
 
         self.edicion_desbloqueada: bool = False
@@ -767,6 +773,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.set_appearance_mode(cfg_t["appearance"])
         self.configure(fg_color=cfg_t["bg_main"])
+        if hasattr(self,"tabview"):
+            self.tabview.content.configure(fg_color=cfg_t["bg_main"])
         for area in getattr(self,"_scroll_areas",[]):
             if area.winfo_exists():
                 area.configure(fg_color=cfg_t["bg_card"])
@@ -781,7 +789,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         match = re.search(r"\((\d+)\)", self.tamano_letra_actual)
         f_size = max(16, int(match.group(1)) if match else 18)
         f_size = round(f_size * getattr(self, "_zoom", 1))
-        r_height = max(42, f_size * 2 + 8)
+        r_height = max(42, round((f_size * 1.8 + 10)*self._get_window_scaling()))
                 
         estilo.configure(
             "Treeview",
@@ -828,7 +836,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if self.verificar_permiso_edicion():
             DialogoPerfilDocente(self)
 
-    def verificar_permiso_edicion(self) -> bool:
+    def verificar_permiso_edicion(self, curso=None) -> bool:
+        if not self.licencia_permite(curso):return False
         if hasattr(self, "lbl_estado") and self.periodo_cerrado():
             messagebox.showinfo("Periodo cerrado", "Reabra el periodo desde Trabajo docente para modificar los datos.")
             return False
@@ -860,7 +869,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             
         import tkinter.simpledialog as simpledialog
         pwd = simpledialog.askstring("Dev Mode", "Ingrese su contraseña docente para administrar cursos:", show="*")
-        if pwd and verificar_credenciales_docente(obtener_docente_config()["usuario"], pwd):
+        if pwd and self.autenticar(self.credenciales_actuales(), pwd) and self.licencia_permite():
             self.dev_mode = True
             self.btn_toggle_curso.grid()
             self.btn_eliminar_curso.grid()
@@ -892,13 +901,15 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def _construir_barra_contexto(self) -> None:
         self.barra_top = ctk.CTkFrame(self, corner_radius=10)
         self.barra_top.grid(row=0, column=0, padx=12, pady=(8, 4), sticky="ew")
-        self.barra_top.grid_columnconfigure(6, weight=1)
+        self.barra_top.grid_columnconfigure(0, weight=1)
+        self._context_controls=ctk.CTkFrame(self.barra_top,fg_color="transparent")
+        self._context_controls.grid(row=0,column=0,columnspan=7,sticky="ew")
 
-        ctk.CTkLabel(self.barra_top, text="📚 CURSO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
+        ctk.CTkLabel(self._context_controls, text="📚 CURSO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
             row=0, column=0, padx=(10, 4), pady=8, sticky="w"
         )
         self.combo_curso_global = ctk.CTkComboBox(
-            self.barra_top,
+            self._context_controls,
             width=265,
             height=32,
             state="readonly",
@@ -907,11 +918,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
         self.combo_curso_global.grid(row=0, column=1, padx=(0, 8), pady=8, sticky="w")
 
-        ctk.CTkLabel(self.barra_top, text="🎓 GRADO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
+        ctk.CTkLabel(self._context_controls, text="🎓 GRADO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
             row=0, column=2, padx=(2, 3), pady=8
         )
         self.combo_grado_global = ctk.CTkComboBox(
-            self.barra_top,
+            self._context_controls,
             values=["1°", "2°", "3°", "4°", "5°"],
             width=70,
             height=32,
@@ -920,11 +931,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.combo_grado_global.set("4°")
         self.combo_grado_global.grid(row=0, column=3, padx=(0, 6), pady=8)
 
-        ctk.CTkLabel(self.barra_top, text="🏫 SECCIÓN:", font=ctk.CTkFont(size=12, weight="bold")).grid(
+        ctk.CTkLabel(self._context_controls, text="🏫 SECCIÓN:", font=ctk.CTkFont(size=12, weight="bold")).grid(
             row=0, column=4, padx=(2, 3), pady=8
         )
         self.combo_seccion_global = ctk.CTkComboBox(
-            self.barra_top,
+            self._context_controls,
             values=["A", "B", "C", "D", "E"],
             width=65,
             height=32,
@@ -934,7 +945,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.combo_seccion_global.grid(row=0, column=5, padx=(0, 8), pady=8)
 
         self.lbl_docente_info = ctk.CTkLabel(
-            self.barra_top,
+            self._context_controls,
             text="👤 Docente",
             font=ctk.CTkFont(size=12, weight="bold"),
         )
@@ -942,13 +953,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         
         # Guardaremos referencias nulas por si otros métodos intentan cambiar su texto
         self.btn_candado = None 
+        flow_toolbar(self._context_controls)
 
     # ==========================================================================
     # CONSTRUCCIÓN DE LAS PESTAÑAS
     # ==========================================================================
 
     def _construir_pestanas(self) -> None:
-        self.tabview = ctk.CTkTabview(self, corner_radius=12)
+        self.tabview = PageBook(self, corner_radius=12)
         self.tabview.grid(row=1, column=0, padx=12, pady=(0, 10), sticky="nsew")
 
         self.tab_curriculo = self.tabview.add("Config. Cursos")
@@ -956,7 +968,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_crear = self.tabview.add("Crear Actividad")
         self.tab_calificar = self.tabview.add("Ingresar Calificativos")
         self.tab_buscador = self.tabview.add("Buscador")
-        self.tab_graficos = self.tabview.add("Porcentajes de Actividades")
+        self.tab_graficos = self.tabview.add("Porcentajes de Actividades",label="Pesos del promedio")
         self.tab_matriz = self.tabview.add("Matriz General")
         self.tab_estadisticas = self.tabview.add("Estadísticas")
 
@@ -968,6 +980,13 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._construir_tab_pesos_y_graficos()
         self._construir_tab_matriz_capacidades()
         self._construir_tab_estadisticas()
+        from puntos_ui import PointsPanel
+        from instrucciones import Tutorial
+        self.tab_puntos=self.tabview.add("Prácticas y puntos")
+        self.puntos_panel=PointsPanel(self.tab_puntos,self)
+        self.puntos_panel.pack(fill="both",expand=True)
+        self.tab_instrucciones=self.tabview.add("Instrucciones")
+        self.tutorial=Tutorial(self.tab_instrucciones);self.tutorial.pack(fill="both",expand=True)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 1: CURSOS, COMPETENCIAS Y CAPACIDADES
@@ -995,7 +1014,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_config,
-            text="⚙️ Configurar Docente Principal",
+            text="Configurar docente",
             width=200,
             fg_color="#334155",
             hover_color="#475569",
@@ -1013,7 +1032,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_config,
-            text="🔧 Dev Mode",
+            text="Administrar cursos",
             width=100,
             fg_color="#8b5cf6",
             hover_color="#7c3aed",
@@ -1093,6 +1112,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ctk.CTkButton(
             f_cap, text="+ Agregar Capacidad", height=32, fg_color="#4338ca", command=self._dialogo_nueva_capacidad
         ).grid(row=2, column=0, padx=10, pady=8, sticky="ew")
+        flow_toolbar(f_config)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 2: ESTUDIANTES (4A01 / EXCEL)
@@ -1102,9 +1122,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_estudiantes.grid_columnconfigure(1, weight=1)
         self.tab_estudiantes.grid_rowconfigure(0, weight=1)
 
-        panel_izq = ctk.CTkFrame(self.tab_estudiantes, width=360, corner_radius=10)
-        panel_izq.grid(row=0, column=0, padx=(8, 5), pady=8, sticky="nsew")
-        panel_izq.grid_propagate(False)
+        pane=split(self.tab_estudiantes,"formulario_alumnos")
+        pane.grid(row=0,column=0,columnspan=2,sticky="nsew",padx=6,pady=6)
+        panel_izq = ctk.CTkFrame(pane, width=360, corner_radius=10)
+        pane.add(panel_izq,width=round(300*pixel_scale(self)),minsize=round(240*pixel_scale(self)),stretch="never")
 
         ctk.CTkLabel(
             panel_izq, text="Código por Sección y Lista (Ej. 4A01)", font=ctk.CTkFont(size=15, weight="bold")
@@ -1184,8 +1205,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
         self.btn_est_eliminar.pack(padx=14, pady=(0, 6), fill="x")
 
-        panel_der = ctk.CTkFrame(self.tab_estudiantes, corner_radius=10)
-        panel_der.grid(row=0, column=1, padx=(5, 8), pady=8, sticky="nsew")
+        panel_der = ctk.CTkFrame(pane, corner_radius=10)
+        pane.add(panel_der,minsize=round(260*pixel_scale(self)),stretch="always")
         panel_der.grid_columnconfigure(0, weight=1)
         panel_der.grid_rowconfigure(1, weight=1)
 
@@ -1239,17 +1260,20 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.tree_estudiantes.column(col, width=w, anchor=al)
         self.tree_estudiantes.grid(row=1, column=0, padx=12, pady=(0, 12), sticky="nsew")
         self.tree_estudiantes.bind("<<TreeviewSelect>>", self._al_seleccionar_estudiante_tabla)
+        flow_toolbar(barra_f)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 3: CREAR ACTIVIDAD + EXPORTAR/IMPORTAR PLANTILLA DE RÚBRICA O LISTA DE COTEJO
     # --------------------------------------------------------------------------
     def _construir_tab_crear_actividad(self) -> None:
-        self.tab_crear.grid_columnconfigure(0, weight=3, minsize=550)
-        self.tab_crear.grid_columnconfigure(1, weight=2, minsize=300)
+        self.tab_crear.grid_columnconfigure(0, weight=1)
+        self.tab_crear.grid_columnconfigure(1, weight=0)
         self.tab_crear.grid_rowconfigure(0, weight=1)
 
-        panel_form = scroll_area(self.tab_crear, width=600, corner_radius=10)
-        panel_form.grid(row=0, column=0, padx=(8, 6), pady=8, sticky="nsew")
+        pane=split(self.tab_crear,"formulario_actividad")
+        pane.grid(row=0,column=0,columnspan=2,sticky="nsew",padx=6,pady=6)
+        panel_form = scroll_area(pane, width=600, corner_radius=10)
+        pane.add(panel_form.container,width=round(480*pixel_scale(self)),minsize=round(240*pixel_scale(self)),stretch="never")
         panel_form.grid_columnconfigure(0, weight=1)
         panel_form.grid_rowconfigure(4, weight=0)
 
@@ -1394,8 +1418,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_importar_rubrica_cotejo_excel,
         ).grid(row=3, column=0, columnspan=2, sticky="ew")
 
-        panel_lista = ctk.CTkFrame(self.tab_crear, corner_radius=10)
-        panel_lista.grid(row=0, column=1, padx=(6, 8), pady=8, sticky="nsew")
+        panel_lista = ctk.CTkFrame(pane, corner_radius=10)
+        pane.add(panel_lista,minsize=round(260*pixel_scale(self)),stretch="always")
         panel_lista.grid_columnconfigure(0, weight=1)
         panel_lista.grid_rowconfigure(1, weight=1)
 
@@ -1425,7 +1449,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             barra_l,
-            text="📝 IR A INGRESAR / EDITAR NOTAS DE ESTA ACTIVIDAD →",
+            text="Ingresar notas",
             height=36,
             fg_color="#1d4ed8",
             font=ctk.CTkFont(weight="bold"),
@@ -1453,6 +1477,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tree_actividades.grid(row=1, column=0, padx=12, pady=(0, 12), sticky="nsew")
         self.tree_actividades.bind("<<TreeviewSelect>>", self._al_seleccionar_actividad_en_tabla)
         self.tree_actividades.bind("<Double-1>", lambda _e: self.accion_ir_a_calificar_seleccionada())
+        flow_toolbar(barra_l)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 4: INGRESAR / EDITAR NOTAS (MODO NORMAL O CON LISTA DE COTEJO / RÚBRICA)
@@ -1471,6 +1496,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         self.calif_combo_actividad = ctk.CTkComboBox(
             f_bar1,
+            width=300,
             height=34,
             state="readonly",
             font=ctk.CTkFont(size=12, weight="bold"),
@@ -1518,7 +1544,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_bar1,
-            text="💾 GUARDAR NOTAS Y COMENTARIOS",
+            text="Guardar notas",
             height=36,
             fg_color="#15803d",
             hover_color="#166534",
@@ -1539,6 +1565,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             wraplength=1120,
         )
         self.lbl_detalle_actividad_calificar.grid(row=0, column=0, padx=12, pady=6, sticky="ew")
+        wrap_label(self.lbl_detalle_actividad_calificar)
 
         self.calif_combo_orden = ctk.CTkComboBox(
             f_bar2,
@@ -1558,6 +1585,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.f_tabla_planilla.grid_columnconfigure(0, weight=1)
         self.f_tabla_planilla.grid_rowconfigure(0, weight=1)
         self.planilla_nativa = None
+        flow_toolbar(f_bar1)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 5: BUSCADOR GENERAL (MUESTRA LA NOTA PUESTA EN CADA CLASE SIN PROMEDIAR)
@@ -1673,8 +1701,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_tabla_b.grid_rowconfigure(0, weight=1)
 
         self.tree_buscador_alumnos = ttk.Treeview(f_tabla_b, show="headings", selectmode="browse")
-        sb_y = ttk.Scrollbar(f_tabla_b, orient="vertical", command=self.tree_buscador_alumnos.yview)
-        sb_x = ttk.Scrollbar(f_tabla_b, orient="horizontal", command=self.tree_buscador_alumnos.xview)
+        sb_y = scrollbar(f_tabla_b, orient="vertical", command=self.tree_buscador_alumnos.yview)
+        sb_x = scrollbar(f_tabla_b, orient="horizontal", command=self.tree_buscador_alumnos.xview)
         self.tree_buscador_alumnos.configure(yscrollcommand=sb_y.set, xscrollcommand=sb_x.set)
 
         self.tree_buscador_alumnos.grid(row=0, column=0, sticky="nsew")
@@ -1699,22 +1727,26 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_graficos.grid_columnconfigure(1, weight=1)
         self.tab_graficos.grid_rowconfigure(0, weight=1)
 
-        panel_izq = ctk.CTkFrame(self.tab_graficos, width=455, corner_radius=10)
-        panel_izq.grid(row=0, column=0, padx=(8, 5), pady=8, sticky="nsew")
-        panel_izq.grid_propagate(False)
+        pane=split(self.tab_graficos,"ponderaciones")
+        pane.grid(row=0,column=0,columnspan=2,sticky="nsew",padx=6,pady=6)
+        panel_izq = ctk.CTkFrame(pane, width=455, corner_radius=10)
+        pane.add(panel_izq,width=round(370*pixel_scale(self)),minsize=round(240*pixel_scale(self)),stretch="never")
         panel_izq.grid_columnconfigure(0, weight=1)
         panel_izq.grid_rowconfigure(4, weight=1)
 
         ctk.CTkLabel(
             panel_izq,
-            text="1° Porcentajes Generales (%) por Categoría",
+            text="Pesos elegidos para el promedio",
             font=ctk.CTkFont(size=14, weight="bold"),
         ).grid(row=0, column=0, padx=14, pady=(10, 4), sticky="w")
 
         f_grid_pct = ctk.CTkFrame(panel_izq, corner_radius=8)
         f_grid_pct.grid(row=1, column=0, padx=14, pady=2, sticky="ew")
-        f_grid_pct.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        f_grid_pct.grid_columnconfigure((0, 1), weight=1)
 
+        explanation=ctk.CTkLabel(f_grid_pct,text="Usted elige los pesos; no cambian al importar. Deben sumar 100%.",wraplength=290,justify="left")
+        explanation.grid(row=4,column=0,columnspan=2,padx=8,pady=6,sticky="ew")
+        wrap_label(explanation)
         self.entries_pct_rubros: Dict[str, ctk.CTkEntry] = {}
         for idx, (etiqueta, clave) in enumerate(
             [
@@ -1733,7 +1765,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             panel_izq,
-            text="💾 Guardar Porcentajes (%) y Actualizar Gráfico",
+            text="Guardar porcentajes",
             height=38,
             fg_color="#1d4ed8",
             font=ctk.CTkFont(size=14, weight="bold"),
@@ -1765,7 +1797,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             f_sel_cat,
-            text="💾 Guardar Pesos de esta Categoría",
+            text="Guardar pesos",
             fg_color="#15803d",
             hover_color="#166534",
             height=32,
@@ -1773,17 +1805,13 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_guardar_pesos_individuales_categoria,
         ).grid(row=1, column=1, sticky="ew")
 
-        self.scroll_pesos_categoria = ctk.CTkScrollableFrame(
-            panel_izq,
-            label_text="Actividades en la categoría seleccionada y su Peso:",
-            label_font=ctk.CTkFont(size=14, weight="bold"),
-        )
+        self.scroll_pesos_categoria = scroll_area(panel_izq)
         self.scroll_pesos_categoria.grid(row=4, column=0, padx=14, pady=(4, 10), sticky="nsew")
         self.scroll_pesos_categoria.grid_columnconfigure(0, weight=1)
 
         # Panel derecho: Lienzo de Gráficos
-        panel_der = ctk.CTkFrame(self.tab_graficos, corner_radius=10)
-        panel_der.grid(row=0, column=1, padx=(5, 8), pady=8, sticky="nsew")
+        panel_der = ctk.CTkFrame(pane, corner_radius=10)
+        pane.add(panel_der,minsize=round(260*pixel_scale(self)),stretch="always")
         panel_der.grid_columnconfigure(0, weight=1)
         panel_der.grid_rowconfigure(1, weight=1)
 
@@ -1816,7 +1844,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkLabel(
             barra_m,
-            text="Matriz Competencias y Capacidades (Nota por Nota ya promediada):",
+            text="Promedios por competencia y capacidad",
             font=ctk.CTkFont(size=12, weight="bold"),
         ).grid(row=0, column=0, sticky="w")
 
@@ -1840,14 +1868,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             barra_m,
-            text="✏️ Nota Manual en Capacidad",
+            text="Nota manual",
             fg_color="#0f766e",
             command=self.accion_colocar_nota_manual_capacidad,
         ).grid(row=0, column=3, padx=4)
 
         ctk.CTkButton(
             barra_m,
-            text="📤 Exportar Excel con Colores (.xlsx)",
+            text="Exportar matriz Excel",
             fg_color="#15803d",
             hover_color="#166534",
             font=ctk.CTkFont(weight="bold"),
@@ -1856,7 +1884,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.CTkButton(
             barra_m,
-            text="📥 Cargar Ese Mismo Excel con Notas (.xlsx)",
+            text="Importar matriz Excel",
             fg_color="#1d4ed8",
             font=ctk.CTkFont(weight="bold"),
             command=self.accion_importar_matriz_excel_con_notas,
@@ -1868,13 +1896,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_tree_m.grid_rowconfigure(0, weight=1)
 
         self.tree_matriz = ttk.Treeview(f_tree_m, show="headings", selectmode="browse")
-        scroll_x = ttk.Scrollbar(f_tree_m, orient="horizontal", command=self.tree_matriz.xview)
-        scroll_y = ttk.Scrollbar(f_tree_m, orient="vertical", command=self.tree_matriz.yview)
+        scroll_x = scrollbar(f_tree_m, orient="horizontal", command=self.tree_matriz.xview)
+        scroll_y = scrollbar(f_tree_m, orient="vertical", command=self.tree_matriz.yview)
         self.tree_matriz.configure(xscrollcommand=scroll_x.set, yscrollcommand=scroll_y.set)
 
         self.tree_matriz.grid(row=0, column=0, sticky="nsew")
         scroll_y.grid(row=0, column=1, sticky="ns")
         scroll_x.grid(row=1, column=0, sticky="ew")
+        flow_toolbar(barra_m)
 
     def _construir_tab_estadisticas(self) -> None:
         self.tab_estadisticas.grid_columnconfigure(0, weight=1)
@@ -1902,8 +1931,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ctk.CTkButton(f_btns, text="📊 Generar Gráficos", fg_color="#1d4ed8", font=ctk.CTkFont(weight="bold"), command=self.accion_generar_grafico_estadisticas).pack(side="left", padx=10)
         ctk.CTkButton(f_btns, text="📥 Exportar Reporte a PDF", fg_color="#b91c1c", hover_color="#991b1b", font=ctk.CTkFont(weight="bold"), command=self.accion_exportar_reporte_pdf).pack(side="left", padx=10)
 
-        self.f_grafico = ctk.CTkScrollableFrame(self.tab_estadisticas, corner_radius=8, fg_color="white")
+        self.f_grafico = scroll_area(self.tab_estadisticas, corner_radius=8, fg_color="white")
         self.f_grafico.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
+        flow_toolbar(f_controles)
 
     def accion_generar_grafico_estadisticas(self) -> None:
         curso_id = self.obtener_curso_activo_id()
@@ -1943,7 +1973,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         is_dash = "Dashboard" in tipo
         if hasattr(self, "fig_actual"):
             plt.close(self.fig_actual)
-        fig = plt.figure(figsize=(12, 8) if is_dash else (10, 5), dpi=100)
+        fig = plt.figure(figsize=(12, 8) if is_dash else (10, 5), dpi=100*pixel_scale(self))
         
         # Info for PDF export
         curso_nom = self.combo_curso_global.get()
@@ -2071,7 +2101,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
         
         from tkinter import filedialog
-        ruta = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Document", "*.pdf")])
+        ruta = self.elegir_destino(defaultextension=".pdf", filetypes=[("PDF Document", "*.pdf")])
         if ruta:
             try:
                 import reportes
@@ -2120,7 +2150,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._al_cambiar_curso_global(self.combo_curso_global.get())
 
     def _al_cambiar_curso_global(self, _nombre_curso: str) -> None:
-        if hasattr(self, "_contexto_guardado") and not self.confirmar_descartar():
+        if hasattr(self, "_contexto_guardado") and not self.confirmar_descartar(include_points=(self._contexto_guardado!=(self.combo_curso_global.get(),self.combo_grado_global.get(),self.combo_seccion_global.get()))):
             for widget, value in zip((self.combo_curso_global, self.combo_grado_global, self.combo_seccion_global), self._contexto_guardado):
                 widget.set(value)
             return
@@ -2180,6 +2210,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.dibujar_graficos_estadisticos()
         self.recargar_matriz_completa()
 
+        if hasattr(self,"puntos_panel"):self.puntos_panel.refresh()
+
     def _al_cambiar_salon_global(self) -> None:
         if not self.confirmar_descartar():
             for widget, value in zip((self.combo_curso_global, self.combo_grado_global, self.combo_seccion_global), self._contexto_guardado):
@@ -2227,7 +2259,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # ==========================================================================
 
     def _dialogo_nuevo_curso(self) -> None:
-        if not self.verificar_permiso_edicion():
+        if not self.licencia_permite(all_courses=True) or not self.verificar_permiso_edicion():
             return
         nom = simpledialog.askstring("Nuevo Curso", "Ingrese el nombre del Curso / Área Curricular:")
         if nom and nom.strip():
@@ -2327,7 +2359,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 messagebox.showerror("Error", f"No se pudo importar el Excel:\n{e}")
 
     def accion_descargar_plantilla_excel(self) -> None:
-        ruta = filedialog.asksaveasfilename(
+        ruta = self.elegir_destino(
             defaultextension=".xlsx",
             initialfile="Plantilla_Estudiantes_Seccion.xlsx",
             filetypes=[("Archivo Excel", "*.xlsx")],
@@ -2492,7 +2524,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         grado = self.combo_grado_global.get()
         seccion = self.combo_seccion_global.get()
 
-        ruta = filedialog.asksaveasfilename(
+        ruta = self.elegir_destino(
             title=f"Guardar Plantilla Excel de {tipo_instrumento}",
             defaultextension=".xlsx",
             initialfile=f"Plantilla_{tipo_instrumento}_{curso}_{grado}{seccion}.xlsx",
@@ -2873,35 +2905,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.f_tabla_planilla.grid_columnconfigure(0, weight=1)
         self.f_tabla_planilla.grid_rowconfigure(0, weight=1)
         
-        tree = PlanillaNativaTreeview(self.f_tabla_planilla, columns=headers, show="headings")
-        tree.on_edit_complete = self.marcar_planilla_pendiente
-        tree.configure(displaycolumns=headers[3:])
-        tree.grid(row=1, column=1, sticky="nsew")
-        identity=ttk.Treeview(self.f_tabla_planilla,columns=("codigo","alumno"),show="headings",selectmode="browse")
-        identity.heading("codigo",text="Código");identity.heading("alumno",text="Apellidos y nombres")
-        identity.column("codigo",width=85,stretch=False);identity.column("alumno",width=245,stretch=False)
-        identity.grid(row=1,column=0,sticky="ns")
-        self.identidad_planilla=identity
-        self.f_tabla_planilla.grid_columnconfigure(0,weight=0)
-        self.f_tabla_planilla.grid_columnconfigure(1,weight=1)
-        def scroll_both(*args):
-            tree.yview(*args);identity.yview(*args)
-        def sync_selection(source,target):
-            if source.selection() and target.selection()!=source.selection():
-                target.selection_set(source.selection());target.focus(source.selection()[0])
-        identity.bind("<<TreeviewSelect>>",lambda e:sync_selection(identity,tree))
-        tree.bind("<<TreeviewSelect>>",lambda e:sync_selection(tree,identity))
-        sy = ttk.Scrollbar(self.f_tabla_planilla, orient="vertical", command=scroll_both)
-        sx = ttk.Scrollbar(self.f_tabla_planilla, orient="horizontal", command=tree.xview)
-        sy.grid(row=1, column=2, sticky="ns"); sx.grid(row=2, column=1, sticky="ew")
-        def sync_scroll(first,last):
-            sy.set(first,last)
-            if abs(identity.yview()[0]-float(first))>.001:identity.yview_moveto(first)
-        tree.configure(yscrollcommand=sync_scroll, xscrollcommand=sx.set)
-        identity.configure(yscrollcommand=lambda first,last: tree.yview_moveto(first) if abs(tree.yview()[0]-float(first))>.001 else None)
-        self.f_tabla_planilla.grid_rowconfigure(0, weight=0)
-        self.f_tabla_planilla.grid_rowconfigure(1, weight=1)
-        self.planilla_nativa = tree
+        tree,identity,pane=grade_panels(self.f_tabla_planilla,headers,PlanillaNativaTreeview)
+        tree.on_edit_complete=self.marcar_planilla_pendiente
+        self.identidad_planilla=identity;self.planilla_nativa=tree
+        self.restaurar_divisor("nombres_notas")
         tree.tag_configure("odd", background=getattr(self, "stripe_color", ""))
         
         tree.heading("ID", text="ID")
@@ -2913,12 +2920,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.heading("Comentario", text="Comentario (Doble Clic)")
         
         tree.column("ID", width=0, stretch=False)
-        tree.column("Código", width=80, anchor="center", stretch=False)
-        tree.column("Apellidos y Nombres", width=250, anchor="w", stretch=False)
-        tree.column("Asistencia", width=120, anchor="center", stretch=False)
+        tree.column("Código", width=round(80*pixel_scale(tree)), anchor="center", stretch=False)
+        tree.column("Apellidos y Nombres", width=round(250*pixel_scale(tree)), anchor="w", stretch=False)
+        tree.column("Asistencia", width=round(120*pixel_scale(tree)), anchor="center", stretch=False)
         for idx_c in range(1, len(act["capacidades"]) + 1):
-            tree.column(f"Cap {idx_c}", width=300, minwidth=180, anchor="center", stretch=False)
-        tree.column("Comentario", width=400, anchor="w", stretch=False)
+            tree.column(f"Cap {idx_c}", width=round(300*pixel_scale(tree)), minwidth=round(150*pixel_scale(tree)), anchor="center", stretch=False)
+        tree.column("Comentario", width=round(400*pixel_scale(tree)), anchor="w", stretch=False)
         
         for est in estudiantes:
             est_id = est["ID"]
@@ -3125,7 +3132,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             messagebox.showwarning("Sin datos", "No hay datos para exportar. Busque a un estudiante primero.")
             return
             
-        ruta = filedialog.asksaveasfilename(
+        ruta = self.elegir_destino(
             defaultextension=".xlsx",
             filetypes=[("Archivo Excel", "*.xlsx")],
             title="Exportar Reporte del Estudiante",
@@ -3206,20 +3213,22 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             f_row.grid(row=idx, column=0, padx=4, pady=4, sticky="ew")
             f_row.grid_columnconfigure(0, weight=1)
 
-            ctk.CTkLabel(
+            activity_label=ctk.CTkLabel(
                 f_row,
-                text=f"#{act['id']} • {act['titulo_tema']}\n({act['competencia_nombre'][:38]}...)",
+                text=f"#{act['id']} • {act['titulo_tema']}\n({act['competencia_nombre']})",
                 font=ctk.CTkFont(size=11, weight="bold"),
                 justify="left",
                 anchor="w",
-            ).grid(row=0, column=0, padx=8, pady=6, sticky="w")
+            )
+            activity_label.grid(row=0, column=0, columnspan=3, padx=8, pady=6, sticky="ew")
+            wrap_label(activity_label)
 
             ctk.CTkLabel(f_row, text="Peso:", font=ctk.CTkFont(size=11)).grid(
-                row=0, column=1, padx=(4, 2), pady=6
+                row=1, column=1, padx=(4, 2), pady=6
             )
             ent_p = ctk.CTkEntry(f_row, width=68, justify="center")
             ent_p.insert(0, f"{act['peso_clase']:.1f}")
-            ent_p.grid(row=0, column=2, padx=(0, 8), pady=6)
+            ent_p.grid(row=1, column=2, padx=(0, 8), pady=6)
 
             self.entries_pesos_individuales_cat.append((act["id"], ent_p))
 
@@ -3302,6 +3311,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         index=("Ponderaciones","Competencias","Capacidades").index(self.graficos_tabs.get())
         host=self.graficos_hosts[index]
         if host.winfo_children():return
+        self.figuras_porcentajes[index].set_dpi(100*pixel_scale(self))
         canvas=FigureCanvasTkAgg(self.figuras_porcentajes[index],master=host)
         canvas.draw();canvas.get_tk_widget().pack(fill="x",expand=True)
 
@@ -3472,7 +3482,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         grado = self.combo_grado_global.get()
         seccion = self.combo_seccion_global.get()
 
-        ruta = filedialog.asksaveasfilename(
+        ruta = self.elegir_destino(
             title="Exportar Registro Detallado con Colores y Divisiones a Excel",
             defaultextension=".xlsx",
             initialfile=f"Registro_Detallado_{curso}_{grado}_{seccion}.xlsx",
@@ -3514,48 +3524,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             messagebox.showerror("Error al cargar Excel", f"Detalle: {e}")
 
 
-class DialogoLicencia(ctk.CTk):
-    def __init__(self, public_key):
-        super().__init__()
-        self.public_key = public_key
-        self.validada = False
-        self.title("Activar Registro Docente")
-        self.geometry("460x220")
-        ctk.CTkLabel(self, text="Seleccione la licencia firmada entregada por el emisor.", wraplength=400).pack(pady=30)
-        ctk.CTkButton(self, text="Importar licencia", command=self.verificar).pack(pady=15)
-
-    def verificar(self):
-        import json
-        ruta = filedialog.askopenfilename(filetypes=[("Licencia", "*.json")])
-        if not ruta:
-            return
-        try:
-            document = json.loads(Path(ruta).read_text(encoding="utf-8"))
-            verify_license(document, self.public_key)
-            target = app_storage.data_dir() / "licencia-firmada.json"
-            target.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
-            self.validada = True
-            self.destroy()
-        except Exception:
-            messagebox.showerror("Licencia", "Licencia inválida, vencida o de otro producto.", parent=self)
-
-
 def main() -> None:
     import json
     from db import DB_PATH
     app_storage.configure_logging()
-    # A free build has no activation requirement. Commercial builds embed only
-    # the issuer's public key; legacy {activado:true} files are never trusted.
-    public_key = license_public_key()
-    if public_key:
-        try:
-            document = json.loads((app_storage.data_dir() / "licencia-firmada.json").read_text(encoding="utf-8"))
-            verify_license(document, public_key)
-        except Exception:
-            dialog = DialogoLicencia(public_key)
-            dialog.mainloop()
-            if not dialog.validada:
-                return
     try:
         app_storage.prepare_storage(DB_PATH)
         inicializar_db()
@@ -3579,9 +3551,17 @@ def main() -> None:
                     messagebox.showerror("Recuperación",str(recovery_error))
         root.destroy()
         return
-    app = VentanaPrincipal()
-    if obtener_docente_config().get("requiere_cambio_clave"):
-        app.after(100, lambda: DialogoPerfilDocente(app))
+    from licencias import OfflineLicensing
+    from db_safety import set_license_policy
+    licensing=None;license_error=""
+    try:
+        licensing=OfflineLicensing(app_storage.data_dir(),license_public_key())
+    except Exception as exc:
+        license_error=str(exc)
+    set_license_policy(licensing,required=True)
+    app = VentanaPrincipal(licensing,license_required=True,license_error=license_error)
+    if not licensing or not licensing.state:
+        app.after(300, app.mostrar_licencia)
     app.mainloop()
 
 

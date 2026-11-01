@@ -8,7 +8,10 @@ def scroll_area(master, **kwargs):
     outer=ctk.CTkFrame(master,**kwargs)
     color=outer._apply_appearance_mode(outer.cget('fg_color'))
     canvas=tk.Canvas(outer,highlightthickness=0,bg=color)
-    scrollbar=ttk.Scrollbar(outer,orient='vertical',command=canvas.yview)
+    root=master.winfo_toplevel()
+    try:scale=ctk.ScalingTracker.get_widget_scaling(root)
+    except KeyError:scale=1
+    scrollbar=tk.Scrollbar(outer,orient='vertical',command=canvas.yview,width=max(22,round(22*scale)))
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.grid(row=0,column=0,sticky='nsew',padx=4,pady=4)
     scrollbar.grid(row=0,column=1,sticky='ns',padx=(0,4))

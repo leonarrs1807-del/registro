@@ -1,0 +1,60 @@
+REGISTRO DOCENTE 1.3 - ACTIVACION MANUAL, SIN SERVIDOR
+
+PRIMERA CONFIGURACION
+1. Abra RegistroLicencias.exe (esta herramienta es solo para usted).
+2. Pulse Crear mis claves. Elija una carpeta privada y una contraseña de al
+   menos 12 caracteres. Se crearán registro_privada.pem y license_public_key.pem.
+3. Conserve registro_privada.pem y la contraseña. Haga una copia de seguridad
+   privada. Nunca los suba a GitHub, envíe por chat o entregue a compradores.
+4. Para terminar el instalador comercial, comparta únicamente
+   license_public_key.pem (la clave PUBLICA). Debe incorporarse a la raíz del
+   código antes de compilar RegistroDocente.spec. El instalador de preparación
+   puede probarse, pero no acepta compras hasta incorporar esta clave pública.
+5. El instalador definitivo contiene solo la clave pública. La contraseña de su
+   clave privada no es una contraseña maestra para entrar al programa.
+
+COMO VENDER
+1. El comprador instala RegistroDocente-Setup.exe, crea su usuario y elige el
+   único curso y nivel de su demo de 30 días. La demo incluye grados/secciones.
+2. En Licencia y cuenta guarda una solicitud .solicitud y se la envía.
+3. Usted comprueba el pago y abre esa solicitud en RegistroLicencias.exe.
+4. Selecciona los cursos comprados o el paquete completo. Puede fijar una fecha
+   de vencimiento o dejarla vacía para una licencia permanente.
+5. Carga su clave privada, introduce su contraseña y guarda la licencia firmada.
+6. Entrega únicamente el archivo .licencia al cliente. Este lo importa en
+   Licencia y cuenta de la misma computadora en la que creó la solicitud.
+7. Conserve la solicitud, licencia y referencia del pago en sus registros de
+   ventas. La herramienta no procesa pagos ni sincroniza con Drive.
+
+AL VENCER LA DEMO
+Se bloquea agregar o cambiar datos, pero se conserva la consulta y la exportación.
+Los documentos .registro y las notas no se borran. Abrir otro documento no inicia
+otra demo ni traslada una licencia. Copiar una licencia a otra cuenta/equipo no
+permite usarla allí. La cuenta local de Windows protege el registro con DPAPI.
+
+RESPALDOS Y CAMBIOS DE EQUIPO
+El cliente debe conservar su usuario/contraseña y respaldar su cuenta desde
+Licencia y cuenta. El archivo .activacion sirve en la misma computadora y perfil
+de Windows: se restaura como cuenta.activacion en la carpeta de datos indicada
+por Datos y seguridad. No es un permiso para instalar en otro equipo.
+Para cambiar de computadora, el cliente traslada las notas con un .registro y
+solicita una nueva licencia. Compruebe la venta antes de reemitirla. Sin servidor
+no se puede desactivar a distancia la licencia de la computadora anterior.
+
+LIMITES
+No se paga un servidor y no se necesita Internet para activar o trabajar.
+Las compras y cambios de equipo se gestionan manualmente. No hay verificación
+online del correo, recuperación por correo ni revocación remota. El control
+recuerda el inicio de demo y detecta retrocesos del reloj. No puede garantizar
+protección absoluta frente a formateos, eliminación deliberada de todo el estado
+local, máquinas clonadas o modificación del programa. Un servidor mejora estos
+controles y automatiza ventas, pero también requiere mantenimiento.
+
+QUE ENTREGAR AL COMPRADOR
+- RegistroDocente-Setup.exe, compilado con SU clave pública.
+- Su licencia .licencia, cuando haya comprado.
+
+QUE NO ENTREGAR
+- RegistroLicencias.exe (uso del vendedor).
+- registro_privada.pem ni su contraseña.
+- Bases de datos con alumnado o sus propios documentos personales.

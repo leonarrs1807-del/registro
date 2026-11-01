@@ -116,6 +116,9 @@ def create_period(source, year, period):
         copy_database(source, staged)
         with closing(sqlite3.connect(staged)) as conn, conn:
             conn.execute('PRAGMA foreign_keys=ON')
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Puntos_Bloques'").fetchone():
+                conn.execute('DELETE FROM Puntos_Bloques')
+                conn.execute('DELETE FROM Puntos_Historial')
             conn.execute('DELETE FROM Sesiones_Clase')
             conn.execute('DELETE FROM Notas_Manuales_Capacidad')
             conn.execute('DELETE FROM Historial_Notas')

@@ -5,7 +5,7 @@ import ctypes,os,sqlite3,subprocess,sys,tempfile,time
 from ctypes import wintypes
 
 
-def visible_application(pid):
+def visible_application(pid,prefix='Registro Docente 1.3'):
     user32=ctypes.windll.user32
     found=[]
     callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
@@ -19,7 +19,7 @@ def visible_application(pid):
         if owner.value==pid and user32.IsWindowVisible(hwnd):
             size=user32.GetWindowTextLengthW(hwnd)
             text=ctypes.create_unicode_buffer(size+1);user32.GetWindowTextW(hwnd,text,size+1)
-            if text.value.startswith('Registro Docente 1.2'):found.append(True)
+            if text.value.startswith(prefix):found.append(True)
         return True
     user32.EnumWindows(callback_type(inspect),0)
     return bool(found)
@@ -51,6 +51,23 @@ def run_case(executable,database,folder,expected_note=None):
 
 
 def main():
+    if sys.argv[1]=='--seller':
+        with tempfile.TemporaryDirectory(prefix='registro-vendedor-exe-') as folder:
+            process=subprocess.Popen([str(Path(sys.argv[2]).resolve())],cwd=folder)
+            try:
+                deadline=time.monotonic()+45
+                while time.monotonic()<deadline:
+                    if process.poll() is not None:raise RuntimeError('La herramienta del vendedor terminó al iniciar.')
+                    if visible_application(process.pid,'Registro Licencias'):
+                        print('PASS: herramienta del vendedor visible; no se generan claves sin acción del vendedor.',flush=True)
+                        return
+                    time.sleep(.2)
+                raise RuntimeError('La herramienta del vendedor no mostró su ventana.')
+            finally:
+                process.terminate()
+                try:process.wait(timeout=10)
+                except subprocess.TimeoutExpired:process.kill();process.wait()
+        return
     exe=Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory(prefix='registro-windows-exe-') as folder:
         root=Path(folder);fresh=root/'nuevo';fresh.mkdir()

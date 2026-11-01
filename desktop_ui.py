@@ -14,9 +14,11 @@ from db_safety import history, undo_grade
 
 
 from mejoras_ui import ClassroomTools
+from vista import ViewTools
+from licencias_ui import LicenseTools
 
 
-class DesktopTools(ClassroomTools):
+class DesktopTools(ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -35,8 +37,11 @@ class DesktopTools(ClassroomTools):
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.2 — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.3 — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
+        self.barra_acciones()
+        self.iniciar_licencia_ui(menu)
+        self.fuentes_menu(menu)
 
     def destroy(self):
         # Tk timers outlive deleted child widgets unless explicitly cancelled.
@@ -96,7 +101,8 @@ class DesktopTools(ClassroomTools):
         if hasattr(self,'lbl_estado'):
             self.lbl_estado.configure(text='Cambios pendientes · Notas todavía sin confirmar')
 
-    def confirmar_descartar(self):
+    def confirmar_descartar(self,include_points=False):
+        if include_points and hasattr(self,"puntos_panel") and not self.puntos_panel.confirm_change():return False
         tree = getattr(self, 'planilla_nativa', None)
         if tree and tree.winfo_exists() and getattr(tree, '_entry', None):
             tree._entry.event_generate('<FocusOut>')
@@ -110,12 +116,19 @@ class DesktopTools(ClassroomTools):
         return True
 
     def cerrar_aplicacion(self):
-        if self.confirmar_descartar():
+        if self.confirmar_descartar(include_points=True):
             self.destroy()
 
     def crear_respaldo(self):
-        path = storage.backup_database(self._db_path)
-        messagebox.showinfo('Respaldo creado', f'Se verificó y guardó el respaldo:\n{path}')
+        from datetime import datetime
+        path=self.elegir_destino(title="Elija dónde guardar el respaldo",defaultextension='.db',initialfile=f'Respaldo_{datetime.now():%Y%m%d_%H%M}.db',filetypes=[('Base de Registro','*.db')])
+        if path:
+            if Path(path).resolve()==self._db_path.resolve():
+                messagebox.showwarning("Respaldo","Elija un archivo diferente de la base de trabajo.");return
+            source=storage.backup_database(self._db_path)
+            storage.copy_database(source,path)
+            storage.validate_database(path)
+            self.archivo_guardado(path,'Respaldo verificado.')
 
     def _reiniciar(self, path):
         args = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable, str(Path(__file__).with_name('main.py'))]
@@ -124,7 +137,7 @@ class DesktopTools(ClassroomTools):
         self.destroy()
 
     def restaurar_respaldo(self):
-        if not self.verificar_permiso_edicion() or not self.confirmar_descartar():
+        if not self.verificar_permiso_edicion() or not self.confirmar_descartar(include_points=True):
             return
         path = filedialog.askopenfilename(title='Seleccionar respaldo', initialdir=self._db_path.parent / 'backups', filetypes=[('Base de datos', '*.db')])
         if not path:
@@ -167,7 +180,7 @@ class DesktopTools(ClassroomTools):
         refresh()
 
     def seleccionar_periodo(self):
-        if not self.confirmar_descartar():
+        if not self.confirmar_descartar(include_points=True):
             return
         window = tk.Toplevel(self)
         window.title('Años y periodos independientes')
