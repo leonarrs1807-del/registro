@@ -22,6 +22,7 @@ class ViewTools:
         import db
         db.guardar_tamano_letra_preferido(self.tamano_letra_actual)
         self.cambiar_zoom(1)
+        self.tabview.set_expanded(False)
         self.ajustar_pantalla(reset=True)
         for name,pane in getattr(self,'_split_panes',{}).items():
             if pane.winfo_exists():
@@ -50,7 +51,7 @@ class ViewTools:
 
     def fuentes_menu(self,menu):
         font=tkfont.nametofont('TkMenuFont',root=self)
-        font.configure(size=14)
+        font.configure(size=12)
         menu.configure(font=font)
         end=menu.index('end')
         if end is not None:
@@ -75,14 +76,11 @@ class ViewTools:
 
     def archivo_guardado(self,path,detail='Archivo guardado correctamente.'):
         path=Path(path).resolve()
-        if hasattr(self,'lbl_estado'):self.lbl_estado.configure(text=f'Archivo guardado: {path}')
+        if hasattr(self,'lbl_estado'):self.lbl_estado.configure(text='Archivo guardado')
         messagebox.showinfo('Archivo guardado',detail+'\n\nUbicación:\n'+str(path))
 
     def abrir_instrucciones(self,topic='Empezar y guardar'):
         self.tabview.set('Instrucciones');self.tutorial.open(topic)
 
     def barra_acciones(self):
-        frame=ctk.CTkFrame(self.barra_top,fg_color='transparent')
-        frame.grid(row=1,column=2,columnspan=5,sticky='e',padx=6,pady=5)
-        for i,(title,callback) in enumerate([('Guardar archivo…',self.guardar_documento),('Restablecer vista',self.restaurar_vista),('Instrucciones',self.abrir_instrucciones)]):
-            ctk.CTkButton(frame,text=title,command=callback,width=135,height=34,font=ctk.CTkFont(size=14)).grid(row=0,column=i,padx=4)
+        self.after(100,self._ajustar_cabecera)

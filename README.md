@@ -17,13 +17,12 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La primera ejecución solicita crear una cuenta local y elegir el único curso
-habilitado durante una demo de 30 días. La contraseña requiere al menos 8
-caracteres y se guarda mediante PBKDF2 con sal. El correo identifica al comprador
-sin verificación online. Las siguientes ejecuciones empiezan con la edición
-bloqueada y requieren autenticación mediante el candado. Las bases anteriores
-conservan sus notas; la cuenta comercial se crea aparte y se usa también al abrir
-otros documentos. La administración de cursos usa esa misma autenticación.
+La edición personal 1.4 permite trabajar sin demo ni activación comercial.
+Si conserva la contraseña inicial, el primer arranque solicita configurar el
+perfil docente y una contraseña de al menos 8 caracteres. Las bases existentes
+conservan su usuario, contraseña y notas. El candado solicita autenticarse para
+editar y las contraseñas se guardan con PBKDF2 y sal aleatoria. Las funciones de
+licencias están conservadas para una futura edición comercial separada.
 
 ## Datos, migración y respaldos
 
@@ -135,7 +134,7 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Licencias comerciales offline
+## Licencias comerciales offline (conservadas para una etapa posterior)
 
 La versión 1.3 utiliza cuentas locales y una demo de **30 días con un solo curso
 y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se
@@ -151,9 +150,10 @@ varios cursos, o `*` para todos. La licencia puede ser permanente o tener una fe
 de vencimiento. Las compras adicionales agregan cursos. La firma Ed25519 liga
 cada licencia a la cuenta y equipo de esa solicitud; no basta copiarla a otra PC.
 
-**Configuración pendiente del propietario:** el repositorio no incluye claves
-del emisor. El instalador sin clave pública permite probar la demo, pero informa
-que aún no admite compras. Para finalizar la edición comercial, genere sus claves
+**Configuración para retomar las ventas:** el repositorio no incluye claves
+del emisor. El instalador personal 1.4 funciona sin demo ni compras. Para compilar
+una edición comercial se requiere incorporar la clave pública y definir
+`REGISTRO_EDITION=comercial`; la compilación rechaza una edición comercial sin clave pública. Para finalizar la edición comercial, genere sus claves
 con la herramienta separada **RegistroLicencias.exe**, conserve la privada cifrada
 y comparta únicamente `license_public_key.pem`. Debe incorporarse al código antes
 de compilar; al estar ignorada por Git se debe añadir explícitamente con
@@ -294,3 +294,37 @@ guardar .registro crea un documento transportable. Los respaldos manuales tambi�
 permiten elegir ubicación. **Instrucciones** incorpora tutoriales con ejemplos de
 prácticas, porcentajes, formatos, seguridad, cuenta y compras. Los pesos los elige
 el docente: los valores iniciales no se deducen de los archivos importados.
+
+## Versión 1.4: espacio de trabajo compacto
+
+Esta entrega es una **edición personal de trabajo**, sin demo, límite de cursos
+ni solicitud de cuenta comercial. Conserva el candado docente y las contraseñas
+existentes; no borra archivos de activación. El generador y la verificación de
+licencias se mantienen para retomarlos más adelante. No distribuya esta edición
+personal como instalador comercial con restricciones.
+
+La cabecera ocupa una fila: nivel, curso, grado y sección. Guardar, candado y
+opciones se representan con iconos y ayudas al pasar el ratón. En ventanas
+estrechas, el nivel también se puede elegir en el menú ⋯. Ctrl+S guarda el
+.registro; Ctrl+B despliega u oculta los nombres del menú lateral; F1 abre Ayuda.
+La navegación empieza contraída y recuerda su estado. Elegir una página con una
+ventana estrecha contrae el menú para dejar espacio al contenido.
+
+Calificaciones muestra los controles de uso diario y una tabla con encabezados
+cortos. **Detalles** conserva descripción, competencia, capacidades, criterios e
+indicadores. **⋯** reúne asistencia, peso e importación de instrumentos. Las
+columnas siguen separadas por una división ajustable. Un clic derecho en cada
+encabezado permite leer la capacidad completa. Las barras se ocultan cuando todo
+cabe en el panel.
+
+Actividades elimina títulos repetidos y abre los criterios opcionales desde
+**Criterio…**. **Más…** reúne descripción y plantillas/importaciones. Los textos
+existentes se conservan. Puntos mantiene la **Nota / 20** junto al estudiante,
+incluso mientras se desplazan los ejercicios. **Crear nota / 20** publica el
+acumulado en una actividad de Exámenes; guardar puntos por sí solo no lo publica.
+
+Para retomar una edición comercial, el propietario debe configurar la clave
+pública y compilar con `REGISTRO_EDITION=comercial`. La política se integra en el
+ejecutable; una variable del equipo del comprador no permite desactivarla. El
+compilador rechaza una edición comercial sin clave pública. La edición personal
+es la predeterminada mientras el usuario mantiene pausada la comercialización.

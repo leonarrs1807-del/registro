@@ -13,17 +13,17 @@ class ClassroomTools:
         archive=tk.Menu(menu,tearoff=False)
         for title,callback in [('Guardar documento interno (.registro)…',self.guardar_documento),('Abrir documento interno…',self.abrir_documento),('Exportar notas: Excel / Google Sheets…',self.exportar_notas),('Reporte individual PDF…',self.reporte_individual),('Importar notas de Google Sheets…',self.importar_google),('Cargar insignia del colegio…',self.cargar_insignia),('Respaldo en otra carpeta…',self.respaldo_externo),('Exportar gráfico de porcentajes…',self.exportar_grafico_categorias)]:
             archive.add_command(label=title,command=callback)
-        menu.add_cascade(label='Archivo y exportación',menu=archive)
+        menu.add_cascade(label='Archivo',menu=archive)
         work=tk.Menu(menu,tearoff=False)
         for title,callback in [('Recuperar borrador de notas',self.recuperar_borrador),('Duplicar actividad seleccionada',self.duplicar_actividad),('Guardar instrumento en biblioteca',self.guardar_instrumento),('Usar instrumento de biblioteca',self.usar_instrumento),('Ver pendientes y explicación de promedios',self.ver_pendientes),('Archivar / recuperar actividades',self.archivar_actividad),('Bloqueo por inactividad',self.configurar_inactividad),('Cerrar / reabrir periodo',self.alternar_periodo),('Escala de logro por nivel',self.configurar_escala),('Vista previa de nuevas ponderaciones',self.previsualizar_pesos)]:
             work.add_command(label=title,command=callback)
-        menu.add_cascade(label='Trabajo docente',menu=work)
+        menu.add_cascade(label='Herramientas',menu=work)
         view=tk.Menu(menu,tearoff=False)
         view.add_command(label='Restablecer vista y paneles',command=self.restaurar_vista)
         for size in (16,18,20,24):view.add_command(label=f'Letra de tablas: {size}',command=lambda n=size:self.cambiar_tamano_letra(f'Personalizado ({n})'))
         for factor in (1,1.25,1.5,1.75):view.add_command(label=f'Zoom: {factor:.0%}',command=lambda n=factor:self.cambiar_zoom(n))
-        menu.add_cascade(label='Lectura',menu=view)
-        self.lbl_estado=ctk.CTkLabel(self,text=f'Datos: {self._db_path.name} · Edición bloqueada',anchor='w',height=25)
+        menu.add_cascade(label='Vista',menu=view)
+        self.lbl_estado=ctk.CTkLabel(self,text='Edición bloqueada',anchor='w',height=25)
         self.lbl_estado.grid(row=2,column=0,sticky='ew',padx=16)
         self._undo=[];self._redo=[]
         self._lock_minutes=15;self._last_input=time.monotonic()
@@ -32,9 +32,6 @@ class ClassroomTools:
         self.bind('<Button-3>',self.mostrar_celda_completa,add='+')
         self.after(15000,self.verificar_inactividad)
         import db
-        self.combo_nivel=ctk.CTkComboBox(self.barra_top,values=['Primaria','Secundaria'],state='readonly',command=self.cambiar_nivel,width=180)
-        self.combo_nivel.set(db.obtener_docente_config().get('nivel_educativo','Secundaria'))
-        self.combo_nivel.grid(row=1,column=0,columnspan=2,sticky='w',padx=10,pady=5)
         self.bind('<Control-z>',lambda e:self.deshacer_planilla() if e.widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None)) else None)
         self.bind('<Control-y>',lambda e:self.deshacer_planilla(True) if e.widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None)) else None)
         self.bind('<Control-v>',self.pegar_planilla,add='+')
@@ -52,6 +49,7 @@ class ClassroomTools:
         self._lock_minutes=prefs.get('lock_minutes',15)
         self._save_dir=prefs.get('save_dir','')
         self.cambiar_zoom(prefs.get('zoom',1),save=False)
+        self.tabview.set_expanded(prefs.get('nav_expanded',False),save=False)
         self.after(15000,self.autoguardar_borrador)
         self.after(500,self._ofrecer_borrador)
         self.after(300,lambda:self._fuentes_legibles(self))
@@ -59,7 +57,7 @@ class ClassroomTools:
     def _fuentes_legibles(self,widget):
         try:
             font=widget.cget('font')
-            if isinstance(font,ctk.CTkFont) and font.cget('size')<14:font.configure(size=14)
+            if isinstance(font,ctk.CTkFont) and font.cget('size')<13:font.configure(size=13)
         except (ValueError,tk.TclError,AttributeError):pass
         for child in widget.winfo_children():self._fuentes_legibles(child)
 
@@ -84,7 +82,7 @@ class ClassroomTools:
         if event is not None and event.widget is not self:return
         if not hasattr(self,'_zoom'):return
         data=self._preferencias()
-        data.update({'view_version':2,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
+        data.update({'view_version':2,'nav_expanded':self.tabview.expanded,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
         panes={}
         for name,pane in getattr(self,'_split_panes',{}).items():
             if pane.winfo_exists() and len(pane.panes())>=2:
@@ -114,6 +112,11 @@ class ClassroomTools:
 
     def guardar_documento(self):
         panel=getattr(self,'puntos_panel',None)
+        if panel and panel.grid_view and not panel.grid_view.finish():return
+        tree=getattr(self,'planilla_nativa',None)
+        if tree and getattr(tree,'_entry',None):
+            tree._entry.event_generate('<FocusOut>')
+            if getattr(tree,'_entry',None):return
         if panel and panel.pending:
             if not messagebox.askyesno('Puntos pendientes','¿Guardar los puntos antes de crear el archivo completo?'):return
             if not panel.save():return

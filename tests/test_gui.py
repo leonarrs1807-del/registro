@@ -154,7 +154,8 @@ class DesktopTests(unittest.TestCase):
     def test_native_grid_keeps_identity_columns_fixed(self):
         self.assertEqual(tuple(self.app.planilla_nativa['displaycolumns'])[:1],('Asistencia',))
         self.assertEqual(len(self.app.identidad_planilla.get_children()),1)
-        self.assertGreaterEqual(self.app.planilla_nativa.column('Cap 1','width'),180)
+        self.assertEqual(self.app.planilla_nativa.heading('Cap 1','text'),'Cap. 1')
+        self.assertTrue(self.app.planilla_nativa.full_headers['Cap 1'])
 
     def test_undo_and_redo_do_not_write_until_confirmed(self):
         self.app.edicion_desbloqueada=True
@@ -246,4 +247,32 @@ class DesktopTests(unittest.TestCase):
         tree.set(row,tree['columns'][3],'10');tree.set(row,tree['columns'][4],'10')
         self.app.puntos_panel._changed()
         self.assertEqual(tree.item(row,'values')[-2],'16.00')
+        self.assertEqual(self.app.puntos_panel.identity.set(row,'nota'),'16.00')
+        self.assertEqual(self.app.puntos_panel.identity.heading('alumno','text'),'Estudiante')
         with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Sesiones_Clase').fetchone()[0],1)
+
+    def test_icon_menu_expands_without_losing_current_grade_data(self):
+        self.app.tabview.set_expanded(False)
+        self.app.update_idletasks()
+        narrow=self.app.tabview.sidebar.container.winfo_width()
+        rows=self.app._filas_planilla()
+        self.app.tabview.toggle();self.app.update_idletasks()
+        self.assertGreater(self.app.tabview.sidebar.container.winfo_width(),narrow)
+        self.assertEqual(self.app.tabview.get(),'Ingresar Calificativos')
+        self.assertEqual(rows,self.app._filas_planilla())
+        self.app.tabview.toggle();self.assertFalse(self.app.tabview.expanded)
+
+    def test_criteria_reference_is_in_details_and_does_not_take_table_space(self):
+        db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Resolver con sustento',20)])
+        self.app.calif_combo_modo_inst.set('Rúbrica');self.app.dibujar_planilla_calificacion(forzar=True)
+        self.app.update_idletasks()
+        self.assertFalse(self.app.caja_ref_rubrica.winfo_ismapped())
+        with patch.object(self.app,'_texto_emergente') as popup:self.app.detalles_calificacion()
+        self.assertIn('Resolver con sustento',popup.call_args.args[1])
+        self.assertTrue(self.app.btn_evaluar.winfo_ismapped())
+
+    def test_personal_workspace_keeps_header_short_and_has_no_trial_banner(self):
+        from interfaz import pixel_scale
+        self.assertLess(self.app.barra_top.winfo_height()/pixel_scale(self.app),65)
+        self.assertFalse(self.app._license_required)
+        self.assertFalse(hasattr(self.app,'_license_label'))

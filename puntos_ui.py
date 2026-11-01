@@ -6,7 +6,9 @@ from tkinter import ttk,messagebox,simpledialog,filedialog
 import customtkinter as ctk
 import puntos,db,app_storage
 from widgets import scroll_area,wrap_label
-from interfaz import split,grade_panels,pixel_scale
+from interfaz import split,grade_panels,pixel_scale,flow_toolbar
+from ui_icons import icon
+from widgets import Tooltip
 
 
 class PointsGrid(ttk.Treeview):
@@ -59,33 +61,42 @@ class PointsPanel(ctk.CTkFrame):
         super().__init__(master,fg_color='transparent')
         self.app=app;self.block_id=None;self.pending=False;self.grid_view=None;self.data=None
         self._context=None;self._block_map={}
-        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(2,weight=1)
-        info=ctk.CTkLabel(self,text='Prácticas por tema: sume los puntos de cada ejercicio y convierta el total a una nota sobre 20.',
-                         anchor='w',justify='left',wraplength=850,font=ctk.CTkFont(size=15,weight='bold'))
-        info.grid(row=0,column=0,sticky='ew',padx=10,pady=(8,4))
-        wrap_label(info)
-        actions=ctk.CTkFrame(self,fg_color='transparent');actions.grid(row=1,column=0,sticky='ew',padx=8,pady=4)
-        buttons=[('Nuevo tema',self.new_block),('Agregar práctica',self.new_practice),('Guardar puntos',self.save),
-                 ('Crear nota de examen',self.publish),('Incluir / excluir práctica',self.toggle),('Reabrir tema',self.reopen),('Ver instrucciones',lambda:app.abrir_instrucciones('Prácticas y puntitos'))]
-        for index,(text,callback) in enumerate(buttons):
-            ctk.CTkButton(actions,text=text,command=callback,width=155,height=36).grid(row=index//3,column=index%3,padx=4,pady=4,sticky='ew')
-        actions.grid_columnconfigure((0,1,2),weight=1)
-        self.panel=split(self,'temas_puntos');self.panel.grid(row=2,column=0,sticky='nsew',padx=8,pady=6)
+        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
+        actions=ctk.CTkFrame(self,fg_color='transparent');actions.grid(row=0,column=0,sticky='ew',padx=8,pady=6)
+        ctk.CTkLabel(actions,text='Prácticas',font=ctk.CTkFont(size=18,weight='bold')).grid(row=0,column=0,padx=4)
+        buttons=[('Nuevo tema',self.new_block),('Agregar práctica',self.new_practice),('Guardar',self.save),('Crear nota / 20',self.publish)]
+        for col,(text,callback) in enumerate(buttons,1):
+            button=ctk.CTkButton(actions,text=text,command=callback,width=105,height=32,
+                fg_color='#2563eb' if col==4 else ('#e2e8f0','#334155'),text_color='white' if col==4 else ('#334155','#e2e8f0'))
+            button.grid(row=0,column=col,padx=4)
+        more=ctk.CTkButton(actions,text='',image=icon('more',master=self),width=32,height=32,fg_color='transparent',hover_color=('#e2e8f0','#334155'))
+        more.configure(command=lambda:self.menu_more(more));more.grid(row=0,column=5,padx=4);Tooltip(more,'Incluir prácticas o reabrir tema')
+        help_button=ctk.CTkButton(actions,text='',image=icon('help',master=self),width=32,height=32,fg_color='transparent',hover_color=('#e2e8f0','#334155'),
+            command=lambda:app.abrir_instrucciones('Prácticas y puntitos'))
+        help_button.grid(row=0,column=6,padx=4);Tooltip(help_button,'Cómo se calcula la nota final')
+        flow_toolbar(actions)
+        self.panel=split(self,'temas_puntos');self.panel.grid(row=1,column=0,sticky='nsew',padx=8,pady=6)
         left=ctk.CTkFrame(self.panel);left.grid_columnconfigure(0,weight=1);left.grid_rowconfigure(1,weight=1)
-        ctk.CTkLabel(left,text='Temas del curso y salón',font=ctk.CTkFont(weight='bold')).grid(row=0,column=0,padx=8,pady=8)
-        self.listing=tk.Listbox(left,font=('Segoe UI',13),exportselection=False,activestyle='dotbox',width=22)
-        self.listing.grid(row=1,column=0,sticky='nsew',padx=4,pady=4)
+        ctk.CTkLabel(left,text='Temas',font=ctk.CTkFont(weight='bold')).grid(row=0,column=0,padx=8,pady=8,sticky='w')
+        self.listing=tk.Listbox(left,font=('Segoe UI',13),exportselection=False,activestyle='dotbox',width=18,borderwidth=0,highlightthickness=0)
+        self.listing.grid(row=1,column=0,sticky='nsew',padx=8,pady=4)
         from interfaz import scrollbar
         sb=scrollbar(left,'vertical',self.listing.yview);sb.grid(row=1,column=1,sticky='ns');self.listing.configure(yscrollcommand=sb.set)
         self.listing.bind('<<ListboxSelect>>',self._select)
         self.right=ctk.CTkFrame(self.panel);self.right.grid_columnconfigure(0,weight=1);self.right.grid_rowconfigure(1,weight=1)
-        self.description=ctk.CTkLabel(self.right,text='Cree un tema, por ejemplo Ecuaciones, para comenzar.',wraplength=750,justify='left',anchor='w')
-        self.description.grid(row=0,column=0,sticky='ew',padx=8,pady=8)
-        wrap_label(self.description)
+        self.description=ctk.CTkLabel(self.right,text='Seleccione un tema',justify='left',anchor='w',wraplength=750)
+        self.description.grid(row=0,column=0,sticky='ew',padx=8,pady=6);wrap_label(self.description)
         self.table_host=ctk.CTkFrame(self.right,fg_color='transparent');self.table_host.grid(row=1,column=0,sticky='nsew')
-        self.panel.add(left,width=round(220*pixel_scale(self)),minsize=round(130*pixel_scale(self)),stretch='never');self.panel.add(self.right,minsize=round(250*pixel_scale(self)),stretch='always')
-        self.status=ctk.CTkLabel(self,text='Los campos vacíos siguen pendientes; escriba 0 solo si corresponde.',anchor='w')
-        self.status.grid(row=3,column=0,sticky='ew',padx=10,pady=4)
+        self.panel.add(left,width=round(180*pixel_scale(self)),minsize=round(120*pixel_scale(self)),stretch='never')
+        self.panel.add(self.right,minsize=round(250*pixel_scale(self)),stretch='always')
+        self.status=ctk.CTkLabel(self,text='',anchor='w',height=22)
+        self.status.grid(row=2,column=0,sticky='ew',padx=10,pady=2)
+
+    def menu_more(self,button):
+        menu=tk.Menu(self,tearoff=False)
+        menu.add_command(label='Incluir o excluir práctica…',command=self.toggle)
+        menu.add_command(label='Reabrir tema…',command=self.reopen)
+        self.app.fuentes_menu(menu);menu.tk_popup(button.winfo_rootx(),button.winfo_rooty()+button.winfo_height())
 
     def _context_now(self):return (self.app.obtener_curso_activo_id(),self.app.combo_grado_global.get(),self.app.combo_seccion_global.get())
 
@@ -135,17 +146,22 @@ class PointsPanel(ctk.CTkFrame):
         for child in self.table_host.winfo_children():child.destroy()
         self.grid_view=None
         block=self.data['block'];maximum=sum(e['maximo'] for e in active)
-        self.description.configure(text=f"{block['tema']} · {block['estado']}\n{len([p for p in self.data['practices'] if p['activa']])} prácticas · Máximo acumulado: {maximum:g} puntos\nNota de examen = puntos obtenidos ÷ {maximum:g} × 20. La nota solo se publica al pulsar Crear nota de examen.")
+        self.description.configure(text=f"{block['tema']} · {len([p for p in self.data['practices'] if p['activa']])} prácticas · {maximum:g} puntos · {block['estado']}")
         if not active:
             ctk.CTkLabel(self.table_host,text='Agregue una práctica de 20 minutos y defina sus ejercicios.').pack(padx=10,pady=20)
             self.pending=False;return
         headers=['ID','Código','Apellidos y Nombres']+[f'e{e["id"]}' for e in active]+['suma','maximo','nota','pendientes']
         tree,identity,pane=grade_panels(self.table_host,headers,PointsGrid,key="puntos_nombres")
         self.grid_view=tree;self.identity=identity;self.exercises=active
+        identity.configure(columns=('codigo','alumno','nota'))
+        identity.heading('codigo',text='Código');identity.heading('alumno',text='Estudiante')
+        identity.heading('nota',text='Nota / 20');identity.column('nota',width=round(72*pixel_scale(tree)),minwidth=round(60*pixel_scale(tree)),stretch=False)
+        identity.column('codigo',width=round(60*pixel_scale(tree)),minwidth=round(45*pixel_scale(tree)),stretch=False)
+        identity.column('alumno',width=round(190*pixel_scale(tree)),minwidth=round(100*pixel_scale(tree)),stretch=True)
         tree.limits={f'e{e["id"]}':e['maximo'] for e in active}
         tree.editable=block['estado']=='abierto'
         tree.on_changed=self._changed
-        for col in headers[3:]:tree.column(col,width=round(170*pixel_scale(tree)),minwidth=round(100*pixel_scale(tree)),stretch=False)
+        for col in headers[3:]:tree.column(col,width=round(120*pixel_scale(tree)),minwidth=round(85*pixel_scale(tree)),stretch=False)
         practice_numbers={p['id']:i+1 for i,p in enumerate(self.data['practices'])}
         tree.full_headers={}
         for e in active:
@@ -170,9 +186,10 @@ class PointsPanel(ctk.CTkFrame):
             note='Pendiente' if pending or not maximum else str((total/maximum*20).quantize(Decimal('.01'),rounding=ROUND_HALF_UP))
             row[-4:]=[f'{total:g}',f'{maximum:g}',note,str(pending)]
             self.grid_view.item(item,values=row)
+            self.identity.set(item,'nota',note)
 
     def _changed(self):
-        self.pending=True;self._preview();self.status.configure(text='Puntos pendientes de guardar en la base de trabajo.')
+        self.pending=True;self._preview();self.status.configure(text='Cambios sin guardar')
 
     def save(self):
         if not self.block_id or not self.grid_view:return True
@@ -186,7 +203,7 @@ class PointsPanel(ctk.CTkFrame):
         try:puntos.save_scores(self.app._db_path,self.block_id,values)
         except ValueError as exc:messagebox.showwarning('Puntos',str(exc),parent=self);return False
         self.pending=False
-        self.status.configure(text='Puntos guardados. Use Guardar archivo (.registro) para elegir una carpeta y llevarse todo el registro.')
+        self.status.configure(text='Puntos guardados')
         return True
 
     def new_block(self):
@@ -263,7 +280,7 @@ class PointsPanel(ctk.CTkFrame):
             session=puntos.consolidate(self.app._db_path,self.block_id)
         except ValueError as exc:messagebox.showwarning('Acumulado',str(exc));return
         self.load();self.app.recargar_tabla_actividades_creadas();self.app.recargar_matriz_completa();self.app.dibujar_graficos_estadisticos()
-        messagebox.showinfo('Nota creada',f'El acumulado ya figura en Exámenes como actividad #{session}. Puede revisarlo en Ingresar Calificativos. Para llevarse todos los datos, use Guardar archivo (.registro).')
+        messagebox.showinfo('Nota creada',f'Nota / 20 guardada en Exámenes, actividad #{session}. Revísela en Calificaciones.')
 
     def toggle(self):
         if not self.block_id or not self.app.verificar_permiso_edicion() or not self.confirm_change():return

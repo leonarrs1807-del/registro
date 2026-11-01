@@ -12,14 +12,14 @@ TOPICS = {
 
 Hay dos formas distintas de guardar:
 • Guardar notas / Guardar puntos confirma los cambios en la base de trabajo del programa.
-• Guardar archivo (.registro), en la barra superior, abre una ventana para que usted elija la carpeta y el nombre del documento. Ese archivo contiene el periodo completo y puede abrirse otra vez en Registro Docente.
+• El icono Guardar (.registro), en la barra superior, abre una ventana para que usted elija la carpeta y el nombre del documento. Ese archivo contiene el periodo completo y puede abrirse otra vez en Registro Docente.
 
 Después de guardar un archivo se muestra su ubicación completa. Puede elegir Documentos, una memoria USB u otra carpeta. Exportar a Excel/PDF también le pide dónde guardar.
 
 Los respaldos automáticos protegen el trabajo diario y se crean en la carpeta de datos. Crear respaldo… permite elegir una copia adicional en la ubicación que usted decida.''',
 'Prácticas y puntitos': '''EJEMPLO: ECUACIONES, DOS PRÁCTICAS DE 20 MINUTOS
 
-1. Abra Prácticas y puntos y pulse Nuevo tema.
+1. Abra Puntos y pulse Nuevo tema.
 2. Escriba Ecuaciones. Seleccione la competencia y marque las capacidades a las que se asignará la nota global.
 3. Pulse Agregar práctica. Cree Práctica 1, duración 20 minutos, con dos ejercicios de 5 puntos cada uno. Su máximo será 10.
 4. Cree Práctica 2, también de 20 minutos. Puede usar tres ejercicios: 3, 3 y 4 puntos. Su máximo también será 10.
@@ -32,7 +32,7 @@ Para un estudiante que obtuvo 6/10 en la primera práctica y 8/10 en la segunda:
 
 Si las prácticas valieran 10 y 15 puntos, el máximo total sería 25. Un total de 20 puntos daría 20 ÷ 25 × 20 = 16/20. El programa suma puntos; no promedia las notas de cada práctica por separado.
 
-6. Al terminar el tema, pulse Crear nota de examen. Se genera una sola actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. No necesita tomar un examen físico.
+6. Al terminar el tema, pulse Crear nota / 20. Se genera una sola actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. No necesita tomar un examen físico.
 
 También puede llamar al bloque Competencia 2 · Periodo 1 y registrar allí prácticas de varios temas de esa misma competencia. Así obtiene una sola nota final que reúne todos esos temas.
 
@@ -63,26 +63,26 @@ Ejemplo: Clases 16 con peso de rubro 40 y Exámenes 14 con peso de rubro 25; sin
 PRÁCTICAS ACUMULADAS EN LUGAR DE EXAMEN
 La nota consolidada de un tema ocupa el rubro Exámenes. Es una calificación acumulada, aunque no haya examen físico. Si ya hay otras notas de Exámenes, ambas intervienen según sus pesos. No se borran notas anteriores.
 
-Si desea evaluar un curso únicamente con acumulados de prácticas, puede configurar Exámenes 100 y los otros rubros 0. Esto afecta a TODO el curso, no solo a una competencia. Use primero Trabajo docente → Vista previa de nuevas ponderaciones para revisar los cambios.
+Si desea evaluar un curso únicamente con acumulados de prácticas, puede configurar Exámenes 100 y los otros rubros 0. Esto afecta a TODO el curso, no solo a una competencia. Use primero Herramientas → Vista previa de nuevas ponderaciones para revisar los cambios.
 
 El gráfico Ponderaciones muestra los pesos guardados. Competencias y Capacidades muestran cantidades de actividades asignadas; esas cantidades no son porcentajes y no alteran los pesos.''',
-'Dimensiones y barras': '''La navegación está en la lista lateral. Puede desplazarla para encontrar todas las secciones.
+'Dimensiones y barras': '''La barra lateral muestra iconos. Pase el ratón sobre uno para ver su nombre. El botón de tres líneas de la cabecera (o Ctrl+B) despliega los nombres completos; otra pulsación los oculta. Se recuerda su preferencia. Al elegir una sección en una ventana estrecha, el menú vuelve a contraerse.
 
-Las barras divisorias anchas entre paneles se pueden arrastrar con el ratón. Por ejemplo:
-• Amplíe el panel de nombres en Ingresar Calificativos.
+Las divisiones entre los paneles de trabajo se pueden arrastrar con el ratón. Por ejemplo:
+• Amplíe el panel de nombres en Calificaciones.
 • Dé más espacio al formulario al crear una actividad.
 • Amplíe la lista de temas o la planilla de prácticas.
 
 Las barras de desplazamiento tienen flechas y un control móvil. La barra inferior desplaza las columnas de notas; la barra vertical desplaza los estudiantes. También puede ampliar una columna arrastrando el borde de su encabezado.
 
-Lectura permite ajustar el tamaño de letra y el zoom. Restablecer vista adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
+Vista permite ajustar el tamaño de letra y el zoom. El menú ⋯ → Restablecer vista adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
 
 Un clic derecho en una celda o encabezado permite leer el contenido completo.''',
-'Actividades e instrumentos': '''Crear Actividad sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
+'Actividades e instrumentos': '''Actividades sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
 
-Seleccione una competencia, marque las capacidades y escriba sus criterios. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
+Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad; el texto no se muestra repetido en el formulario. Más… permite editar la descripción y exportar o importar instrumentos. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
 
-Ingresar Calificativos permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
+Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
 
 La rúbrica permite evaluar indicadores con su puntaje máximo. La lista de cotejo utiliza los niveles configurados por el instrumento. Evaluación masiva transfiere los resultados a la planilla; después debe guardarlos.
 
@@ -96,7 +96,7 @@ Para Google Sheets:
 2. En Google Sheets abra Archivo → Importar → Subir.
 3. Edite las notas y conserve las columnas de identificación.
 4. Descargue como XLSX o CSV.
-5. En el programa use Archivo y exportación → Importar notas de Google Sheets.
+5. En el programa use Archivo → Importar notas de Google Sheets.
 
 Los identificadores permanentes evitan mover notas entre estudiantes. Las plantillas de matriz o instrumentos se importan mediante sus botones específicos. No cambie los encabezados CAP_ID de las plantillas.
 
@@ -119,7 +119,9 @@ El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa a
 Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
 
 Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.''',
-'Cuenta, demo y compras': '''1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
+'Cuenta, demo y compras': '''La edición personal 1.4 funciona sin demo ni activación comercial. El candado docente sigue protegiendo sus datos. Las funciones siguientes se conservaron para una futura edición comercial; no es necesario configurarlas ahora.
+
+1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
 2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
 3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
 4. Indique qué cursos quiere comprar o si desea el paquete completo. Después de verificar el pago, el vendedor entregará un archivo .licencia.

@@ -8,6 +8,14 @@ import sys
 from datetime import date
 
 
+def commercial_edition():
+    """Build policy is embedded; a customer's environment cannot turn it off."""
+    if getattr(sys,'frozen',False):
+        return sys._registro_edition=='comercial'
+    import os
+    return os.environ.get('REGISTRO_EDITION','personal')=='comercial'
+
+
 def license_public_key():
     if getattr(sys, 'frozen', False):
         # PyInstaller embeds this attribute through the build's runtime hook.

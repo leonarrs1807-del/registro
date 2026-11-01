@@ -2,7 +2,8 @@
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
-from widgets import scroll_area, wrap_label
+from widgets import scroll_area, wrap_label, Tooltip
+from ui_icons import icon
 
 
 def pixel_scale(widget):
@@ -17,8 +18,8 @@ def scrollbar(master,orient,command):
 
 def split(master,key,orient='horizontal'):
     root=master.winfo_toplevel()
-    pane=tk.PanedWindow(master,orient=orient,sashwidth=max(12,round(12*pixel_scale(master))),
-                        sashrelief='raised',showhandle=True,handlesize=max(10,round(10*pixel_scale(master))),
+    pane=tk.PanedWindow(master,orient=orient,sashwidth=max(6,round(6*pixel_scale(master))),
+                        sashrelief='flat',showhandle=False,
                         borderwidth=0,relief='flat',bg='#94a3b8')
     if not hasattr(root,'_split_panes'):root._split_panes={}
     root._split_panes[key]=pane
@@ -27,12 +28,13 @@ def split(master,key,orient='horizontal'):
 
 def flow_toolbar(frame):
     """Wrap related controls onto another row when the available width shrinks."""
+    root=frame.winfo_toplevel()
     controls=[w for w in frame.winfo_children() if w.winfo_manager() in ('grid','pack')]
     for widget in controls:
         if isinstance(widget,ctk.CTkButton):
             font=widget.cget('font')
             if isinstance(font,ctk.CTkFont):
-                if font.cget('size')<14:font.configure(size=14)
+                if font.cget('size')<13:font.configure(size=13)
                 widget.configure(width=max(widget.cget('width'),font.measure(widget.cget('text'))+28))
     columns=frame.grid_size()[0]
     for col in range(columns):frame.grid_columnconfigure(col,weight=0,minsize=0)
@@ -55,7 +57,7 @@ def flow_toolbar(frame):
     def arrange():
         nonlocal last,timer
         timer=None
-        if not frame.winfo_exists():return
+        if getattr(root,'_closing_ui',False) or not frame.winfo_exists():return
         available=max(160,frame.winfo_width()-12)
         lines=[];line=[];used=0
         for group in groups:
@@ -77,50 +79,78 @@ def flow_toolbar(frame):
         for widget in controls:widget.lift()
     def changed(event=None):
         nonlocal timer
+        if getattr(root,'_closing_ui',False):return
         if timer:frame.after_cancel(timer)
         timer=frame.after(80,arrange)
+    def cleanup(event):
+        nonlocal timer
+        if event.widget is frame and timer:
+            try:frame.after_cancel(timer)
+            except tk.TclError:pass
+            timer=None
     frame.bind('<Configure>',changed,add='+')
+    frame.bind('<Destroy>',cleanup,add='+')
     changed()
     return frame
 
 
 class PageBook(ctk.CTkFrame):
-    """Small Tabview-compatible API with a vertically scrollable navigation list."""
+    """Collapsible icon navigation; page IDs remain compatible with saved workflows."""
+    ITEMS={
+        'Config. Cursos':('Cursos','courses'), 'Estudiantes':('Estudiantes','students'),
+        'Crear Actividad':('Actividades','activity'), 'Ingresar Calificativos':('Calificaciones','grades'),
+        'Buscador':('Buscar','search'), 'Porcentajes de Actividades':('Ponderaciones','weights'),
+        'Matriz General':('Matriz','matrix'), 'Estadísticas':('Estadísticas','stats'),
+        'Prácticas y puntos':('Puntos','points'), 'Instrucciones':('Ayuda','help')}
     def __init__(self,master,**kwargs):
-        super().__init__(master,**kwargs)
-        self.grid_rowconfigure(0,weight=1);self.grid_columnconfigure(0,weight=1)
-        self.divider=split(self,'navegacion')
-        self.divider.grid(row=0,column=0,sticky='nsew')
-        self.sidebar=scroll_area(self.divider,width=190)
+        super().__init__(master,fg_color='transparent',**kwargs)
+        self.grid_rowconfigure(0,weight=1);self.grid_columnconfigure(1,weight=1)
+        self.expanded=False
+        self.sidebar=scroll_area(self,width=54,scrollbar_width=8,auto_hide=True,corner_radius=8)
+        self.sidebar.container.grid(row=0,column=0,sticky='ns',padx=(0,8))
+        self.sidebar.container.grid_propagate(False)
         self.sidebar.grid_columnconfigure(0,weight=1)
-        self.content=ctk.CTkFrame(self.divider,fg_color='transparent')
+        self.content=ctk.CTkFrame(self,fg_color='transparent',corner_radius=8)
+        self.content.grid(row=0,column=1,sticky='nsew')
         self.content.grid_columnconfigure(0,weight=1);self.content.grid_rowconfigure(0,weight=1)
-        scale=pixel_scale(self)
-        self.divider.add(self.sidebar.container,width=round(170*scale),minsize=round(120*scale),stretch='never')
-        self.divider.add(self.content,minsize=round(250*scale),stretch='always')
         self._pages={};self._buttons={};self._current=None
 
     def add(self,name,label=None):
         if name in self._pages:raise ValueError('Página repetida.')
         frame=ctk.CTkFrame(self.content,fg_color='transparent')
         frame.grid(row=0,column=0,sticky='nsew')
-        display={'Config. Cursos':'Cursos y\ncapacidades','Ingresar Calificativos':'Ingresar\ncalificativos','Prácticas y puntos':'Prácticas y\npuntos','Porcentajes de Actividades':'Pesos del\npromedio'}.get(name,label or name)
-        button=ctk.CTkButton(self.sidebar,text=display,height=46,anchor='w',
-            font=ctk.CTkFont(size=14),fg_color='transparent',text_color=('#0f172a','#f8fafc'),
-            command=lambda:self.set(name))
-        button.grid(row=len(self._pages),column=0,sticky='ew',padx=4,pady=3)
+        title,picture=self.ITEMS[name]
+        button=ctk.CTkButton(self.sidebar,text='',image=icon(picture,master=self),height=40,width=40,
+            corner_radius=8,font=ctk.CTkFont(size=13),fg_color='transparent',
+            hover_color=('#e2e8f0','#334155'),command=lambda:self.set(name))
+        button.grid(row=len(self._pages),column=0,sticky='ew',padx=3,pady=3)
+        Tooltip(button,lambda: '' if self.expanded else title)
         self._pages[name]=frame;self._buttons[name]=button
         if self._current is None:self.set(name)
         else:frame.grid_remove()
         return frame
+
+    def toggle(self):self.set_expanded(not self.expanded)
+
+    def set_expanded(self,expanded,save=True):
+        self.expanded=bool(expanded)
+        self.sidebar.container.configure(width=200 if self.expanded else 54)
+        for name,button in self._buttons.items():
+            button.configure(text=self.ITEMS[name][0] if self.expanded else '',
+                             anchor='w' if self.expanded else 'center',width=182 if self.expanded else 40)
+        root=self.winfo_toplevel()
+        if save and hasattr(root,'_guardar_ventana'):root._guardar_ventana()
 
     def set(self,name):
         if name not in self._pages:raise ValueError('La sección no existe.')
         if self._current:self._pages[self._current].grid_remove()
         self._pages[name].grid();self._pages[name].tkraise();self._current=name
         for title,button in self._buttons.items():
-            button.configure(fg_color='#2563eb' if title==name else 'transparent',
-                             text_color='#ffffff' if title==name else ('#0f172a','#f8fafc'))
+            selected=title==name
+            button.configure(fg_color='#2563eb' if selected else 'transparent',
+                             image=icon(self.ITEMS[title][1],active=selected,master=self),
+                             text_color='#ffffff' if selected else ('#334155','#e2e8f0'))
+        if self.expanded and self.winfo_width()/pixel_scale(self)<1000:self.set_expanded(False)
 
     def get(self):return self._current
     def tab(self,name):return self._pages[name]
@@ -149,12 +179,16 @@ def grade_panels(master,headers,tree_class,key="nombres_notas"):
     sx=scrollbar(right,'horizontal',tree.xview);sx.grid(row=1,column=0,sticky='ew')
     ix=scrollbar(left,'horizontal',identity.xview);ix.grid(row=1,column=0,sticky='ew')
     def scroll_main(first,last):
-        sy.set(first,last)
+        auto_bar(sy,first,last)
         if abs(identity.yview()[0]-float(first))>.001:identity.yview_moveto(first)
     def scroll_names(first,last):
         if abs(tree.yview()[0]-float(first))>.001:tree.yview_moveto(first)
-    tree.configure(yscrollcommand=scroll_main,xscrollcommand=sx.set)
-    identity.configure(yscrollcommand=scroll_names,xscrollcommand=ix.set)
+    def auto_bar(bar,first,last):
+        bar.set(first,last)
+        if float(first)<=0 and float(last)>=1:bar.grid_remove()
+        else:bar.grid()
+    tree.configure(yscrollcommand=scroll_main,xscrollcommand=lambda f,l:auto_bar(sx,f,l))
+    identity.configure(yscrollcommand=scroll_names,xscrollcommand=lambda f,l:auto_bar(ix,f,l))
     def selection(source,target):
         if source.selection() and source.selection()!=target.selection():
             target.selection_set(source.selection());target.focus(source.selection()[0])

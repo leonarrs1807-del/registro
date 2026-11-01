@@ -1,6 +1,7 @@
 # Build on each target OS. Do not bundle user databases or private signing keys.
 from pathlib import Path
 import sys
+import os
 from PyInstaller.utils.hooks import collect_data_files
 
 root = Path(SPECPATH)
@@ -13,6 +14,11 @@ if sys.platform.startswith('linux'):
         binaries.extend((str(path), '.') for path in (Path(sys.base_prefix) / 'lib').glob(pattern))
 key_file = root / 'license_public_key.pem'
 public_key = key_file.read_bytes() if key_file.exists() else b''
+edition=os.environ.get('REGISTRO_EDITION','personal')
+if edition not in ('personal','comercial'):
+    raise ValueError('REGISTRO_EDITION debe ser personal o comercial.')
+if edition=='comercial' and not public_key:
+    raise ValueError('La edición comercial requiere la clave pública del vendedor antes de compilar.')
 if public_key:
     from cryptography.hazmat.primitives.serialization import load_pem_public_key
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -22,7 +28,7 @@ if public_key:
 # Deleting a loose PEM file must not turn a commercial build into a free build.
 license_hook = root / 'build' / 'registro_license_hook.py'
 license_hook.parent.mkdir(parents=True, exist_ok=True)
-license_hook.write_text('import sys\nsys._registro_license_public_key = ' + repr(public_key) + '\n', encoding='utf-8')
+license_hook.write_text('import sys\nsys._registro_license_public_key = '+repr(public_key)+'\nsys._registro_edition = '+repr(edition)+'\n',encoding='utf-8')
 a = Analysis([str(root / 'launcher.py')], pathex=[str(root)], binaries=binaries, datas=datas,
              hiddenimports=['matplotlib.backends.backend_tkagg', 'cryptography.hazmat.primitives.asymmetric.ed25519'],
              hookspath=[], hooksconfig={}, runtime_hooks=[str(license_hook)], excludes=['pytest', 'tests'], noarchive=False)

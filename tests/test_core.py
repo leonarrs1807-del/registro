@@ -217,6 +217,15 @@ class DatabaseTests(unittest.TestCase):
 
 
 class SecurityTests(unittest.TestCase):
+    def test_commercial_build_policy_is_embedded_and_ignores_customer_environment(self):
+        import os,sys
+        from unittest.mock import patch
+        from app_security import commercial_edition
+        with patch.object(sys,'frozen',True,create=True),patch.object(sys,'_registro_edition','comercial',create=True):
+            with patch.dict(os.environ,{'REGISTRO_EDITION':'personal'}):self.assertTrue(commercial_edition())
+        with patch.object(sys,'frozen',True,create=True),patch.object(sys,'_registro_edition','personal',create=True):
+            with patch.dict(os.environ,{'REGISTRO_EDITION':'comercial'}):self.assertFalse(commercial_edition())
+
     def test_frozen_edition_is_not_determined_by_a_loose_key_file(self):
         import sys
         from unittest.mock import patch

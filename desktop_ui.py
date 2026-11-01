@@ -15,10 +15,11 @@ from db_safety import history, undo_grade
 
 from mejoras_ui import ClassroomTools
 from vista import ViewTools
+from compact_ui import CompactTools
 from licencias_ui import LicenseTools
 
 
-class DesktopTools(ViewTools,LicenseTools,ClassroomTools):
+class DesktopTools(CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -32,18 +33,19 @@ class DesktopTools(ViewTools,LicenseTools,ClassroomTools):
         datos.add_command(label='Año escolar y periodo…', command=self.seleccionar_periodo)
         datos.add_command(label='Ubicación de datos y errores', command=lambda: messagebox.showinfo(
             'Archivos de la aplicación', f'Datos: {self._db_path}\nRespaldos: {self._db_path.parent / "backups"}\nRegistro de errores: {storage.data_dir() / "registro.log"}'))
-        menu.add_cascade(label='Datos y seguridad', menu=datos)
+        menu.add_cascade(label='Datos', menu=datos)
         self.configure(menu=menu)
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.3 — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.4 — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
         self.fuentes_menu(menu)
 
     def destroy(self):
+        self._closing_ui=True
         # Tk timers outlive deleted child widgets unless explicitly cancelled.
         # This matters when restarting windows and for clean shutdown in tests.
         for timer in self.tk.splitlist(self.tk.call('after', 'info')):

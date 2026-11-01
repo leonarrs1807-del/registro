@@ -5,10 +5,11 @@ import customtkinter as ctk
 import logging
 from pathlib import Path
 import app_storage
-from app_security import license_public_key
+from app_security import license_public_key, commercial_edition
 from db_safety import valid_number
 from desktop_ui import DesktopTools
-from widgets import scroll_area, wrap_label
+from widgets import scroll_area, wrap_label, Tooltip
+from ui_icons import icon
 from interfaz import PageBook, split, grade_panels, pixel_scale, scrollbar, flow_toolbar
 from db import actualizar_pesos_actividades
 
@@ -70,14 +71,14 @@ TEMAS_INTERFAZ: Dict[str, Dict[str, str]] = {
     },
     "Gris Profesional": {
         "appearance": "Light",
-        "bg_main": "#e5e7eb",
+        "bg_main": "#f4f6fa",
         "bg_card": "#ffffff",
         "fg_text": "#111827",
         "tree_bg": "#ffffff",
         "tree_fg": "#1f2937",
-        "tree_head_bg": "#374151",
-        "tree_head_fg": "#f9fafb",
-        "tree_sel": "#4b5563",
+        "tree_head_bg": "#eaf0f7",
+        "tree_head_fg": "#334155",
+        "tree_sel": "#2563eb",
         "accent": "#2563eb",
     },
     "Claro Institucional": {
@@ -753,6 +754,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.actualizar_visual_candado_y_docente()
         self.recargar_cursos_y_contexto()
         self.iniciar_herramientas()
+        self.estilizar_workspace()
 
     # ==========================================================================
     # GESTIÓN DE LAS 3 INTERFACES / TEMAS VISUALES
@@ -773,6 +775,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         ctk.set_appearance_mode(cfg_t["appearance"])
         self.configure(fg_color=cfg_t["bg_main"])
+        if hasattr(self,"tabview"):self.estilizar_workspace()
         if hasattr(self,"tabview"):
             self.tabview.content.configure(fg_color=cfg_t["bg_main"])
         for area in getattr(self,"_scroll_areas",[]):
@@ -789,7 +792,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         match = re.search(r"\((\d+)\)", self.tamano_letra_actual)
         f_size = max(16, int(match.group(1)) if match else 18)
         f_size = round(f_size * getattr(self, "_zoom", 1))
-        r_height = max(42, round((f_size * 1.8 + 10)*self._get_window_scaling()))
+        import tkinter.font as tkfont
+        table_font=tkfont.Font(root=self,family="Segoe UI",size=f_size)
+        r_height=table_font.metrics("linespace")+round(8*self._get_window_scaling())
                 
         estilo.configure(
             "Treeview",
@@ -851,10 +856,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if self.edicion_desbloqueada:
             self.edicion_desbloqueada = False
             self.actualizar_visual_candado_y_docente()
-            messagebox.showinfo(
-                "🔒 Candado Activado",
-                "Se activó el Modo Protegido (Solo Lectura).\nPara volver a editar o borrar, haga clic en el candado e ingrese su usuario y clave.",
-            )
+
         else:
             DialogoDesbloquearCandado(self)
             
@@ -881,79 +883,17 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def actualizar_visual_candado_y_docente(self) -> None:
         cfg = obtener_docente_config()
         self.lbl_docente_info.configure(text=f"👤 {cfg['nombres_docente']}")
-        if self.edicion_desbloqueada:
-            self.btn_candado.configure(
-                text="🔓 EDICIÓN ACTIVA (Bloquear 🔒)",
-                fg_color="#15803d",
-                hover_color="#166534",
-            )
-        else:
-            self.btn_candado.configure(
-                text="🔒 BLOQUEADO (Desbloquear)",
-                fg_color="#b91c1c",
-                hover_color="#991b1b",
-            )
+        self.btn_candado.configure(text="",image=icon("unlock" if self.edicion_desbloqueada else "lock",master=self),
+            fg_color=("#dcfce7","#14532d") if self.edicion_desbloqueada else "transparent")
+        if hasattr(self,"lbl_estado"):
+            self.lbl_estado.configure(text="Edición activa" if self.edicion_desbloqueada else "Edición bloqueada")
 
     # ==========================================================================
     # BARRA SUPERIOR GLOBAL CON SELECTOR DE 3 INTERFACES + CANDADO + CURSO/SECCIÓN
     # ==========================================================================
 
     def _construir_barra_contexto(self) -> None:
-        self.barra_top = ctk.CTkFrame(self, corner_radius=10)
-        self.barra_top.grid(row=0, column=0, padx=12, pady=(8, 4), sticky="ew")
-        self.barra_top.grid_columnconfigure(0, weight=1)
-        self._context_controls=ctk.CTkFrame(self.barra_top,fg_color="transparent")
-        self._context_controls.grid(row=0,column=0,columnspan=7,sticky="ew")
-
-        ctk.CTkLabel(self._context_controls, text="📚 CURSO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=0, padx=(10, 4), pady=8, sticky="w"
-        )
-        self.combo_curso_global = ctk.CTkComboBox(
-            self._context_controls,
-            width=265,
-            height=32,
-            state="readonly",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self._al_cambiar_curso_global,
-        )
-        self.combo_curso_global.grid(row=0, column=1, padx=(0, 8), pady=8, sticky="w")
-
-        ctk.CTkLabel(self._context_controls, text="🎓 GRADO:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=2, padx=(2, 3), pady=8
-        )
-        self.combo_grado_global = ctk.CTkComboBox(
-            self._context_controls,
-            values=["1°", "2°", "3°", "4°", "5°"],
-            width=70,
-            height=32,
-            command=lambda _v: self._al_cambiar_salon_global(),
-        )
-        self.combo_grado_global.set("4°")
-        self.combo_grado_global.grid(row=0, column=3, padx=(0, 6), pady=8)
-
-        ctk.CTkLabel(self._context_controls, text="🏫 SECCIÓN:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=4, padx=(2, 3), pady=8
-        )
-        self.combo_seccion_global = ctk.CTkComboBox(
-            self._context_controls,
-            values=["A", "B", "C", "D", "E"],
-            width=65,
-            height=32,
-            command=lambda _v: self._al_cambiar_salon_global(),
-        )
-        self.combo_seccion_global.set("A")
-        self.combo_seccion_global.grid(row=0, column=5, padx=(0, 8), pady=8)
-
-        self.lbl_docente_info = ctk.CTkLabel(
-            self._context_controls,
-            text="👤 Docente",
-            font=ctk.CTkFont(size=12, weight="bold"),
-        )
-        self.lbl_docente_info.grid(row=0, column=6, padx=16, pady=8, sticky="e")
-        
-        # Guardaremos referencias nulas por si otros métodos intentan cambiar su texto
-        self.btn_candado = None 
-        flow_toolbar(self._context_controls)
+        self.crear_cabecera_compacta()
 
     # ==========================================================================
     # CONSTRUCCIÓN DE LAS PESTAÑAS
@@ -996,66 +936,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_curriculo.grid_rowconfigure(2, weight=1)
 
         # --- NUEVO: BARRA DE CONFIGURACIÓN GLOBAL ---
-        f_config = ctk.CTkFrame(self.tab_curriculo, fg_color="transparent")
-        f_config.grid(row=0, column=0, columnspan=3, padx=12, pady=(6, 2), sticky="ew")
-
-        ctk.CTkLabel(f_config, text="🎨 Interfaz:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=4)
-        self.combo_tema_visual = ctk.CTkComboBox(
-            f_config,
-            values=list(TEMAS_INTERFAZ.keys()),
-            width=155,
-            state="readonly",
-            command=self.cambiar_interfaz_visual,
-        )
-        self.combo_tema_visual.set(self.tema_actual_nombre)
-        self.combo_tema_visual.pack(side="left", padx=8)
-
-        
-
-        ctk.CTkButton(
-            f_config,
-            text="Configurar docente",
-            width=200,
-            fg_color="#334155",
-            hover_color="#475569",
-            command=self.editar_perfil_docente,
-        ).pack(side="left", padx=16)
-
-        self.btn_candado = ctk.CTkButton(
-            f_config,
-            text="🔓 EDICIÓN ACTIVA",
-            width=180,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self.alternar_candado,
-        )
-        self.btn_candado.pack(side="left", padx=8)
-
-        ctk.CTkButton(
-            f_config,
-            text="Administrar cursos",
-            width=100,
-            fg_color="#8b5cf6",
-            hover_color="#7c3aed",
-            command=self.activar_dev_mode,
-        ).pack(side="left", padx=8)
-        sizes = ctk.CTkComboBox(self.tab_curriculo, values=["Personalizado (16)", "Personalizado (18)", "Personalizado (20)", "Personalizado (24)"],
-                               state="readonly", command=self.cambiar_tamano_letra)
-        sizes.set(self.tamano_letra_actual)
-        sizes.grid(row=1, column=2, padx=12, pady=4, sticky="e")
-        # --------------------------------------------
-
-        ctk.CTkLabel(
-            self.tab_curriculo,
-            text="Seleccione un curso para consultar sus competencias y capacidades.",
-            wraplength=620,
-            font=ctk.CTkFont(size=13),
-        ).grid(row=1, column=0, columnspan=3, padx=12, pady=(6, 8), sticky="w")
-
+        ctk.CTkLabel(self.tab_curriculo,text="Cursos y capacidades",font=ctk.CTkFont(size=18,weight="bold")).grid(row=0,column=0,columnspan=3,sticky="w",padx=12,pady=10)
         f_cur = ctk.CTkFrame(self.tab_curriculo, corner_radius=10)
         f_cur.grid(row=2, column=0, padx=(8, 5), pady=6, sticky="nsew")
         f_cur.grid_rowconfigure(1, weight=1)
         f_cur.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(f_cur, text="1° Cursos / Áreas (10 Incluidos)", font=ctk.CTkFont(size=14, weight="bold")).grid(
+        ctk.CTkLabel(f_cur, text="Áreas", font=ctk.CTkFont(size=14, weight="bold")).grid(
             row=0, column=0, padx=10, pady=8, sticky="w"
         )
         self.tree_cursos = ttk.Treeview(f_cur, columns=("ID", "Curso"), show="headings", selectmode="browse", displaycolumns=("Curso",))
@@ -1068,11 +954,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ctk.CTkButton(f_cur, text="+ Agregar Nuevo Curso", height=32, command=self._dialogo_nuevo_curso).grid(
             row=2, column=0, padx=10, pady=(8,4), sticky="ew"
         )
-        self.btn_toggle_curso = ctk.CTkButton(f_cur, text="🔒 Desactivar/Activar Curso (Dev)", height=32, command=self._toggle_curso_activo, fg_color="#b91c1c", hover_color="#991b1b")
+        self.btn_toggle_curso = ctk.CTkButton(f_cur, text="Activar / desactivar", height=32, command=self._toggle_curso_activo, fg_color="#b91c1c", hover_color="#991b1b")
         self.btn_toggle_curso.grid(row=3, column=0, padx=10, pady=2, sticky="ew")
         self.btn_toggle_curso.grid_remove()
         
-        self.btn_eliminar_curso = ctk.CTkButton(f_cur, text="🗑️ Eliminar Curso (Dev)", height=32, command=self._eliminar_curso, fg_color="#ef4444", hover_color="#dc2626")
+        self.btn_eliminar_curso = ctk.CTkButton(f_cur, text="Eliminar curso", height=32, command=self._eliminar_curso, fg_color="#ef4444", hover_color="#dc2626")
         self.btn_eliminar_curso.grid(row=4, column=0, padx=10, pady=(2,8), sticky="ew")
         self.btn_eliminar_curso.grid_remove()
 
@@ -1080,7 +966,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_comp.grid(row=2, column=1, padx=5, pady=6, sticky="nsew")
         f_comp.grid_rowconfigure(1, weight=1)
         f_comp.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(f_comp, text="2° Competencias del Curso", font=ctk.CTkFont(size=14, weight="bold")).grid(
+        ctk.CTkLabel(f_comp, text="Competencias", font=ctk.CTkFont(size=14, weight="bold")).grid(
             row=0, column=0, padx=10, pady=8, sticky="w"
         )
         self.tree_competencias = ttk.Treeview(
@@ -1100,7 +986,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_cap.grid(row=2, column=2, padx=(5, 8), pady=6, sticky="nsew")
         f_cap.grid_rowconfigure(1, weight=1)
         f_cap.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(f_cap, text="3° Capacidades de la Competencia", font=ctk.CTkFont(size=14, weight="bold")).grid(
+        ctk.CTkLabel(f_cap, text="Capacidades", font=ctk.CTkFont(size=14, weight="bold")).grid(
             row=0, column=0, padx=10, pady=8, sticky="w"
         )
         self.tree_capacidades = ttk.Treeview(f_cap, columns=("ID", "Capacidad"), show="headings", selectmode="browse", displaycolumns=("Capacidad",))
@@ -1112,7 +998,6 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ctk.CTkButton(
             f_cap, text="+ Agregar Capacidad", height=32, fg_color="#4338ca", command=self._dialogo_nueva_capacidad
         ).grid(row=2, column=0, padx=10, pady=8, sticky="ew")
-        flow_toolbar(f_config)
 
     # --------------------------------------------------------------------------
     # PESTAÑA 2: ESTUDIANTES (4A01 / EXCEL)
@@ -1272,7 +1157,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         pane=split(self.tab_crear,"formulario_actividad")
         pane.grid(row=0,column=0,columnspan=2,sticky="nsew",padx=6,pady=6)
-        panel_form = scroll_area(pane, width=600, corner_radius=10)
+        panel_form = scroll_area(pane, width=600, corner_radius=10, auto_hide=True)
         pane.add(panel_form.container,width=round(480*pixel_scale(self)),minsize=round(240*pixel_scale(self)),stretch="never")
         panel_form.grid_columnconfigure(0, weight=1)
         panel_form.grid_rowconfigure(4, weight=0)
@@ -1283,14 +1168,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         self.lbl_modo_creacion = ctk.CTkLabel(
             f_head,
-            text="1° Crear Actividad (Clase, Examen, Trabajo o Práctica)",
+            text="Actividad",
             font=ctk.CTkFont(size=15, weight="bold"),
         )
         self.lbl_modo_creacion.grid(row=0, column=0, sticky="w")
 
         ctk.CTkButton(
             f_head,
-            text="Limpiar / Nueva",
+            text="Nueva",
             width=110,
             height=28,
             fg_color="transparent",
@@ -1303,7 +1188,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_datos1.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(
-            f_datos1, text="Categoría de la Actividad:", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Tipo", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=0, sticky="w")
         self.crear_combo_categoria = ctk.CTkComboBox(
             f_datos1,
@@ -1313,20 +1198,20 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_combo_categoria.grid(row=1, column=0, padx=(0, 6), pady=(0, 4), sticky="ew")
 
         ctk.CTkLabel(
-            f_datos1, text="Peso dentro de su categoría:", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Peso", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=1, sticky="w")
         self.crear_combo_peso = ctk.CTkComboBox(
             f_datos1,
-            values=["1.0 (Igual Peso)", "2.0 (Vale el Doble)", "3.0 (Vale el Triple)", "1.5 (Peso 1.5x)"],
+            values=["1", "1.5", "2", "3"],
         )
-        self.crear_combo_peso.set("1.0 (Igual Peso)")
+        self.crear_combo_peso.set("1")
         self.crear_combo_peso.grid(row=1, column=1, pady=(0, 4), sticky="ew")
 
         ctk.CTkLabel(
-            f_datos1, text="Nombre / Tema de la Actividad:", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Tema", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=2, column=0, sticky="w")
         ctk.CTkLabel(
-            f_datos1, text="Fecha (YYYY-MM-DD):", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Fecha", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=2, column=1, sticky="w")
         
         self.crear_entry_titulo = ctk.CTkEntry(
@@ -1340,7 +1225,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_ent_fecha.grid(row=3, column=1, pady=(0, 4), sticky="ew")
 
         f_prop = ctk.CTkFrame(panel_form, fg_color="transparent")
-        f_prop.grid(row=2, column=0, padx=14, pady=2, sticky="ew")
+        # Optional description is edited from Más; it does not consume form height.
         f_prop.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
             f_prop, text="Propósito de la Clase / Descripción:", font=ctk.CTkFont(size=12, weight="bold")
@@ -1352,71 +1237,32 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_comp_c.grid(row=3, column=0, padx=14, pady=2, sticky="ew")
         f_comp_c.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
-            f_comp_c, text="Seleccione la Competencia:", font=ctk.CTkFont(size=12, weight="bold")
+            f_comp_c, text="Competencia", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=0, sticky="w")
         self.crear_combo_comp = ctk.CTkComboBox(
             f_comp_c, state="readonly", command=self._al_cambiar_comp_en_creacion
         )
         self.crear_combo_comp.grid(row=1, column=0, pady=(0, 4), sticky="ew")
         self.lbl_comp_completa = ctk.CTkLabel(f_comp_c, text="", wraplength=480, justify="left", anchor="w")
-        self.lbl_comp_completa.grid(row=2,column=0,sticky="ew")
+        Tooltip(self.crear_combo_comp,lambda:self.lbl_comp_completa.cget("text"))
         wrap_label(self.lbl_comp_completa)
 
         self.scroll_caps_creacion = ctk.CTkFrame(panel_form)
         self.scroll_caps_creacion.grid(row=4, column=0, padx=14, pady=4, sticky="nsew")
         self.scroll_caps_creacion.grid_columnconfigure(0, weight=1)
 
-        # Botones para Guardar Actividad + Exportar/Subir Plantilla de Rúbrica o Lista de Cotejo
-        f_btns_c = ctk.CTkFrame(panel_form, fg_color="transparent")
-        f_btns_c.grid(row=5, column=0, padx=14, pady=(4, 8), sticky="ew")
-        f_btns_c.grid_columnconfigure((0, 1), weight=1)
-
-        ctk.CTkButton(
-            f_btns_c,
-            text="💾 Guardar Nueva Actividad",
-            height=34,
-            fg_color="#15803d",
-            hover_color="#166534",
-            font=ctk.CTkFont(weight="bold"),
-            command=self.accion_guardar_nueva_actividad,
-        ).grid(row=0, column=0, columnspan=2, pady=(0, 5), sticky="ew")
-
-        self.btn_actualizar_act = ctk.CTkButton(
-            f_btns_c,
-            text="✏️ Actualizar Seleccionada",
-            height=34,
-            fg_color="#0f766e",
-            state="disabled",
-            command=self.accion_actualizar_actividad_existente,
-        )
-        self.btn_actualizar_act.grid(row=1, column=0, columnspan=2, pady=(0, 8), sticky="ew")
-
-        ctk.CTkButton(
-            f_btns_c,
-            text="📤 Exportar Plantilla Rúbrica (Excel)",
-            height=32,
-            fg_color="#8b5cf6",
-            hover_color="#7c3aed",
-            command=lambda: self.accion_exportar_plantilla_instrumento("Rúbrica"),
-        ).grid(row=2, column=0, padx=(0, 4), pady=(0, 4), sticky="ew")
-
-        ctk.CTkButton(
-            f_btns_c,
-            text="📤 Exportar Plantilla Lista de Cotejo (Excel)",
-            height=32,
-            fg_color="#6366f1",
-            hover_color="#4f46e5",
-            command=lambda: self.accion_exportar_plantilla_instrumento("Lista de Cotejo"),
-        ).grid(row=2, column=1, padx=(4, 0), pady=(0, 4), sticky="ew")
-
-        ctk.CTkButton(
-            f_btns_c,
-            text="📥 Subir Instrumento Excel a la Actividad",
-            height=32,
-            fg_color="#0369a1",
-            hover_color="#075985",
-            command=self.accion_importar_rubrica_cotejo_excel,
-        ).grid(row=3, column=0, columnspan=2, sticky="ew")
+        f_btns_c=ctk.CTkFrame(panel_form,fg_color="transparent")
+        f_btns_c.grid(row=5,column=0,padx=14,pady=10,sticky="ew")
+        f_btns_c.grid_columnconfigure((0,1),weight=1)
+        ctk.CTkButton(f_btns_c,text="Guardar actividad",height=34,fg_color="#2563eb",
+            command=self.accion_guardar_nueva_actividad).grid(row=0,column=0,sticky="ew",padx=(0,4))
+        self.btn_actualizar_act=ctk.CTkButton(f_btns_c,text="Actualizar",height=34,state="disabled",
+            command=self.accion_actualizar_actividad_existente)
+        self.btn_actualizar_act.grid(row=0,column=1,sticky="ew",padx=4)
+        more=ctk.CTkButton(f_btns_c,text="Más…",height=30,width=90,fg_color="transparent",
+            text_color=("#475569","#cbd5e1"),border_width=1)
+        more.configure(command=lambda:self.menu_instrumento_actividad(more))
+        more.grid(row=1,column=0,sticky="w",pady=(8,0))
 
         panel_lista = ctk.CTkFrame(pane, corner_radius=10)
         pane.add(panel_lista,minsize=round(260*pixel_scale(self)),stretch="always")
@@ -1483,109 +1329,40 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     # PESTAÑA 4: INGRESAR / EDITAR NOTAS (MODO NORMAL O CON LISTA DE COTEJO / RÚBRICA)
     # --------------------------------------------------------------------------
     def _construir_tab_calificar_actividad(self) -> None:
-        self.tab_calificar.grid_columnconfigure(0, weight=1)
-        self.tab_calificar.grid_rowconfigure(2, weight=1)
-
-        f_bar1 = ctk.CTkFrame(self.tab_calificar, corner_radius=8)
-        f_bar1.grid(row=0, column=0, padx=8, pady=(6, 4), sticky="ew")
-        f_bar1.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(
-            f_bar1, text="📌 Actividad:", font=ctk.CTkFont(size=12, weight="bold")
-        ).grid(row=0, column=0, padx=(8, 4), pady=8, sticky="w")
-
-        self.calif_combo_actividad = ctk.CTkComboBox(
-            f_bar1,
-            width=300,
-            height=34,
-            state="readonly",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self._al_cambiar_actividad_en_calificar,
-        )
-        self.calif_combo_actividad.grid(row=0, column=1, padx=4, pady=8, sticky="ew")
-
-        # Selector de Modo: Normal vs Lista de Cotejo / Rúbrica
-        ctk.CTkLabel(
-            f_bar1, text="Modo Evaluación:", font=ctk.CTkFont(size=12, weight="bold")
-        ).grid(row=0, column=2, padx=(6, 3), pady=8)
-
-        self.calif_combo_modo_inst = ctk.CTkComboBox(
-            f_bar1,
-            values=["⚡ Normal (Nota Directa)", "📋 Evaluar con Lista de Cotejo", "📋 Evaluar con Rúbrica"],
-            width=210,
-            command=lambda _v: self.dibujar_planilla_calificacion(),
-        )
-        self.calif_combo_modo_inst.set("⚡ Normal (Nota Directa)")
-        self.calif_combo_modo_inst.grid(row=0, column=3, padx=3, pady=8)
-
-        ctk.CTkButton(
-            f_bar1,
-            text="📥 Subir Rúbrica/Cotejo",
-            width=145,
-            height=32,
-            fg_color="#4338ca",
-            command=self.accion_importar_rubrica_cotejo_en_calificacion,
-        ).grid(row=0, column=4, padx=3, pady=8)
-
-        ctk.CTkLabel(f_bar1, text="Peso:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=5, padx=(6, 3), pady=8
-        )
-        self.calif_entry_peso = ctk.CTkEntry(f_bar1, width=56, justify="center")
-        self.calif_entry_peso.grid(row=0, column=6, padx=(0, 4), pady=8)
-
-        ctk.CTkButton(
-            f_bar1,
-            text="☑ Asistencia Todos",
-            width=125,
-            height=32,
-            fg_color="#0369a1",
-            command=self.accion_marcar_asistencia_todos,
-        ).grid(row=0, column=7, padx=3, pady=8)
-
-        ctk.CTkButton(
-            f_bar1,
-            text="Guardar notas",
-            height=36,
-            fg_color="#15803d",
-            hover_color="#166534",
-            font=ctk.CTkFont(weight="bold"),
-            command=self.accion_guardar_planilla_calificacion_completa,
-        ).grid(row=0, column=8, padx=(4, 8), pady=8)
-
-        f_bar2 = ctk.CTkFrame(self.tab_calificar, corner_radius=8)
-        f_bar2.grid(row=1, column=0, padx=8, pady=(0, 4), sticky="ew")
-        f_bar2.grid_columnconfigure(0, weight=1)
-
-        self.lbl_detalle_actividad_calificar = ctk.CTkLabel(
-            f_bar2,
-            text="Seleccione una actividad arriba. Puede trabajar de forma normal (digitando 0-20) o activar '📋 Con Lista Cotejo / Rúbrica' para evaluar por indicadores.",
-            font=ctk.CTkFont(size=12),
-            justify="left",
-            anchor="w",
-            wraplength=1120,
-        )
-        self.lbl_detalle_actividad_calificar.grid(row=0, column=0, padx=12, pady=6, sticky="ew")
-        wrap_label(self.lbl_detalle_actividad_calificar)
-
-        self.calif_combo_orden = ctk.CTkComboBox(
-            f_bar2,
-            values=["Apellidos (A-Z)", "Código (Ej. 4A01)", "Apellidos (Z-A)", "Nombres (A-Z)"],
-            width=145,
-            command=lambda _v: self.dibujar_planilla_calificacion(),
-        )
-        self.calif_combo_orden.set("Apellidos (A-Z)")
-        self.calif_combo_orden.grid(row=0, column=1, padx=8, pady=6)
-
-        self.caja_ref_rubrica = ctk.CTkTextbox(
-            f_bar2, height=90, fg_color="#f8fafc", text_color="#0f172a", wrap="word", font=ctk.CTkFont(size=11, weight="bold")
-        )
-
-        self.f_tabla_planilla = ctk.CTkFrame(self.tab_calificar, corner_radius=8)
-        self.f_tabla_planilla.grid(row=2, column=0, padx=8, pady=(0, 8), sticky="nsew")
-        self.f_tabla_planilla.grid_columnconfigure(0, weight=1)
-        self.f_tabla_planilla.grid_rowconfigure(0, weight=1)
-        self.planilla_nativa = None
-        flow_toolbar(f_bar1)
+        self.tab_calificar.grid_columnconfigure(0,weight=1)
+        self.tab_calificar.grid_rowconfigure(1,weight=1)
+        bar=ctk.CTkFrame(self.tab_calificar,fg_color="transparent")
+        bar.grid(row=0,column=0,sticky="ew",padx=8,pady=6)
+        bar.grid_columnconfigure(1,weight=1)
+        ctk.CTkLabel(bar,text="Calificaciones",font=ctk.CTkFont(size=18,weight="bold")).grid(row=0,column=0,sticky="w",padx=(0,12),pady=4)
+        self.calif_combo_actividad=ctk.CTkComboBox(bar,width=230,height=32,state="readonly",command=self._al_cambiar_actividad_en_calificar)
+        self.calif_combo_actividad.grid(row=0,column=1,sticky="ew",padx=4)
+        Tooltip(self.calif_combo_actividad,lambda:self.calif_combo_actividad.get())
+        ctk.CTkButton(bar,text="Guardar notas",width=120,height=32,fg_color="#2563eb",
+            command=self.accion_guardar_planilla_calificacion_completa).grid(row=0,column=2,padx=(8,0))
+        tools=ctk.CTkFrame(bar,fg_color="transparent")
+        tools.grid(row=1,column=0,columnspan=3,sticky="ew",pady=(6,0))
+        self.calif_combo_modo_inst=ctk.CTkComboBox(tools,values=["Directa","Cotejo","Rúbrica"],state="readonly",width=120,height=30,
+            command=lambda _:self.dibujar_planilla_calificacion())
+        self.calif_combo_modo_inst.set("Directa");self.calif_combo_modo_inst.grid(row=0,column=0,padx=(0,6))
+        Tooltip(self.calif_combo_modo_inst,"Forma de evaluación")
+        self.btn_evaluar=ctk.CTkButton(tools,text="Evaluar",width=85,height=30,command=self.evaluar_desde_barra)
+        self.btn_evaluar.grid(row=0,column=1,padx=4);self.btn_evaluar.grid_remove()
+        ctk.CTkButton(tools,text="Detalles",width=80,height=30,fg_color="transparent",border_width=1,
+            text_color=("#475569","#cbd5e1"),command=self.detalles_calificacion).grid(row=0,column=2,padx=4)
+        self.calif_combo_orden=ctk.CTkComboBox(tools,values=["Apellidos (A-Z)","Código (Ej. 4A01)","Apellidos (Z-A)","Nombres (A-Z)"],
+            state="readonly",width=145,height=30,command=lambda _:self.dibujar_planilla_calificacion())
+        self.calif_combo_orden.set("Apellidos (A-Z)");self.calif_combo_orden.grid(row=0,column=3,padx=4)
+        more=ctk.CTkButton(tools,text="",image=icon("more",master=self),width=32,height=30,fg_color="transparent",hover_color=("#e2e8f0","#334155"))
+        more.configure(command=lambda:self.menu_calificacion(more));more.grid(row=0,column=4,padx=4)
+        Tooltip(more,"Asistencia, peso e instrumentos")
+        self.calif_entry_peso=ctk.CTkEntry(bar)
+        self.lbl_detalle_actividad_calificar=ctk.CTkLabel(bar,text="")
+        self.caja_ref_rubrica=ctk.CTkTextbox(bar,wrap="word")
+        self.f_tabla_planilla=ctk.CTkFrame(self.tab_calificar,corner_radius=8)
+        self.f_tabla_planilla.grid(row=1,column=0,sticky="nsew",padx=8,pady=(0,8))
+        self.f_tabla_planilla.grid_columnconfigure(0,weight=1);self.f_tabla_planilla.grid_rowconfigure(1,weight=1)
+        self.planilla_nativa=None
 
     # --------------------------------------------------------------------------
     # PESTAÑA 5: BUSCADOR GENERAL (MUESTRA LA NOTA PUESTA EN CADA CLASE SIN PROMEDIAR)
@@ -2469,7 +2246,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
             lbl_cap = ctk.CTkLabel(
                 f_item,
-                text=f"Capacidad {idx}: {cap_nom}",
+                text=f"{idx}. {cap_nom}",
                 font=ctk.CTkFont(size=12, weight="bold"),
                 text_color=("#1e3a8a", "#93c5fd"),
                 wraplength=480,
@@ -2479,14 +2256,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             lbl_cap.grid(row=0, column=1, padx=(2, 8), pady=(6, 2), sticky="ew")
             wrap_label(lbl_cap)
 
-            ctk.CTkLabel(
-                f_item,
-                text="Criterio de evaluación (opcional):", wraplength=350,
-                font=ctk.CTkFont(size=11),
-            ).grid(row=1, column=1, padx=2, pady=(0, 1), sticky="w")
-
-            txt_crit = ctk.CTkTextbox(f_item, height=90, wrap="word", font=ctk.CTkFont(size=15))
-            txt_crit.grid(row=2, column=0, columnspan=2, padx=8, pady=(0, 8), sticky="ew")
+            txt_crit = ctk.CTkTextbox(f_item, height=70, wrap="word", font=ctk.CTkFont(size=13))
+            criterion=ctk.CTkButton(f_item,text="Criterio",width=70,height=26,fg_color="transparent",
+                text_color=("#475569","#cbd5e1"),hover_color=("#e2e8f0","#334155"),
+                command=lambda target=txt_crit,title=cap_nom:self.editar_texto_actividad(target,"Criterio · "+title))
+            criterion.grid(row=1,column=1,sticky="w",padx=2,pady=(0,6))
 
             self.widgets_caps_creacion.append(
                 {
@@ -2589,7 +2363,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             if inds and "Rúbrica" in inds[0]["tipo"]:
                 self.calif_combo_modo_inst.set("📝 Evaluar con Rúbrica")
             else:
-                self.calif_combo_modo_inst.set("📋 Evaluar con Lista de Cotejo")
+                self.calif_combo_modo_inst.set("Cotejo")
             self.recargar_tabla_actividades_creadas()
             self.dibujar_planilla_calificacion(forzar=True)
             self.recargar_buscador_alumnos()
@@ -2607,13 +2381,13 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if str(self.tab_crear) in getattr(self, "_formularios_pendientes", set()) and not self.confirmar_descartar():
             return
         self.id_actividad_editando = None
-        self.lbl_modo_creacion.configure(text="1° Crear Actividad (Clase, Examen, Trabajo o Práctica)")
+        self.lbl_modo_creacion.configure(text="Actividad")
         self.crear_entry_titulo.delete(0, "end")
         self.crear_txt_proposito.delete("1.0", "end")
         self.crear_ent_fecha.delete(0, "end")
         import datetime
         self.crear_ent_fecha.insert(0, datetime.date.today().isoformat())
-        self.crear_combo_peso.set("1.0 (Igual Peso)")
+        self.crear_combo_peso.set("1")
         self.btn_actualizar_act.configure(state="disabled")
         if self.competencias_curso_actual:
             txt = f"1. {self.competencias_curso_actual[0][1]}"
@@ -2700,7 +2474,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for i, s in enumerate(todas_sesiones, start=1):
             if s.get("archivada"):continue
             self.actividades_creadas_map[s["id"]] = s
-            etiqueta = f"#{i} [{s['categoria']} | Peso {s['peso_clase']:.1f}x] {s['titulo_tema']}"
+            etiqueta = f"#{s['id']} · {s['titulo_tema']}"
             opciones_combo_calif.append(etiqueta)
             self.combo_calif_etiqueta_a_id[etiqueta] = s["id"]
 
@@ -2751,7 +2525,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
 
         self.id_actividad_editando = sid
-        self.lbl_modo_creacion.configure(text=f"✏️ Editando Actividad #{sid}: {s['titulo_tema']}")
+        self.lbl_modo_creacion.configure(text=f"Editar #{sid}")
         self.crear_combo_categoria.set(s["categoria"])
         self.crear_combo_peso.set(f"{s['peso_clase']:.1f}")
         self.crear_entry_titulo.delete(0, "end")
@@ -2832,11 +2606,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             act = self.actividades_creadas_map[sid]
             t_inst = act.get("tipo_instrumento", "Normal")
             if "Cotejo" in t_inst:
-                self.calif_combo_modo_inst.set("📋 Evaluar con Lista de Cotejo")
+                self.calif_combo_modo_inst.set("Cotejo")
             elif "brica" in t_inst:
-                self.calif_combo_modo_inst.set("📋 Evaluar con Rúbrica")
+                self.calif_combo_modo_inst.set("Rúbrica")
             else:
-                self.calif_combo_modo_inst.set("📝 Normal (Nota Directa)")
+                self.calif_combo_modo_inst.set("Directa")
         self.dibujar_planilla_calificacion(forzar=True)
 
     def dibujar_planilla_calificacion(self, forzar: bool = False) -> None:
@@ -2857,7 +2631,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for w in self.f_tabla_planilla.winfo_children():
             w.destroy()
         self.planilla_nativa = None
-        self.widgets_planilla_calificacion.clear() # keep for legacy just in case
+        self.widgets_planilla_calificacion.clear()
+        self._datos_estudiantes=[]
+        self.btn_evaluar.grid_remove()
+        self.caja_ref_rubrica.configure(state="normal");self.caja_ref_rubrica.delete("1.0","end");self.caja_ref_rubrica.configure(state="disabled")
 
         if self.id_actividad_calificando is None or self.id_actividad_calificando not in getattr(self, "actividades_creadas_map", {}):
             ctk.CTkLabel(self.f_tabla_planilla, text="📝 Primero cree una Clase, Examen, Trabajo o Práctica en la Pestaña 3 y selecciónela arriba.", font=ctk.CTkFont(size=13)).pack(padx=20, pady=30, anchor="w")
@@ -2869,6 +2646,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.calif_entry_peso.insert(0, f"{act['peso_clase']:.1f}")
 
         usar_instrumento = "Cotejo" in modo_str or "Rúbrica" in modo_str
+
         indicadores_subidos = obtener_indicadores_instrumento_sesion(act["id"])
 
         info_inst = f"   |   📌 Instrumento activo ({len(indicadores_subidos)} indicadores cargados)" if indicadores_subidos else ""
@@ -2885,7 +2663,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.caja_ref_rubrica.delete("0.0", "end")
             self.caja_ref_rubrica.insert("0.0", txt_ref.strip())
             self.caja_ref_rubrica.configure(state="disabled")
-            self.caja_ref_rubrica.grid(row=1, column=0, columnspan=2, padx=12, pady=(0, 8), sticky="ew")
+            # Reference is available in Detalles, without reducing the grade table.
         else:
             self.caja_ref_rubrica.grid_forget()
 
@@ -2914,18 +2692,20 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.heading("ID", text="ID")
         tree.heading("Código", text="Código")
         tree.heading("Apellidos y Nombres", text="Apellidos y Nombres")
-        tree.heading("Asistencia", text="Asistencia (Sí/No)")
+        tree.heading("Asistencia", text="Asist.")
         for idx_c, cap_inf in enumerate(act["capacidades"], start=1):
-            tree.heading(f"Cap {idx_c}", text=f"Cap. {idx_c}: " + cap_inf["capacidad_nombre"])
-        tree.heading("Comentario", text="Comentario (Doble Clic)")
+            tree.heading(f"Cap {idx_c}", text=f"Cap. {idx_c}")
+            tree.full_headers=getattr(tree,"full_headers",{})
+            tree.full_headers[f"Cap {idx_c}"]=cap_inf["capacidad_nombre"]
+        tree.heading("Comentario", text="Comentario")
         
         tree.column("ID", width=0, stretch=False)
         tree.column("Código", width=round(80*pixel_scale(tree)), anchor="center", stretch=False)
         tree.column("Apellidos y Nombres", width=round(250*pixel_scale(tree)), anchor="w", stretch=False)
-        tree.column("Asistencia", width=round(120*pixel_scale(tree)), anchor="center", stretch=False)
+        tree.column("Asistencia", width=round(85*pixel_scale(tree)), anchor="center", stretch=False)
         for idx_c in range(1, len(act["capacidades"]) + 1):
-            tree.column(f"Cap {idx_c}", width=round(300*pixel_scale(tree)), minwidth=round(150*pixel_scale(tree)), anchor="center", stretch=False)
-        tree.column("Comentario", width=round(400*pixel_scale(tree)), anchor="w", stretch=False)
+            tree.column(f"Cap {idx_c}", width=round(110*pixel_scale(tree)), minwidth=round(80*pixel_scale(tree)), anchor="center", stretch=False)
+        tree.column("Comentario", width=round(220*pixel_scale(tree)), anchor="w", stretch=False)
         
         for est in estudiantes:
             est_id = est["ID"]
@@ -2946,11 +2726,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._undo=[];self._redo=[]
         self._datos_estudiantes = estudiantes
         self._capacidades_actividad = act["capacidades"]
-
-        if usar_instrumento:
-            tipo_btn = "Rúbrica" if "Rúbrica" in modo_str else "Lista de Cotejo"
-            btn = ctk.CTkButton(self.f_tabla_planilla, text=f"📋 Evaluar {tipo_btn} (Masivo)", fg_color="#4338ca", hover_color="#3730a3", command=lambda: self._abrir_dialogo_masivo_desde_nativa(act, estudiantes, tipo_btn))
-            btn.grid(row=0, column=0, columnspan=2, sticky="w", padx=6, pady=6)
+        if usar_instrumento:self.btn_evaluar.grid()
 
     def _abrir_dialogo_masivo_desde_nativa(self, act, estudiantes, tipo_inst):
         if not self.verificar_permiso_edicion():
@@ -3553,15 +3329,19 @@ def main() -> None:
         return
     from licencias import OfflineLicensing
     from db_safety import set_license_policy
+    commercial=commercial_edition()
     licensing=None;license_error=""
-    try:
-        licensing=OfflineLicensing(app_storage.data_dir(),license_public_key())
-    except Exception as exc:
-        license_error=str(exc)
-    set_license_policy(licensing,required=True)
-    app = VentanaPrincipal(licensing,license_required=True,license_error=license_error)
-    if not licensing or not licensing.state:
+    if commercial:
+        try:
+            licensing=OfflineLicensing(app_storage.data_dir(),license_public_key())
+        except Exception as exc:
+            license_error=str(exc)
+    set_license_policy(licensing,required=commercial)
+    app = VentanaPrincipal(licensing,license_required=commercial,license_error=license_error)
+    if commercial and (not licensing or not licensing.state):
         app.after(300, app.mostrar_licencia)
+    elif not commercial and obtener_docente_config().get("requiere_cambio_clave"):
+        app.after(300,lambda:DialogoPerfilDocente(app))
     app.mainloop()
 
 
