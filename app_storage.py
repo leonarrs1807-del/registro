@@ -1,5 +1,6 @@
 """Writable user storage, verified backups and independent school periods."""
 import json
+from contextlib import closing
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -43,13 +44,13 @@ def database_path():
 def copy_database(source, target):
     if Path(source).resolve() == Path(target).resolve():
         raise ValueError('El origen y destino deben ser bases de datos diferentes.')
-    with sqlite3.connect(f'{Path(source).resolve().as_uri()}?mode=ro', uri=True) as src:
-        with sqlite3.connect(target) as dst:
+    with closing(sqlite3.connect(f'{Path(source).resolve().as_uri()}?mode=ro', uri=True)) as src:
+        with closing(sqlite3.connect(target)) as dst:
             src.backup(dst)
 
 
 def validate_database(path):
-    with sqlite3.connect(f'{Path(path).resolve().as_uri()}?mode=ro', uri=True) as conn:
+    with closing(sqlite3.connect(f'{Path(path).resolve().as_uri()}?mode=ro', uri=True)) as conn:
         if conn.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
             raise ValueError('La base de datos está dañada.')
         if conn.execute('PRAGMA foreign_key_check').fetchall():
@@ -111,7 +112,7 @@ def create_period(source, year, period):
     with tempfile.TemporaryDirectory(dir=data_dir()) as tmp:
         staged = Path(tmp) / 'nuevo.db'
         copy_database(source, staged)
-        with sqlite3.connect(staged) as conn:
+        with closing(sqlite3.connect(staged)) as conn, conn:
             conn.execute('PRAGMA foreign_keys=ON')
             conn.execute('DELETE FROM Sesiones_Clase')
             conn.execute('DELETE FROM Notas_Manuales_Capacidad')

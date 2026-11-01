@@ -1,4 +1,5 @@
 import base64
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -35,7 +36,7 @@ class DatabaseTests(unittest.TestCase):
         return db.crear_o_actualizar_sesion_clase(**args)
 
     def read(self, sql, args=()):
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn:
             return conn.execute(sql, args).fetchall()
 
     def save(self, grade, weight=None):
@@ -73,7 +74,7 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(len(history(self.path)), 1)
 
     def test_sql_grade_constraints(self):
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn:
             for value in (-1, 21, 'texto', float('inf')):
                 with self.subTest(value=value), self.assertRaises(sqlite3.IntegrityError):
                     conn.execute('INSERT INTO Notas_Manuales_Capacidad(estudiante_id, capacidad_id, nota_manual) VALUES(?,?,?)', (self.student, self.cap, value))
@@ -149,7 +150,7 @@ class DatabaseTests(unittest.TestCase):
         self.save(15)
         target = storage.create_period(self.path, 2027, 2)
         self.addCleanup(target.unlink, missing_ok=True)
-        with sqlite3.connect(target) as conn:
+        with closing(sqlite3.connect(target)) as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM Estudiantes').fetchone()[0], 1)
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM Sesiones_Clase').fetchone()[0], 0)
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM Historial_Notas').fetchone()[0], 0)
