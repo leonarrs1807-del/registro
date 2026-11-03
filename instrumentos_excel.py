@@ -50,7 +50,10 @@ def _format_sheet(sheet,header_row,identity_columns=()):
 
 
 def export_template(destination,course,grade,section,title,competency,capacities,kind,path,session=None,
-                    *,criteria_counts=None,blank=False,format_version=4):
+                    *,criteria_counts=None,blank=False,format_version=4,include_students=True):
+    if format_version==5:
+        from plantilla_simple import export_form
+        return export_form(destination,course,grade,section,title,competency,capacities,kind,path,session,criteria_counts,blank,include_students)
     if format_version==3:return _export_v3(destination,course,grade,section,title,competency,capacities,kind,path,session)
     if format_version!=4:raise ValueError('Formato de plantilla no compatible.')
     from plantilla_excel import export_form
@@ -169,6 +172,11 @@ def import_template(session,source,grade,section,path):
 
 def _import_workbook(wb,formulas,session,grade,section,path,db):
     meta={row[0].value:row[1].value for row in wb[META].iter_rows(max_col=2)} if META in wb.sheetnames else {}
+    if meta.get('format')=='registro-instrumento' and meta.get('version')==5:
+        from plantilla_simple import normalize_form
+        converted,checked=normalize_form(wb,formulas,path)
+        try:return _import_workbook(converted,checked,session,grade,section,path,db)
+        finally:converted.close();checked.close()
     if meta.get('format')=='registro-instrumento' and meta.get('version')==4:
         from plantilla_excel import normalize_form
         converted,checked=normalize_form(wb,formulas)
@@ -310,10 +318,15 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
                     values=[(editable_value(ws,row,columns[d['id']]),d['maximum'],d['item']['puntajes']) for d in selected]
                     if not any(v is not None and str(v).strip() for v,_,_ in values):continue
                     if cap in data['notas_por_capacidad']:raise ValueError('No complete las hojas 2 y 3 para la misma capacidad; elija notas finales o indicadores.')
-                    try:data['notas_por_capacidad'][cap]=normalized_grade(kind,values,allow_pending=True)
+                    try:
+                        if not meta.get('orientation'):data['notas_por_capacidad'][cap]=normalized_grade(kind,values,allow_pending=True)
+                        else:
+                            from instrumentos import checklist_value
+                            for value,maximum,scores in values:
+                                if value is not None and str(value).strip():checklist_value(value)
                     except ValueError as exc:raise ValueError(f'Hoja {ws.title}, fila {row}: {exc}') from exc
                     data.setdefault('raw_answers',{}).update({d['id']:value[0] for d,value in zip(selected,values)})
-        changing=[d for d in updates.values() if d['notas_por_capacidad'] or d.get('comentario')]
+        changing=[d for d in updates.values() if d['notas_por_capacidad'] or d.get('comentario') or d.get('raw_answers')]
         if modern and meta.get('session_id') and meta['session_id']!=session and changing:raise ValueError('Las notas pertenecen a otra actividad. Para reutilizar el instrumento deje las hojas de calificaciones vacías.')
         # Definitions and grades are one atomic operation, including late validation failures.
         items=[]
@@ -327,7 +340,10 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
         criteria={}
         for entry in definitions:criteria.setdefault(entry['cap'],entry['criterion'])
         for cap,criterion in criteria.items():conn.execute('UPDATE Sesion_Capacidades SET criterio_precisado=? WHERE sesion_id=? AND capacidad_id=?',(criterion,session,cap))
-        if changing:db.guardar_calificaciones_y_asistencia_sesion(session,changing,db_path=path)
+        if changing:
+            db.guardar_calificaciones_y_asistencia_sesion(session,changing,db_path=path)
+            if kind=='Lista de Cotejo' and not meta.get('orientation'):
+                conn.execute("UPDATE Sesiones_Clase SET cotejo_regla=?,cotejo_pendiente=0 WHERE id=?",(json.dumps({'tipo':'anterior'}),session))
         return len(definitions),len(changing)
 
 

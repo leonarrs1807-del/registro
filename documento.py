@@ -6,6 +6,36 @@ from app_storage import copy_database,validate_database
 MAX_DOCUMENT_BYTES=256*1024*1024
 
 
+def new_empty_record(source,destination):
+    """Create a genuinely empty school record, keeping teacher and curriculum."""
+    from contextlib import closing
+    import sqlite3
+    import db,app_storage
+    source=Path(source);destination=Path(destination)
+    if destination.exists() or source.resolve()==destination.resolve():raise ValueError('Seleccione un destino nuevo para el registro vacío.')
+    saved=app_storage.backup_database(source,'antes-registro-vacio')
+    with tempfile.TemporaryDirectory(dir=destination.parent) as folder:
+        staged=Path(folder)/'vacio.db';app_storage.copy_database(source,staged)
+        with closing(sqlite3.connect(staged)) as target,target:
+            target.execute('PRAGMA foreign_keys=ON')
+            tables={r[0] for r in target.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            for table in ['Puntos_Bloques','Sesiones_Clase','Estudiantes']:
+                if table in tables:target.execute(f'DELETE FROM "{table}"')
+            for table in tables:
+                if (table.startswith('Historial_') and table!='Historial_Reglas') or 'papelera' in table.casefold():
+                    target.execute('DELETE FROM "'+table.replace('"','""')+'"')
+        app_storage.validate_database(staged)
+        reserved=False
+        try:
+            with destination.open('xb'):pass
+            reserved=True
+            app_storage.copy_database(staged,destination);app_storage.validate_database(destination)
+        except Exception:
+            if reserved:destination.unlink(missing_ok=True)
+            raise
+    return saved
+
+
 def save_document(destination,db_path):
     if Path(destination).suffix.lower()!='.registro' or Path(destination).resolve()==Path(db_path).resolve():
         raise ValueError('Guarde el documento con extensión .registro, separado de la base de datos.')

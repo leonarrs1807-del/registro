@@ -20,6 +20,8 @@ class TemplateOptions(SafeDialog):
         self.body=scroll_area(self,auto_hide=True);self.body.pack(fill='both',expand=True,padx=14,pady=8)
         self.body.grid_columnconfigure(0,weight=1)
         self.help=label(self,'');self.help.pack(fill='x',padx=18,pady=4)
+        self.include_students=ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(self,text='Incluir alumnado real del aula (sin respuestas)',variable=self.include_students).pack(anchor='w',padx=18,pady=5)
         for row,capacity in enumerate(activity['capacidades']):
             label(self.body,capacity['capacidad_nombre']).grid(row=row,column=0,sticky='ew',padx=8,pady=10)
             entry=ctk.CTkComboBox(self.body,values=[str(n) for n in range(1,11)],width=90,height=36)
@@ -34,12 +36,12 @@ class TemplateOptions(SafeDialog):
     def _toggle(self):
         new=self.source.get()=='nuevo'
         for entry in self.counts.values():entry.configure(state='normal' if new else 'disabled')
-        self.help.configure(text='Cada criterio tendrá su propia respuesta y puntaje. La nota final de capacidad se calculará con todos sus criterios.' if new else 'Se conservan sus criterios, descriptores y puntajes actuales.')
+        self.help.configure(text='Dos hojas visibles: Instrumento y Registro. Sin alumnos de ejemplo. El cotejo guarda cumplimiento; la conversión a nota es opcional.' if new else 'Se conservan sus criterios, descriptores y puntajes. Las respuestas quedan vacías para llenar el registro.')
 
     def confirm(self):
         try:
             counts={cap:int(entry.get()) for cap,entry in self.counts.items()}
             if any(not 1<=n<=20 for n in counts.values()):raise ValueError()
         except ValueError:messagebox.showwarning('Cantidad de criterios','Elija entre 1 y 20 criterios por capacidad.',parent=self);return
-        self.result=dict(criterios_por_capacidad=counts,desde_cero=self.source.get()=='nuevo')
+        self.result=dict(criterios_por_capacidad=counts,desde_cero=self.source.get()=='nuevo',formato=5,incluir_estudiantes=self.include_students.get())
         self.destroy()

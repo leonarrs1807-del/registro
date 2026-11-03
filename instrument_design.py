@@ -7,7 +7,7 @@ import db,app_storage
 from db_safety import valid_number,connection
 from escala import thresholds
 from instrumentos import definition,validate_definition,LEVELS,LEVEL_NAMES
-from evaluacion_datos import activity,get_indicators
+from evaluacion_datos import activity,get_indicators,get_answers
 from widgets import SafeDialog,scroll_area,wrap_label
 from instrument_widgets import InstrumentGrid,Multiline,label,number
 from grade_cells import PALETTE
@@ -72,11 +72,22 @@ class InstrumentPreview(SafeDialog):
             if value==before.get((student,cap)):continue
             code,name=students[student];old=before.get((student,cap))
             tree.insert('','end',values=(code,name,capacities[cap],number(old) if old is not None else 'Pendiente',number(value) if value is not None else 'Pendiente'));count+=1
-        label(notes,f'{count} notas cambiarán al confirmar.' if count else 'No hay cambios numéricos. Se actualizará la estructura del instrumento.').grid(row=0,column=0,sticky='ew',pady=8)
+        label(notes,f'{count} notas cambiarán al confirmar.' if count else 'No hay cambios numéricos. Se actualizarán el instrumento y sus observaciones.').grid(row=0,column=0,sticky='ew',pady=8)
         tree.grid(row=1,column=0,sticky='nsew')
         sy=scrollbar(notes,'vertical',tree.yview);sy.grid(row=1,column=1,sticky='ns')
         sx=scrollbar(notes,'horizontal',tree.xview);sx.grid(row=2,column=0,sticky='ew')
         tree.configure(yscrollcommand=sy.set,xscrollcommand=sx.set)
+        observations=tabs.add('Observaciones');observations.grid_rowconfigure(0,weight=1);observations.grid_columnconfigure(0,weight=1)
+        observed=ttk.Treeview(observations,columns=('student','criterion','before','after'),show='headings')
+        for col,title,width in [('student','Estudiante',240),('criterion','Criterio',420),('before','Antes',130),('after','Después',130)]:
+            observed.heading(col,text=title);observed.column(col,width=width,stretch=col in ('student','criterion'))
+        previous=get_answers(session,app._db_path);current=get_answers(session,staged);by_id={i['id']:i for i in items}
+        for key in sorted(set(previous)|set(current)):
+            student,identity=key
+            if identity not in by_id or previous.get(key)==current.get(key):continue
+            observed.insert('','end',values=(students[student][1],by_id[identity]['criterio'],previous.get(key) or 'Pendiente',current.get(key) or 'Pendiente'))
+        observed.grid(row=0,column=0,sticky='nsew');sy=scrollbar(observations,'vertical',observed.yview);sy.grid(row=0,column=1,sticky='ns')
+        sx=scrollbar(observations,'horizontal',observed.xview);sx.grid(row=1,column=0,sticky='ew');observed.configure(yscrollcommand=sy.set,xscrollcommand=sx.set)
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=16,pady=12)
         ctk.CTkButton(bar,text='Cancelar',height=38,fg_color='transparent',border_width=1,text_color=('#334155','#e2e8f0'),command=self.destroy).pack(side='left')
         def confirm():self.confirmed=True;self.destroy()
@@ -93,7 +104,7 @@ class InstrumentEditor(SafeDialog):
         self.title('Diseñar '+self.kind);fit(self,self.app)
         self.context=activity(session,self.app._db_path);self.rows=[];self.visible=[]
         self.capacity_names={c['capacidad_id']:c['capacidad_nombre'] for c in self.context['capacidades']}
-        self.capacities={f'Capacidad {n} de {len(self.capacity_names)}':identity for n,identity in enumerate(self.capacity_names,1)}
+        self.capacities={name:identity for identity,name in self.capacity_names.items()}
         self.limits=thresholds(self.app._db_path)
         for index,item in enumerate(indicators):
             item=deepcopy(item)

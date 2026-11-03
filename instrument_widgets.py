@@ -5,6 +5,7 @@ import customtkinter as ctk
 from widgets import scroll_area,wrap_label,SafeDialog
 from interfaz import pixel_scale,scrollbar
 from instrumentos import LEVELS,LEVEL_NAMES,criterion_caption,normalized,answer_points,entered_answer
+from cotejo import capacity_label
 from grade_cells import PALETTE,achievement
 from escala import thresholds,DEFAULT
 from calculos import normalized_total
@@ -43,10 +44,10 @@ class InstrumentGrid(ctk.CTkFrame):
         self.indicators=indicators;self.on_choice=on_choice;self.variables={};self.cells={};self.badges={};self.actions={};self.numeric_entries={}
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
         self.capacity_names={i['capacidad_id']:i['capacidad_nombre'] for i in indicators}
-        self.capacities={f'{n} de {len(self.capacity_names)}':identity for n,identity in enumerate(self.capacity_names,1)}
+        self.capacities={capacity_label(name):identity for identity,name in self.capacity_names.items()}
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.grid(row=0,column=0,sticky='ew',pady=(0,6));bar.grid_columnconfigure(2,weight=1)
         ctk.CTkLabel(bar,text='Capacidad',font=ctk.CTkFont(size=14,weight='bold')).grid(row=0,column=0,padx=(0,8))
-        self.choice=ctk.CTkComboBox(bar,values=list(self.capacities),state='readonly',width=110,height=34,font=ctk.CTkFont(size=14),command=lambda _:self.render())
+        self.choice=ctk.CTkComboBox(bar,values=list(self.capacities),state='readonly',width=220,height=34,font=ctk.CTkFont(size=14),command=lambda _:self.render())
         self.choice.grid(row=0,column=1,sticky='w');self.choice.set(next(iter(self.capacities),''))
         self.capacity_title=label(bar,'');self.capacity_title.configure(font=ctk.CTkFont(size=15,weight='bold'))
         self.capacity_title.grid(row=0,column=2,sticky='ew',padx=(12,4))
@@ -75,7 +76,7 @@ class InstrumentGrid(ctk.CTkFrame):
             criterion=ctk.CTkFrame(table,fg_color='#ffffff',corner_radius=0)
             criterion.grid(row=row,column=0,sticky='nsew',padx=1,pady=1)
             label(criterion,criterion_caption(item),text_color='#0f172a').pack(fill='x',padx=10,pady=(10,5))
-            label(criterion,f"Máximo: {number(item['puntaje_maximo'])} puntos",text_color='#475569').pack(fill='x',padx=10,pady=5)
+            if rubric:label(criterion,f"Máximo: {number(item['puntaje_maximo'])} puntos",text_color='#475569').pack(fill='x',padx=10,pady=5)
             self.badges[identity]=label(criterion,'',text_color='#1d4ed8')
             if self.on_choice:
                 actions=ctk.CTkFrame(criterion,fg_color='transparent');actions.pack(fill='x',padx=10,pady=(3,8));self.actions[identity]=actions
@@ -94,7 +95,7 @@ class InstrumentGrid(ctk.CTkFrame):
                 cell=ctk.CTkFrame(table,fg_color=bg,corner_radius=0,border_width=1,border_color=bg)
                 cell.grid(row=row,column=col,sticky='nsew',padx=1,pady=1);self.cells[(identity,token)]=cell
                 points=item['puntajes'][token] if rubric else item['puntaje_maximo'] if token=='Sí' else 0
-                text=f'{token} · {number(points)} pt'
+                text=f'{token} · {number(points)} pt' if rubric else 'Cumple' if token=='Sí' else 'No cumple'
                 if self.on_choice:
                     ctk.CTkRadioButton(cell,text=text,variable=variable,value=token,
                         command=lambda i=identity,t=token:self._choose(i,t),font=ctk.CTkFont(size=14,weight='bold'),text_color=fg).pack(anchor='w',padx=10,pady=10)

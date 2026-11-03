@@ -16,13 +16,14 @@ def student_id(row):return row.get('ID') or row.get('id_db') or row.get('estudia
 
 
 def stage_to_grid(self,only_student=None,only_capacity=None):
-    grades,pending=grade_answers(self.indicadores_db,self.answers)
+    grades,pending=({},set()) if self.tipo_inst=='Lista de Cotejo' else grade_answers(self.indicadores_db,self.answers)
     tree=self.app.planilla_nativa
     for item in tree.get_children():
         row=list(tree.item(item,'values'));student=int(row[0])
         if only_student is not None and student!=only_student:continue
         for column,cap in enumerate(self.sesion['capacidades'],4):
             if only_capacity is not None and cap['capacidad_id']!=only_capacity:continue
+            if self.tipo_inst=='Lista de Cotejo':continue
             key=(student,cap['capacidad_id'])
             if key in grades:row[column]=number(grades[key])
             else:
@@ -64,6 +65,15 @@ class EvaluationActions:
         student=self.by_student[self.current_student]
         self.student_title.configure(text=f"{student.get('Apellidos','')}, {student.get('Nombres','')}".strip(', '))
         self.grid_view.show_answers({i:self.answers.get((self.current_student,i)) for i in self.by_id})
+        if self.tipo_inst=='Lista de Cotejo':
+            from cotejo import summary
+            cap=self.grid_view.capacities.get(self.grid_view.choice.get())
+            state=summary(self.indicadores_db,self.answers,[self.current_student]).get((self.current_student,cap))
+            self.progress.configure(text=f"Cumple {state['cumplidos']} de {state['evaluados']} evaluados · {state['pendientes']} pendientes · Sin conversión automática a nota" if state else 'Sin evaluar')
+            for identity in self.by_student:
+                count=sum(self.answers.get((identity,i)) is not None for i in self.by_id)
+                self.roster.set(str(identity),'avance',f'{count}/{len(self.by_id)}')
+            return
         grades,pending=grade_answers(self.indicadores_db,self.answers)
         cap=self.grid_view.capacities.get(self.grid_view.choice.get());value=grades.get((self.current_student,cap))
         items=[i for i in self.indicadores_db if i['capacidad_id']==cap]

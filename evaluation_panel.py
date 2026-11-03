@@ -21,7 +21,9 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         modes=ctk.CTkFrame(self,fg_color='transparent');modes.grid(row=0,column=0,sticky='ew',padx=8,pady=3);modes.grid_columnconfigure(1,weight=1)
         self.mode_choice=ctk.CTkSegmentedButton(modes,values=['Grupo','Individual'],height=31,command=self._change_view)
         self.mode_choice.grid(row=0,column=0,sticky='w');self.mode_choice.set('Grupo')
-        label(modes,'Escriba puntos o elija un nivel · Los criterios pendientes se guardan.').grid(row=0,column=1,sticky='ew',padx=12)
+        label(modes,'Marque Sí / No · Conversión a nota opcional.' if self.tipo_inst=='Lista de Cotejo' else 'Puntajes manuales · Las letras siguen su escala.').grid(row=0,column=1,sticky='ew',padx=12)
+        if self.tipo_inst=='Lista de Cotejo':self.mode_choice.grid_remove()
+        else:ctk.CTkButton(modes,text='Descriptores',height=30,width=120,command=lambda:self.matrix.toggle_details()).grid(row=0,column=2,padx=5)
         self.students_bar=ctk.CTkFrame(app._criteria_view_bar,fg_color='transparent')
         self.students_bar.grid_columnconfigure(1,weight=1)
         label(self.students_bar,'Estudiante').grid(row=0,column=0,padx=(0,8))
@@ -50,9 +52,9 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         for identity,student in self.by_student.items():self.roster.insert('','end',iid=str(identity),values=(student.get('Codigo_Unico',''),f"{student.get('Apellidos','')}, {student.get('Nombres','')}",''))
         self.roster.bind('<<TreeviewSelect>>',self._student_changed)
         footer=ctk.CTkFrame(self,fg_color='transparent');footer.grid(row=2,column=0,sticky='ew',padx=8,pady=5)
-        ctk.CTkButton(footer,text='Anterior',width=90,height=32,command=lambda:self._move(-1)).pack(side='left',padx=(0,6))
-        ctk.CTkButton(footer,text='Siguiente',width=90,height=32,command=lambda:self._move(1)).pack(side='left')
-        ctk.CTkButton(footer,text='Recalcular resultados',width=165,height=32,command=self._aplicar_calculo).pack(side='right')
+        self.previous_button=ctk.CTkButton(footer,text='Anterior',width=90,height=32,command=lambda:self._move(-1))
+        self.next_button=ctk.CTkButton(footer,text='Siguiente',width=90,height=32,command=lambda:self._move(1))
+        ctk.CTkButton(footer,text='Convertir a nota…' if self.tipo_inst=='Lista de Cotejo' else 'Recalcular resultados',width=165,height=32,command=self._aplicar_calculo).pack(side='right')
         from evaluation_matrix import EvaluationMatrix
         self.matrix=EvaluationMatrix(self,self)
         self.matrix.grid(row=1,column=0,sticky='nsew',padx=5,pady=4)
@@ -89,6 +91,8 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         self._panel_view=caption
         if caption=='Grupo':self.pane.grid_remove();self.matrix.grid()
         else:self.matrix.grid_remove();self.pane.grid()
+        if caption=='Individual':self.previous_button.pack(side='left',padx=(0,6));self.next_button.pack(side='left')
+        else:self.previous_button.pack_forget();self.next_button.pack_forget()
         self._refresh()
         self._layout_state=None;self._queue_layout()
 
@@ -110,6 +114,9 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
 
     def _aplicar_calculo(self):
         if not self.app.verificar_permiso_edicion():return
+        if self.tipo_inst=='Lista de Cotejo':
+            from cotejo_ui import ChecklistConversion
+            ChecklistConversion(self);return
         self.app.recordar_planilla();stage_to_grid(self);self._refresh()
 
     def abrir_editor(self):self.app.configurar_instrumento()

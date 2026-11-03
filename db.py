@@ -248,14 +248,14 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
                 especialidad TEXT NOT NULL DEFAULT 'Matemática y Ciencias',
                 usuario TEXT NOT NULL DEFAULT 'docente',
                 clave TEXT NOT NULL DEFAULT '1234',
-                tema_visual TEXT NOT NULL DEFAULT 'Oscuro Noche'
+                tema_visual TEXT NOT NULL DEFAULT 'Claro Institucional'
             )
             """
         )
         cols_doc = {r[1] for r in cursor.execute("PRAGMA table_info(Docente_Config)").fetchall()}
         if "tema_visual" not in cols_doc:
             cursor.execute(
-                "ALTER TABLE Docente_Config ADD COLUMN tema_visual TEXT NOT NULL DEFAULT 'Oscuro Noche'"
+                "ALTER TABLE Docente_Config ADD COLUMN tema_visual TEXT NOT NULL DEFAULT 'Claro Institucional'"
             )
         if "tamano_letra" not in cols_doc:
             cursor.execute(
@@ -264,7 +264,7 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
         cursor.execute(
             """
             INSERT OR IGNORE INTO Docente_Config (id, nombres_docente, institucion, especialidad, usuario, clave, tema_visual)
-            VALUES (1, 'Docente Titular', 'I.E. Secundaria', 'Educación Secundaria', 'docente', '1234', 'Oscuro Noche')
+            VALUES (1, 'Docente Titular', 'I.E. Secundaria', 'Educación Secundaria', 'docente', '1234', 'Claro Institucional')
             """
         )
 
@@ -355,6 +355,15 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
             cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Clases'")
         if "tipo_instrumento" not in cols_ses:
             cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN tipo_instrumento TEXT NOT NULL DEFAULT 'Normal'")
+        if "cotejo_regla" not in cols_ses:
+            cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN cotejo_regla TEXT")
+            # A migration preserves previously published grades and labels them as legacy.
+            if cursor.execute("SELECT 1 FROM sqlite_master WHERE name='Notas_Sesion_Capacidad'").fetchone():
+                cursor.execute("""UPDATE Sesiones_Clase SET cotejo_regla='{"tipo":"anterior"}'
+                    WHERE tipo_instrumento='Lista de Cotejo' AND EXISTS(
+                    SELECT 1 FROM Notas_Sesion_Capacidad n WHERE n.sesion_id=Sesiones_Clase.id AND n.nota IS NOT NULL)""")
+        if "cotejo_pendiente" not in cols_ses:
+            cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN cotejo_pendiente INTEGER NOT NULL DEFAULT 0")
 
         cursor.execute(
             """
@@ -780,13 +789,6 @@ def generar_plantilla_excel_estudiantes(ruta_destino: str) -> None:
         c.font = font_h
         c.alignment = Alignment(horizontal="center")
 
-    ejemplos = [
-        ["4A01", "Alvarado Pérez", "Lucía Fernanda", "4°", "A", "ACTIVO"],
-        ["4A02", "Flores Mendoza", "Mateo Alejandro", "4°", "A", "ACTIVO"],
-        ["4A03", "Quispe Rojas", "Sebastián Daniel", "4°", "A", "ACTIVO"],
-    ]
-    for fila in ejemplos:
-        ws.append(fila)
     for col in ["A", "B", "C", "D", "E", "F"]:
         ws.column_dimensions[col].width = 22
     wb.save(ruta_destino)
@@ -882,12 +884,12 @@ def exportar_plantilla_rubrica_o_cotejo_excel(
     ruta_destino: str, nombre_curso: str, grado: str, seccion: str, titulo_actividad: str,
     competencia_nombre: str, capacidades_y_criterios: List[Tuple[int,str,str]],
     tipo_instrumento: str = "Lista de Cotejo", db_path: Path = DB_PATH, *, sesion_id=None,
-    criterios_por_capacidad=None,desde_cero=False,formato=4,
+    criterios_por_capacidad=None,desde_cero=False,formato=4,incluir_estudiantes=True,
 ) -> None:
     from instrumentos_excel import export_template
     export_template(ruta_destino,nombre_curso,grado,seccion,titulo_actividad,competencia_nombre,
                     capacidades_y_criterios,tipo_instrumento,db_path,sesion_id,
-                    criteria_counts=criterios_por_capacidad,blank=desde_cero,format_version=formato)
+                    criteria_counts=criterios_por_capacidad,blank=desde_cero,format_version=formato,include_students=incluir_estudiantes)
 
 
 @atomic
@@ -1057,6 +1059,7 @@ def guardar_calificaciones_y_asistencia_sesion(
     db_path: Path = DB_PATH,
     nuevo_peso: Optional[float] = None,
     nuevo_instrumento=None,
+    regla_cotejo=None,
 ) -> None:
     with obtener_conexion(db_path) as conn:
         cur = conn.cursor()
@@ -1066,6 +1069,7 @@ def guardar_calificaciones_y_asistencia_sesion(
             from instrumentos import instrument_kind
             kind='Normal' if nuevo_instrumento=='Nota directa' else instrument_kind(nuevo_instrumento)
             cur.execute('UPDATE Sesiones_Clase SET tipo_instrumento=? WHERE id=?',(kind,sesion_id))
+            if kind!='Lista de Cotejo':cur.execute('UPDATE Sesiones_Clase SET cotejo_regla=NULL,cotejo_pendiente=0 WHERE id=?',(sesion_id,))
         session = cur.execute("SELECT grado, seccion FROM Sesiones_Clase WHERE id=?", (sesion_id,)).fetchone()
         if not session:
             raise ValueError("La sesión no existe.")
@@ -1112,6 +1116,10 @@ def guardar_calificaciones_y_asistencia_sesion(
         if answers:
             from evaluacion_datos import save_answers
             save_answers(sesion_id,answers,db_path)
+            cur.execute("UPDATE Sesiones_Clase SET cotejo_pendiente=1 WHERE id=? AND cotejo_regla IS NOT NULL AND tipo_instrumento='Lista de Cotejo'",(sesion_id,))
+        if regla_cotejo is not None:
+            from cotejo import store_rule
+            store_rule(sesion_id,regla_cotejo,db_path)
         conn.commit()
 
 

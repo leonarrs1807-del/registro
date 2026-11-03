@@ -36,14 +36,14 @@ class ConfigurationTools:
         label(scale,'Defina los límites de C, B, A y AD por nivel educativo. Las notas numéricas se conservan.').grid(row=1,column=0,columnspan=2,sticky='ew',padx=14,pady=6)
         ctk.CTkButton(scale,text='Configurar escala de logro',height=36,command=self.configurar_escala).grid(row=2,column=0,columnspan=2,sticky='w',padx=14,pady=12)
         records=scroll_area(data,auto_hide=True);records.pack(fill='both',expand=True);records.grid_columnconfigure(0,weight=1)
-        actions=[('Guardar documento completo',self.guardar_documento),('Abrir documento',self.abrir_documento),
+        actions=[('Nuevo registro vacío (con respaldo)',self.nuevo_registro_vacio),('Guardar documento completo',self.guardar_documento),('Abrir documento',self.abrir_documento),
             ('Crear respaldo',self.crear_respaldo),('Restaurar respaldo',self.restaurar_respaldo),('Historial de notas',self.mostrar_historial),
             ('Año escolar y periodo',self.seleccionar_periodo),('Bloqueo por inactividad',self.configurar_inactividad)]
         for row,(text,command) in enumerate(actions):
             ctk.CTkButton(records,text=text,height=40,command=command).grid(row=row,column=0,sticky='ew',padx=18,pady=8)
         licensing=self.config_tabs.add('Licencia')
         text='Cuenta, cursos comprados y activación para esta computadora.' if self._license_required else (
-            'Edición personal de revisión para Leonardo. Esta edición funciona sin activar licencias. '
+            'Versión Full personal para Leonardo. Todos los cursos y módulos funcionan sin activar licencias. '
             'La importación de archivos .licencia se habilita en el instalador comercial, que se prepara con tu clave pública de vendedor.')
         label(licensing,text).pack(fill='x',padx=18,pady=18)
         self.config_import_license=ctk.CTkButton(licensing,text='Importar licencia (.licencia)',height=40,
@@ -53,7 +53,7 @@ class ConfigurationTools:
             ctk.CTkButton(licensing,text='Mi cuenta y cursos',height=38,command=self.mostrar_licencia).pack(anchor='w',padx=18,pady=8)
             label(licensing,'Crea primero tu usuario en esta computadora. Después guarda la solicitud para el vendedor e importa la licencia que recibas.').pack(fill='x',padx=18,pady=10)
         else:
-            label(licensing,'Esta entrega es una revisión personal. La clave pública del vendedor ya está incorporada al proyecto para la próxima compilación comercial. Conserva el mismo archivo registro_privada.pem y su contraseña para emitir las licencias de tus compradores.').pack(fill='x',padx=18,pady=10)
+            label(licensing,'Esta versión Full personal no necesita clave privada ni archivo de licencia. El candado protege la edición de tus datos.').pack(fill='x',padx=18,pady=10)
         return courses
 
     def importar_licencia_configuracion(self):

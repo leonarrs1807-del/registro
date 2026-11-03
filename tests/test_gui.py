@@ -134,6 +134,8 @@ class DesktopTests(unittest.TestCase):
     def test_import_cancel_does_not_write(self):
         file = app_storage.data_dir() / 'preview.xlsx'
         db.generar_plantilla_excel_estudiantes(str(file))
+        from tests import populate_student_template
+        populate_student_template(file)
         def cancel_window():
             for widget in self.app.winfo_children():
                 if widget.winfo_class() == 'Toplevel':
@@ -165,6 +167,8 @@ class DesktopTests(unittest.TestCase):
         from tkinter import ttk
         file = app_storage.data_dir() / 'confirm.xlsx'
         db.generar_plantilla_excel_estudiantes(str(file))
+        from tests import populate_student_template
+        populate_student_template(file)
         def confirm_window():
             for widget in self.app.winfo_children():
                 if widget.winfo_class() == 'Toplevel':
@@ -181,7 +185,8 @@ class DesktopTests(unittest.TestCase):
     def test_native_grid_keeps_identity_columns_fixed(self):
         self.assertEqual(tuple(self.app.planilla_nativa['displaycolumns'])[:1],('Asistencia',))
         self.assertEqual(len(self.app.identidad_planilla.get_children()),1)
-        self.assertEqual(self.app.planilla_nativa.heading('Cap 1','text'),'Cap. 1')
+        from cotejo import capacity_label
+        self.assertEqual(self.app.planilla_nativa.heading('Cap 1','text'),capacity_label(db.obtener_capacidades_por_competencia(self.comp)[0][1]))
         self.assertTrue(self.app.planilla_nativa.full_headers['Cap 1'])
 
     def test_undo_and_redo_do_not_write_until_confirmed(self):
@@ -375,17 +380,17 @@ class DesktopTests(unittest.TestCase):
         self.assertLess(intro.winfo_width(),intro.master.winfo_width())
         self.assertFalse(self.errors)
 
-    def test_mass_checklist_has_no_automatic_grade_and_counts_no_as_zero(self):
+    def test_mass_checklist_preserves_no_without_automatic_grade(self):
         self.app.edicion_desbloqueada=True
         act=db.obtener_sesiones_clase(self.course,'3°','A')[0]
         dialog=self.main.DialogoEvaluarInstrumentoMasivo(self.app,act,db.obtener_estudiantes_filtrados('3°','A'),'Lista de Cotejo')
         self.assertFalse(dialog.answers)
         for indicator in dialog.indicadores_db:dialog.set_answer(self.student,indicator['id'],'No')
         dialog._aplicar_calculo()
-        tree=self.app.planilla_nativa;self.assertEqual(float(tree.item(tree.get_children()[0],'values')[4]),0)
+        tree=self.app.planilla_nativa;self.assertEqual(tree.item(tree.get_children()[0],'values')[4],'')
         with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
         with db.obtener_conexion() as conn:
-            self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0],0)
+            self.assertFalse(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE nota IS NOT NULL').fetchall())
 
     def test_editing_instrument_keeps_entered_answers(self):
         self.app.edicion_desbloqueada=True
@@ -475,8 +480,8 @@ class DesktopTests(unittest.TestCase):
         import json,openpyxl
         from excel_ui import TemplateOptions
         from instrument_design import InstrumentPreview
-        from plantilla_excel import EVALUAR
-        from instrumentos_excel import IND,META
+        from plantilla_simple import REGISTRO as EVALUAR,INSTRUMENTO as IND
+        from instrumentos_excel import META
         self.app.edicion_desbloqueada=True
         self.app.calif_combo_modo_inst.set('Rúbrica');self.app.cambiar_metodo_evaluacion('Rúbrica')
         self.assertEqual(self.app._export_button.cget('state'),'normal')
@@ -494,7 +499,7 @@ class DesktopTests(unittest.TestCase):
         for n,entry in enumerate(json.loads(meta['layout_rows']),1):
             row=entry['row'];wb[IND].cell(row,3,f'Criterio {n} de esta sesión')
             for col,text in enumerate(['Con apoyo','Parcialmente','Autónomamente','Justifica y comprueba'],4):wb[IND].cell(row,col,text)
-        wb[EVALUAR]['D2']=6;wb[EVALUAR]['E2']=8;wb.save(file);wb.close()
+        wb[EVALUAR]['D2']='Prueba, Ana';wb[EVALUAR]['E2']=6;wb[EVALUAR]['F2']=8;wb.save(file);wb.close()
         def approve():
             for window in self.app.winfo_children():
                 if isinstance(window,InstrumentPreview) and window.ready:window.confirmed=True;window.destroy();return
@@ -605,3 +610,80 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(panel.matrix.selected,(self.student,first))
         panel.matrix.begin_edit(self.student,first);panel.matrix.editor.insert(0,'9')
         self.app.destroy();self.assertFalse(self.errors)
+
+    def _checklist_panel(self,count=2):
+        self.app.edicion_desbloqueada=True
+        values=[dict(capacidad_id=self.cap,criterio=f'Evidencia observable {n}',puntaje_maximo=1) for n in range(count)]
+        ids=db.guardar_indicadores_instrumento_sesion(self.session,'Lista de Cotejo',values)
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session);self.app.update()
+        return self.app._embedded_evaluation,ids
+
+    def test_fast_checklist_click_keyboard_undo_and_save_without_grades(self):
+        from types import SimpleNamespace
+        from evaluacion_datos import get_answers
+        panel,ids=self._checklist_panel();matrix=panel.matrix
+        box=matrix.table.bbox(str(self.student),str(ids[0]));self.assertTrue(box)
+        x,y,w,h=box;matrix._clicked(SimpleNamespace(x=x+w//2,y=y+h//2))
+        self.assertEqual(panel.answers[(self.student,ids[0])],'Sí')
+        matrix.move_cell('next');matrix._typed(SimpleNamespace(char='n',keysym='n',state=0))
+        self.assertEqual(panel.answers[(self.student,ids[1])],'No')
+        self.assertTrue(self.app._is_grade_widget(matrix.table))
+        self.app.deshacer_planilla();self.assertNotIn((self.student,ids[1]),panel.answers)
+        self.app.deshacer_planilla(True);self.assertEqual(panel.answers[(self.student,ids[1])],'No')
+        self.assertEqual(self.app.planilla_nativa.item(self.app.planilla_nativa.get_children()[0],'values')[4],'')
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertEqual(get_answers(self.session,self.app._db_path),{(self.student,ids[0]):'Sí',(self.student,ids[1]):'No'})
+        with db.obtener_conexion() as conn:self.assertFalse(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE nota IS NOT NULL').fetchall())
+        matrix._typed(SimpleNamespace(char='',keysym='Delete',state=0));self.assertIsNone(panel.answers[(self.student,ids[1])])
+        self.assertFalse(self.errors)
+
+    def test_checklist_conversion_is_reviewed_undoable_and_saved_explicitly(self):
+        from cotejo_ui import ChecklistConversion
+        from cotejo import configuration
+        panel,ids=self._checklist_panel();panel.set_answer(self.student,ids[0],'Sí');panel.set_answer(self.student,ids[1],'No')
+        dialog=ChecklistConversion(panel);self.app.update_idletasks()
+        dialog.choice.set('Proporcional: cumplimiento × 20');self.assertTrue(dialog.review())
+        with db.obtener_conexion() as conn:self.assertFalse(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchall())
+        dialog.confirm()
+        self.assertEqual(float(self.app.planilla_nativa.item(self.app.planilla_nativa.get_children()[0],'values')[4]),10)
+        panel.set_answer(self.student,ids[1],'Sí')
+        with patch('tkinter.messagebox.showwarning') as warning:
+            self.app.accion_guardar_planilla_calificacion_completa();warning.assert_called_once()
+        with db.obtener_conexion() as conn:self.assertFalse(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchall())
+        self.app.deshacer_planilla()
+        self.app.deshacer_planilla();self.assertEqual(self.app.planilla_nativa.item(self.app.planilla_nativa.get_children()[0],'values')[4],'')
+        self.app.deshacer_planilla(True)
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertEqual(configuration(self.session,self.app._db_path),({'tipo':'proporcional'},False))
+        with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0],10)
+        self.assertFalse(self.errors)
+
+    def test_wide_criteria_scroll_keeps_names_fixed_and_sidebar_collapses(self):
+        panel,ids=self._checklist_panel(count=12);matrix=panel.matrix
+        before=matrix.identity.winfo_rootx();values=matrix.identity.item(str(self.student),'values')
+        matrix.table.xview_moveto(1);self.app.update_idletasks()
+        self.assertGreater(matrix.table.xview()[0],0)
+        self.assertGreater(matrix.criteria_header.xview()[0],0)
+        self.assertEqual(matrix.criteria_header.winfo_rootx(),matrix.table.winfo_rootx())
+        self.assertFalse(self.app._evaluation_panel.container.winfo_ismapped())
+        self.assertEqual(matrix.identity.winfo_rootx(),before);self.assertEqual(matrix.identity.item(str(self.student),'values'),values)
+        state=self.app.tabview.expanded;self.app.tabview.toggle();self.app.update_idletasks()
+        self.assertEqual(self.app.tabview.expanded,not state)
+        self.app._guardar_ventana();self.assertEqual(self.app._preferencias()['nav_expanded'],not state)
+        self.assertIn('Competencia:',self.app._competency_label.cget('text'))
+        self.assertFalse(self.errors)
+
+    def test_selected_capacities_two_three_four_keep_real_names_and_competency(self):
+        from cotejo import capacity_label
+        caps=db.obtener_capacidades_por_competencia(self.comp)[1:4]
+        self.assertEqual(len(caps),3)
+        db.crear_o_actualizar_sesion_clase(self.session,self.course,self.comp,'3°','A','Prueba','',1,[(c[0],'Evidencia propia') for c in caps])
+        db.guardar_indicadores_instrumento_sesion(self.session,'Lista de Cotejo',[dict(capacidad_id=c[0],criterio='Evidencia '+c[1],puntaje_maximo=1) for c in caps])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session);self.app.update()
+        matrix=self.app._embedded_evaluation.matrix
+        self.assertEqual([i['capacidad_id'] for i in matrix.items],[c[0] for c in caps])
+        for n,c in enumerate(caps,1):self.assertEqual(self.app.planilla_nativa.heading(f'Cap {n}','text'),capacity_label(c[1]))
+        texts=[matrix.criteria_header.itemcget(i,'text') for i in matrix.criteria_header.find_all() if matrix.criteria_header.type(i)=='text']
+        for cap in caps:self.assertIn(capacity_label(cap[1]),texts)
+        self.assertIn(db.obtener_competencias_por_curso(self.course)[0][1],self.app._competency_label.cget('text'))
+        self.assertFalse(self.errors)

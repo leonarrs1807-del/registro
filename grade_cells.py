@@ -106,8 +106,8 @@ class GradeTreeview(ttk.Treeview):
                 if not bounds:continue
                 x,y,w,h=bounds
                 if x+w<=0 or x>=width or y<1 or y>=height:continue
-                value=self.set(row,column);level=achievement(value,limits)
-                if not level:continue
+                value=self.set(row,column);appearance=self.cell_appearance(value,column,limits)
+                if appearance is None:continue
                 if used==len(self._cell_pool):
                     label=tk.Label(self,borderwidth=0,padx=0,pady=0,justify='center',takefocus=False)
                     for sequence in ('<Button-1>','<ButtonRelease-1>','<B1-Motion>','<Button-3>','<MouseWheel>','<Button-4>','<Button-5>'):
@@ -121,12 +121,29 @@ class GradeTreeview(ttk.Treeview):
                     label.bind('<Double-1>',double)
                     self._cell_pool.append(label)
                 label=self._cell_pool[used];used+=1
-                background,foreground=PALETTE[level]
-                text=str(value).split('(')[0].strip()+f' ({level})'
+                background,foreground,text=appearance
                 label.configure(text=text,background=background,foreground=foreground,font=self._cell_font,
                     highlightthickness=1 if row in selected else 0,highlightbackground='#3b82f6')
                 label.place(x=x+1,y=y+1,width=max(1,w-2),height=max(1,h-2))
         for label in self._cell_pool[used:]:label.place_forget()
         editor=getattr(self,'_entry',None) or getattr(self,'editor',None)
         if editor is not None and editor.winfo_exists():editor.lift()
+
+    def cell_appearance(self,value,column,limits):
+        level=achievement(value,limits)
+        if level is None:return None
+        background,foreground=PALETTE[level]
+        return background,foreground,str(value).split('(')[0].strip()+f' ({level})'
+
+
+class CriterionTreeview(GradeTreeview):
+    """Cotejo states and rubric points use their own cell appearance."""
+    def cell_appearance(self,value,column,limits):
+        if value in ('Sí','No','Sin evaluar','Pendiente'):
+            return {'Sí':('#dcfce7','#166534','✓ Sí'),'No':('#fee2e2','#991b1b','✕ No'),
+                    'Sin evaluar':('#f1f5f9','#64748b','—'),'Pendiente':('#f1f5f9','#64748b','Pendiente')}[value]
+        match=re.search(r'\((C|B|A|AD)\)$',str(value))
+        if match:
+            bg,fg=PALETTE[match[1]];return bg,fg,str(value)
+        return None
 

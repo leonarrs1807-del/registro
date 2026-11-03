@@ -1,21 +1,24 @@
-REGISTRO DOCENTE 1.8.1 - REVISION PARA LEONARDO ROQUE
+REGISTRO DOCENTE 1.9.0 - FULL PERSONAL PARA LEONARDO ROQUE
 
-Este paquete permite revisar el nuevo diseño y sus cálculos en Windows.
-Es una compilación personal para el propietario, sin activación comercial.
-Todavía no es el instalador para vender a los clientes.
+Incluye todos los cursos y módulos, sin activación comercial.
+No requiere clave privada. El candado protege la edición de sus datos.
 
-La clave pública comercial ya está incorporada en el código. Esta entrega
-es personal para revisar las mejoras antes de compilar la edición de venta.
-Conserve su clave privada y contraseña para emitir licencias cuando corresponda.
+Extraiga el ZIP completo e instale RegistroDocente-Setup.exe.
+También puede abrir RegistroDocente/RegistroDocente.exe conservando toda
+su carpeta. No copie únicamente el ejecutable.
 
-Extraiga el ZIP completo. Puede instalar RegistroDocente-Setup.exe o abrir
-dist/RegistroDocente/RegistroDocente.exe con todos sus archivos al lado.
-GUIA-USO.txt explica las nuevas pantallas de evaluación y configuración.
+NOVEDADES
+- Barra lateral contraíble con el botón de menú o Ctrl+B.
+- Código y nombre fijos al desplazar criterios horizontalmente.
+- Competencia visible y capacidades con sus nombres reales.
+- Cotejo rápido: clic para Sí/No, teclas S/N y Supr para pendiente.
+- El cotejo orienta: muestra cumplimiento y pendientes sin generar notas.
+- Convertir a nota es opcional: elija regla, revise y confirme; después guarde.
+- Rúbrica con puntos manuales o C/B/A/AD y descriptores desplegables.
+- Excel con dos hojas visibles: Instrumento y Registro. Sin nombres de prueba.
+  Puede incluir el alumnado real marcando la opción al exportar.
+- Archivo → Nuevo registro vacío crea otro registro y respalda el anterior.
 
-NOVEDADES DE ESTA REVISION
-- Vista Grupo: estudiantes en filas, criterios en columnas y descriptores visibles.
-- Doble clic para ingresar puntos manuales; Enter cambia de estudiante y Tab de criterio.
-- Puede elegir C/B/A/AD o un número entre cero y el máximo del criterio.
-- Los avances parciales se guardan y calculan una nota provisional con lo evaluado.
-  Los pendientes no se convierten en cero. La vista Individual sigue disponible.
-- Excel corrige los paneles repetidos e incluye el avance de criterios.
+En una instalación nueva el alumnado está vacío. Al actualizar se conservan
+los registros existentes; para empezar limpio use Nuevo registro vacío.
+GUIA-USO.txt explica las pantallas y los respaldos.

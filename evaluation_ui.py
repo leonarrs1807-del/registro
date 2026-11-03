@@ -24,6 +24,8 @@ class EvaluationTools:
         self._tools_toggle.grid(row=0,column=2,padx=6)
         Tooltip(self._tools_toggle,'Evaluación y plantillas Excel')
         self._grade_bar=bar
+        self._competency_label=ctk.CTkLabel(bar,text='Competencia: seleccione una actividad',anchor='w',justify='left',font=ctk.CTkFont(size=16,weight='bold'))
+        self._competency_label.grid(row=2,column=0,columnspan=4,sticky='ew',padx=2,pady=(7,0));wrap_label(self._competency_label)
         self.grade_workspace=ctk.CTkFrame(page,fg_color='transparent')
         self.grade_workspace.grid(row=1,column=0,sticky='nsew',padx=8,pady=(0,8))
         self.grade_workspace.grid_rowconfigure(0,weight=1);self.grade_workspace.grid_columnconfigure(0,weight=1)
@@ -31,7 +33,7 @@ class EvaluationTools:
         self.f_tabla_planilla.grid(row=0,column=0,sticky='nsew')
         self.f_tabla_planilla.grid_columnconfigure(0,weight=1);self.f_tabla_planilla.grid_rowconfigure(1,weight=1)
         host=scroll_area(self.grade_workspace,width=270,auto_hide=True)
-        host.container.grid(row=0,column=1,sticky='ns',padx=(10,0));host.container.grid_propagate(False)
+        host.container.grid_propagate(False)
         self._evaluation_panel=host;host.grid_columnconfigure(0,weight=1)
         self._tools_open=False;self._tools_resize_job=None
         self._tools_close=ctk.CTkButton(host,text='Volver a las notas',height=34,command=self.alternar_herramientas)
@@ -92,15 +94,17 @@ class EvaluationTools:
         if getattr(self,'_closing_ui',False):return
         width=self.grade_workspace.winfo_width()/pixel_scale(self)
         panel=self._evaluation_panel.container
-        docked=width>=(1350 if getattr(self,'_evaluation_view','')=='criteria' else 1080)
+        docked=False
         narrow=self._grade_bar.winfo_width()/pixel_scale(self)<650
         state=(docked,narrow,self._tools_open)
-        if state==getattr(self,'_grade_layout_state',None):return
+        if state==getattr(self,'_grade_layout_state',None):
+            if not self._tools_open and panel.winfo_manager():panel.place_forget();panel.grid_forget()
+            return
         self._grade_layout_state=state
         if docked:
             panel.place_forget();panel.grid();self._tools_toggle.grid_remove();self._tools_close.grid_remove()
         else:
-            panel.grid_remove();self._tools_toggle.grid();self._tools_close.grid()
+            panel.grid_forget();self._tools_toggle.grid();self._tools_close.grid()
             if self._tools_open:
                 panel.place(relx=1,rely=0,relheight=1,anchor='ne');panel.lift()
             else:panel.place_forget()
@@ -114,6 +118,9 @@ class EvaluationTools:
 
     def actualizar_herramientas_evaluacion(self):
         kind=self.calif_combo_modo_inst.get()
+        selected=getattr(self,'actividades_creadas_map',{}).get(getattr(self,'id_actividad_calificando',None))
+        self._competency_label.configure(text='Competencia: '+selected['competencia_nombre'] if selected else 'Competencia: seleccione una actividad')
+        self._save_grades.configure(text=('Guardar cambios' if getattr(self,'_cotejo_pending_rule',None) else 'Guardar observaciones') if kind=='Lista de Cotejo' else 'Guardar notas')
         has_data=bool(getattr(self,'_datos_estudiantes',[]))
         activity=bool(getattr(self,'actividades_creadas_map',{}).get(getattr(self,'id_actividad_calificando',None)))
         loaded=getattr(self,'_loaded_instrument_kind',None)
@@ -127,7 +134,8 @@ class EvaluationTools:
         self._design_button.configure(text='Editar' if ready else 'Diseñar',state='normal' if activity else 'disabled')
         self._export_button.configure(state='normal' if activity else 'disabled')
         self._evaluation_steps.configure(text='1. Haga doble clic en una nota.\n2. Escriba de 0 a 20.\n3. Pulse Guardar notas.' if direct else
-            'Responda cada criterio aquí o en Excel. La nota de capacidad se calcula. Pulse Guardar notas para confirmar.')
+            'Marque Sí / No con un clic o S / N. Supr deja pendiente. Guarde las observaciones; convertir a nota es opcional.' if kind=='Lista de Cotejo' else
+            'Escriba puntos en la tabla. La nota de capacidad se calcula. Pulse Guardar notas para confirmar.')
         self._sincronizar_vistas_evaluacion(ready and not direct)
 
     def cambiar_metodo_evaluacion(self,value):
@@ -176,13 +184,13 @@ class EvaluationTools:
         options=TemplateOptions(self,activity,kind,indicators);self.wait_window(options)
         if options.result is None:return
         title=re.sub(r'[<>:"/\\|?*]','_',activity['titulo_tema']).strip(' .')[:75] or 'Actividad'
-        path=self.elegir_destino(title='Guardar plantilla de '+kind,defaultextension='.xlsx',initialfile=f'{kind}_{title}.xlsx',filetypes=[('Excel','*.xlsx')])
+        path=self.elegir_destino(title='Guardar plantilla de '+kind,defaultextension='.xlsx',initialfile=f'{"Cotejo" if kind=="Lista de Cotejo" else "Rubrica"}_{title}_{activity["grado"]}{activity["seccion"]}.xlsx',filetypes=[('Excel','*.xlsx')])
         if not path:return
         db.exportar_plantilla_rubrica_o_cotejo_excel(path,self.combo_curso_global.get(),activity['grado'],activity['seccion'],activity['titulo_tema'],
             activity['competencia_nombre'],[(c['capacidad_id'],c['capacidad_nombre'],c['criterio_precisado']) for c in activity['capacidades']],
             kind,db_path=self._db_path,sesion_id=activity['id'],**options.result)
         reportes.decorate_workbook(path,self.insignia_exportacion())
-        self.archivo_guardado(path,'Plantilla lista. Complete sus criterios en la hoja 1 y una respuesta por criterio en la hoja 2; la hoja 3 calcula las notas de capacidad.')
+        self.archivo_guardado(path,'Plantilla lista: complete Instrumento y Registro. Los nombres quedan vacíos salvo que elija incluir el alumnado del aula.')
 
     def _sincronizar_vistas_evaluacion(self,ready):
         if getattr(self,'_closing_ui',False) or not getattr(self,'planilla_nativa',None):return
@@ -202,6 +210,7 @@ class EvaluationTools:
             caption.grid(row=0,column=1,sticky='ew',padx=8);wrap_label(caption)
             self._criteria_view_caption=caption
         if self.tabview.get()!='Ingresar Calificativos':return
+        self._criteria_view_caption.configure(text='Cumplimiento y pendientes · Conversión a nota opcional y revisada' if self.calif_combo_modo_inst.get()=='Lista de Cotejo' else 'Puntajes manuales · Nota provisional si quedan criterios pendientes')
         self._criteria_view_bar.grid(row=0,column=0,columnspan=3,sticky='ew')
         if getattr(self,'_evaluation_view',None) not in ('criteria','results'):self._evaluation_view='criteria'
         self._mostrar_vista_evaluacion()

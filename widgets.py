@@ -128,15 +128,18 @@ def wrap_label(label):
     root=label.winfo_toplevel()
     def on_size(event):
         if getattr(root,'_closing_ui',False):return
-        width=max(120,int(label.winfo_width()/label._get_widget_scaling())-12)
-        if abs(float(label.cget('wraplength') or 0)-width)<4:return
         pending=getattr(label,'_wrap_job',None)
         if pending:label.after_cancel(pending)
+        label._wrap_job=None
+        width=max(120,int(label.winfo_width()/label._get_widget_scaling())-12)
+        if abs(float(label.cget('wraplength') or 0)-width)<4:return
         def apply():
             label._wrap_job=None
-            if label.winfo_exists():label.configure(wraplength=width)
+            if label.winfo_exists():
+                current=max(120,int(label.winfo_width()/label._get_widget_scaling())-12)
+                label.configure(wraplength=current)
         label._wrap_job=label.after(100,apply)
-    label.bind('<Configure>',on_size,add='+')
+    tk.Misc.bind(label,'<Configure>',on_size,add='+')
     on_size(None)
     def cleanup(event):
         pending=getattr(label,'_wrap_job',None)

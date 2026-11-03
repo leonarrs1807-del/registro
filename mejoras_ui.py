@@ -11,6 +11,7 @@ import reportes,documento
 class ClassroomTools:
     def iniciar_mejoras(self,menu):
         archive=tk.Menu(menu,tearoff=False)
+        archive.add_command(label='Nuevo registro vacío (con respaldo)…',command=self.nuevo_registro_vacio)
         for title,callback in [('Guardar documento interno (.registro)…',self.guardar_documento),('Abrir documento interno…',self.abrir_documento),('Exportar notas: Excel / Google Sheets…',self.exportar_notas),('Reporte individual PDF…',self.reporte_individual),('Importar notas de Google Sheets…',self.importar_google),('Cargar insignia del colegio…',self.cargar_insignia),('Respaldo en otra carpeta…',self.respaldo_externo),('Exportar gráfico de porcentajes…',self.exportar_grafico_categorias)]:
             archive.add_command(label=title,command=callback)
         menu.add_cascade(label='Archivo',menu=archive)
@@ -19,6 +20,7 @@ class ClassroomTools:
             work.add_command(label=title,command=callback)
         menu.add_cascade(label='Herramientas',menu=work)
         view=tk.Menu(menu,tearoff=False)
+        view.add_command(label='Contraer / expandir barra lateral · Ctrl+B',command=self.tabview.toggle)
         view.add_command(label='Restablecer vista y paneles',command=self.restaurar_vista)
         for size in (16,18,20,24):view.add_command(label=f'Letra de tablas: {size}',command=lambda n=size:self.cambiar_tamano_letra(f'Personalizado ({n})'))
         for factor in (1,1.25,1.5,1.75):view.add_command(label=f'Zoom: {factor:.0%}',command=lambda n=factor:self.cambiar_zoom(n))
@@ -32,8 +34,8 @@ class ClassroomTools:
         self.bind('<Button-3>',self.mostrar_celda_completa,add='+')
         self.after(15000,self.verificar_inactividad)
         import db
-        self.bind('<Control-z>',lambda e:self.deshacer_planilla() if e.widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None)) else None)
-        self.bind('<Control-y>',lambda e:self.deshacer_planilla(True) if e.widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None)) else None)
+        self.bind('<Control-z>',lambda e:self.deshacer_planilla() if self._is_grade_widget(e.widget) else None)
+        self.bind('<Control-y>',lambda e:self.deshacer_planilla(True) if self._is_grade_widget(e.widget) else None)
         self.bind('<Control-v>',self.pegar_planilla,add='+')
         self.bind('<Control-plus>',lambda e:self.cambiar_zoom(min(1.75,getattr(self,'_zoom',1)+.25)))
         self.bind('<Control-minus>',lambda e:self.cambiar_zoom(max(1,getattr(self,'_zoom',1)-.25)))
@@ -141,6 +143,16 @@ class ClassroomTools:
             target=storage.data_dir()/f'documento-{time.time_ns()}.db'
             documento.open_document(path,target);storage.activate_period(target);self._reiniciar(target)
 
+    def nuevo_registro_vacio(self):
+        if not self.verificar_permiso_edicion() or not self.confirmar_descartar(include_points=True):return
+        path=self.elegir_destino(title='Guardar un registro vacío: el anterior tendrá respaldo',initialfile='Nuevo_registro.registro',defaultextension='.registro',filetypes=[('Registro Docente','*.registro')])
+        if not path:return
+        target=storage.data_dir()/f'registro-vacio-{time.time_ns()}.db'
+        saved=documento.new_empty_record(self._db_path,target)
+        documento.save_document(path,target);storage.activate_period(target)
+        self.archivo_guardado(path,f'Registro vacío creado. Copia del anterior: {saved}')
+        self._reiniciar(target)
+
     def exportar_notas(self):
         course=self.obtener_curso_activo_id()
         if not course:return
@@ -170,18 +182,23 @@ class ClassroomTools:
         self._redo.clear()
         self._undo=self._undo[-100:]
 
+    def _is_grade_widget(self,widget):
+        matrix=getattr(getattr(self,'_embedded_evaluation',None),'matrix',None)
+        return widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None),getattr(matrix,'table',None),getattr(matrix,'identity',None))
+
     def deshacer_planilla(self,redo=False):
         if not self.verificar_permiso_edicion():return 'break'
         origin,target=(self._redo,self._undo) if redo else (self._undo,self._redo)
         if origin:
             target.append(self._estado_planilla());state=origin.pop()
             self._instrument_pending=dict(state.get('answers',{}));self._instrument_pending_session=self.id_actividad_calificando
+            self._cotejo_pending_rule=state.get('checklist_rule')
             self._poner_filas(state['rows'])
             self.calif_combo_modo_inst.set(state.get('mode','Nota directa'));self.actualizar_herramientas_evaluacion()
         return 'break'
 
     def _estado_planilla(self):
-        return dict(rows=self._filas_planilla(),answers=dict(getattr(self,'_instrument_pending',{})),mode=self.calif_combo_modo_inst.get())
+        return dict(rows=self._filas_planilla(),answers=dict(getattr(self,'_instrument_pending',{})),mode=self.calif_combo_modo_inst.get(),checklist_rule=getattr(self,'_cotejo_pending_rule',None))
 
     def _poner_filas(self,rows):
         tree=self.planilla_nativa
@@ -218,6 +235,7 @@ class ClassroomTools:
         if self._planilla_pendiente and self._filas_planilla():
             data={'session':self.id_actividad_calificando,'rows':self._filas_planilla(),'peso':self.calif_entry_peso.get(),'context':self._contexto_guardado}
             data['answers']=[[s,i,v] for (s,i),v in getattr(self,'_instrument_pending',{}).items()]
+            data['checklist_rule']=getattr(self,'_cotejo_pending_rule',None)
             data['mode']=self.calif_combo_modo_inst.get()
             file=self._borrador_path();temp=file.with_suffix('.tmp');temp.write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8');temp.replace(file)
             self.lbl_estado.configure(text='Borrador recuperable guardado · Pulse Guardar para confirmar las notas')
@@ -239,6 +257,7 @@ class ClassroomTools:
         allowed={i['id'] for i in get_indicators(data['session'],self._db_path)}
         students={int(row[0]) for row in data['rows']}
         self._instrument_pending={(int(s),int(i)):v for s,i,v in data.get('answers',[]) if int(s) in students and int(i) in allowed}
+        self._cotejo_pending_rule=data.get('checklist_rule')
         self._instrument_pending_session=data['session'];self.calif_combo_modo_inst.set(data.get('mode','Nota directa'));self.actualizar_herramientas_evaluacion()
 
     def duplicar_actividad(self):

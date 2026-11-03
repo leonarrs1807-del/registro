@@ -5,7 +5,7 @@ import ctypes,os,sqlite3,subprocess,sys,tempfile,time
 from ctypes import wintypes
 
 
-def visible_application(pid,prefix='Registro Docente 1.8'):
+def visible_application(pid,prefix='Registro Docente 1.9'):
     user32=ctypes.windll.user32
     found=[]
     callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
@@ -44,6 +44,7 @@ def run_case(executable,database,folder,expected_note=None,commercial=False):
                         assert conn.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
                         assert conn.execute("SELECT 1 FROM sqlite_master WHERE name='Historial_Notas'").fetchone()
                         if expected_note is not None:assert conn.execute('SELECT nota FROM Notas_Sesion_Capacidad').fetchone()[0]==expected_note
+                        else:assert conn.execute('SELECT COUNT(*) FROM Estudiantes').fetchone()[0]==0
                     print('PASS: ejecutable visible y base íntegra:',database.name,'activación comercial obligatoria' if commercial else 'edición personal',flush=True)
                     return
                 time.sleep(.2)

@@ -187,6 +187,8 @@ class DatabaseTests(unittest.TestCase):
     def test_template_export_and_reimport(self):
         path = Path(self.temp.name) / 'est.xlsx'
         db.generar_plantilla_excel_estudiantes(str(path))
+        from tests import populate_student_template
+        populate_student_template(path)
         self.assertEqual(db.importar_estudiantes_desde_excel(str(path), db_path=self.path), 3)
 
     def test_instrument_import_rolls_back_criteria_when_a_grade_is_invalid(self):

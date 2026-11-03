@@ -1,3 +1,12 @@
+## Versión 1.9.0 Full personal
+
+Entrega para Leonardo con todos los cursos y módulos, sin activación comercial.
+Cotejo rápido de orientación, conversión opcional revisada, competencia y capacidades
+identificadas por nombre, barra lateral contraíble y nombres fijos al deslizar criterios.
+Las nuevas plantillas muestran solo Instrumento y Registro, sin alumnado de ejemplo.
+Archivo → Nuevo registro vacío permite empezar limpio conservando un respaldo.
+La compilación Windows verifica todas las pruebas, el ejecutable y una base anterior.
+
 # Registro Docente
 
 Aplicación de escritorio para estudiantes, sesiones, rúbricas, asistencia y

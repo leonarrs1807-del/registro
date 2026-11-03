@@ -2381,6 +2381,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._table_context=context
         self._evaluation_view=None
         self._instrument_pending={};self._instrument_pending_session=self.id_actividad_calificando
+        self._cotejo_pending_rule=None
 
         for w in self.f_tabla_planilla.winfo_children():
             w.destroy()
@@ -2453,7 +2454,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.heading("Apellidos y Nombres", text="Apellidos y Nombres")
         tree.heading("Asistencia", text="Asist.")
         for idx_c, cap_inf in enumerate(act["capacidades"], start=1):
-            tree.heading(f"Cap {idx_c}", text=f"Cap. {idx_c}")
+            from cotejo import capacity_label
+            tree.heading(f"Cap {idx_c}", text=capacity_label(cap_inf['capacidad_nombre']))
             tree.full_headers=getattr(tree,"full_headers",{})
             tree.full_headers[f"Cap {idx_c}"]=cap_inf["capacidad_nombre"]
         tree.heading("Comentario", text="Comentario")
@@ -2463,7 +2465,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         tree.column("Apellidos y Nombres", width=round(250*pixel_scale(tree)), anchor="w", stretch=False)
         tree.column("Asistencia", width=round(85*pixel_scale(tree)), anchor="center", stretch=False)
         for idx_c in range(1, len(act["capacidades"]) + 1):
-            tree.column(f"Cap {idx_c}", width=round(110*pixel_scale(tree)), minwidth=round(80*pixel_scale(tree)), anchor="center", stretch=False)
+            tree.column(f"Cap {idx_c}", width=round(230*pixel_scale(tree)), minwidth=round(150*pixel_scale(tree)), anchor="center", stretch=False)
         tree.column("Comentario", width=round(220*pixel_scale(tree)), anchor="w", stretch=False)
         
         for est in estudiantes:
@@ -2515,6 +2517,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.planilla_nativa.item(child, values=vals)
 
     def accion_guardar_planilla_calificacion_completa(self) -> None:
+        embedded=getattr(self,'_embedded_evaluation',None)
+        if embedded and embedded.winfo_exists() and embedded.matrix.editor is not None:
+            embedded.matrix.commit_edit()
+            if embedded.matrix.editor is not None:return
         if getattr(self.planilla_nativa,"_entry",None): self.planilla_nativa._entry.event_generate("<FocusOut>")
         if not self.verificar_permiso_edicion(): return
         if not self.planilla_nativa: return
@@ -2529,6 +2535,17 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         except:
             messagebox.showwarning("Peso inválido", "El peso debe ser > 0.")
             return
+
+        rule=getattr(self,'_cotejo_pending_rule',None)
+        if kind=='Lista de Cotejo' and rule:
+            from cotejo import review_signature
+            from evaluacion_datos import get_indicators,get_answers
+            answers=get_answers(self.id_actividad_calificando,self._db_path)
+            answers.update(getattr(self,'_instrument_pending',{}))
+            signature=review_signature(get_indicators(self.id_actividad_calificando,self._db_path),answers)
+            if rule.get('_respuestas')!=signature:
+                messagebox.showwarning('Revisar conversión','Cambió las observaciones o los criterios después de convertir. Abra Convertir a nota y revise nuevamente antes de guardar.')
+                return
 
         datos_guardar = []
         for item in self.planilla_nativa.get_children():
@@ -2561,18 +2578,19 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 "respuestas_instrumento": {identity:value for (student,identity),value in getattr(self,'_instrument_pending',{}).items() if student==est_id}
             })
             
-        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso,nuevo_instrumento=self.calif_combo_modo_inst.get())
+        guardar_calificaciones_y_asistencia_sesion(self.id_actividad_calificando, datos_guardar, nuevo_peso=nuevo_peso,nuevo_instrumento=self.calif_combo_modo_inst.get(),regla_cotejo=getattr(self,'_cotejo_pending_rule',None))
+        self._cotejo_pending_rule=None
         self._instrument_pending={};self._undo=[];self._redo=[]
         self.recargar_evaluacion_guardada()
         self._planilla_pendiente = False
         self._borrador_path().unlink(missing_ok=True)
-        self.lbl_estado.configure(text="Notas, comentarios y asistencia guardados correctamente")
+        self.lbl_estado.configure(text="Observaciones del cotejo guardadas" if kind=='Lista de Cotejo' else "Notas, comentarios y asistencia guardados correctamente")
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
         self.cargar_lista_pesos_por_categoria_en_graficos()
         self.dibujar_graficos_estadisticos()
         self.recargar_matriz_completa()
-        messagebox.showinfo("Guardado Exitoso", "Se guardaron todas las notas, comentarios, y asistencia.")
+        messagebox.showinfo("Guardado Exitoso", "Se guardaron las observaciones del cotejo. Solo se aplican las notas cuya conversión confirmó." if kind=='Lista de Cotejo' else "Se guardaron todas las notas, comentarios, y asistencia.")
 
     def _al_seleccionar_fila_buscador(self, event) -> None:
         sel = self.tree_buscador_alumnos.selection()
