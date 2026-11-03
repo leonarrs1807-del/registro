@@ -81,7 +81,7 @@ py -3.12 -m venv .venv
 En Linux use `python3 -m venv .venv`, `.venv/bin/python` y asegúrese de tener
 Tcl/Tk y una sesión gráfica. Para pruebas sin pantalla puede utilizar Xvfb.
 
-La edición comercial 1.8 permite vender cualquier selección de cursos, o todos,
+La edición comercial 1.8.1 permite vender cualquier selección de cursos, o todos,
 con una licencia vinculada a una cuenta y PC. La edición personal previa permite
 trabajar sin demo ni activación comercial.
 Si conserva la contraseña inicial, el primer arranque solicita configurar el
@@ -200,7 +200,7 @@ versión ni firma el instalador con un certificado de Windows. Para distribució
 comercial conviene añadir firma Authenticode y probar instalación/actualización
 en un equipo Windows limpio.
 
-## Activación comercial 1.8
+## Activación comercial 1.8.1
 
 La edición comercial utiliza cuentas locales y una demo de **30 días con un solo curso
 y nivel**. La demo incluye los grados y secciones de ese curso. Al vencer, se

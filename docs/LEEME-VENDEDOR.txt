@@ -1,11 +1,21 @@
-REGISTRO DOCENTE 1.8 - EDICION COMERCIAL DE LEONARDO ROQUE
+REGISTRO DOCENTE 1.8.1 - EDICION COMERCIAL DE LEONARDO ROQUE
 ACTIVACION MANUAL PARA UNA SOLA PC, SIN SERVIDOR
 
-El instalador comercial se compila con su clave pública incorporada. La edición
-personal 1.5 distribuida anteriormente no solicita activación y corresponde a
-la etapa de trabajo previa. Para vender entregue la EDICION COMERCIAL.
+El instalador comercial se compila con su clave pública incorporada. Los paquetes
+personales de revisión permiten probar las mejoras sin activación. Para vender
+entregue RegistroDocente-Comercial-Windows, que solicita una cuenta y activación.
 
-PRIMERA CONFIGURACION
+ACTUALIZACION 1.8.1 PARA EL VENDEDOR
+Su clave pública ya está incorporada. Use el mismo registro_privada.pem y la misma
+contraseña que conservó al crearla. Abra las solicitudes de los compradores y
+fírmelas con ese archivo; no necesita crear otro par de claves para actualizar.
+Las licencias existentes siguen siendo compatibles con esta actualización.
+
+Esta versión incorpora la vista Grupo, puntajes manuales por criterio, letras
+según la escala, avances parciales y correcciones de la plantilla Excel. El mismo
+instalador sirve para iniciar una demo o importar las licencias de los cursos.
+
+PRIMERA CONFIGURACION (SOLO PARA UN INSTALADOR SIN CLAVES PREVIAS)
 1. Abra RegistroLicencias.exe (esta herramienta es solo para usted).
 2. Pulse Crear mis claves. Elija una carpeta privada y una contraseña de al
    menos 12 caracteres. Se crearán registro_privada.pem y license_public_key.pem.
@@ -26,15 +36,17 @@ PRIMERA CONFIGURACION
 COMO VENDER
 1. El comprador instala RegistroDocente-Setup.exe, crea su usuario y elige el
    único curso y nivel de su demo de 30 días. La demo incluye grados/secciones.
-2. En Licencia y cuenta guarda una solicitud .solicitud y se la envía.
+2. En Configuración → Licencia → Mi cuenta y cursos guarda una solicitud
+   .solicitud y se la envía. También puede abrir Licencia y cuenta desde el menú.
 3. Usted comprueba el pago y abre esa solicitud en RegistroLicencias.exe.
 4. Selecciona uno, dos, tres o cualquier cantidad de cursos, o el paquete completo.
    Cada licencia corresponde a una sola PC y cuenta. Puede fijar una fecha
    de vencimiento o dejarla vacía para una licencia permanente.
    Al abrir otra solicitud se limpian los cursos, vigencia y referencia anteriores.
 5. Carga su clave privada, introduce su contraseña y guarda la licencia firmada.
-6. Entrega únicamente el archivo .licencia al cliente. Este lo importa en
-   Licencia y cuenta de la misma computadora en la que creó la solicitud.
+6. Entrega únicamente el archivo .licencia al cliente. Este lo carga desde
+   Configuración → Licencia → Importar licencia, en la misma computadora y cuenta
+   en la que creó la solicitud.
 7. Conserve la solicitud, licencia y referencia del pago en sus registros de
    ventas. La herramienta no procesa pagos ni sincroniza con Drive.
 

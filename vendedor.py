@@ -19,7 +19,7 @@ def paragraph(master, **kwargs):
 class SellerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title('Registro Licencias 1.8 — Leonardo Roque')
+        self.title('Registro Licencias 1.8.1 — Leonardo Roque')
         self.geometry('850x720')
         self.minsize(650, 500)
         self.request_data = None
@@ -33,7 +33,7 @@ class SellerApp(ctk.CTk):
         paragraph(body, text='Esta herramienta es solo para usted. Entregue a los clientes RegistroDocente-Setup.exe y su archivo .licencia. Conserve su clave privada y su contraseña fuera de GitHub y de las carpetas que comparta.', justify='left').pack(fill='x', padx=20, pady=8)
         ctk.CTkButton(body, text='1. Crear mis claves (solo la primera vez)', command=self.keygen, height=40).pack(fill='x', padx=20, pady=6)
         ctk.CTkButton(body, text='2. Abrir solicitud del comprador (.solicitud)', command=self.open_request, height=40).pack(fill='x', padx=20, pady=6)
-        self.details = paragraph(body, text='Primero genere sus claves y compile el instalador con license_public_key.pem. Luego abra la solicitud que el comprador exportó en su propia computadora.', justify='left')
+        self.details = paragraph(body, text='Si ya creó sus claves, conserve y utilice el mismo archivo registro_privada.pem y su contraseña. Abra la solicitud que el comprador exportó en su computadora. Crear mis claves se usa únicamente para preparar un instalador nuevo sin claves previas.', justify='left')
         self.details.pack(fill='x', padx=20, pady=12)
         self.all_courses = tk.BooleanVar(value=False)
         ctk.CTkCheckBox(body, text='Paquete completo: todos los cursos', variable=self.all_courses,
