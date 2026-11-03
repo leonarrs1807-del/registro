@@ -44,7 +44,7 @@ class InstrumentGrid(ctk.CTkFrame):
         self.indicators=indicators;self.on_choice=on_choice;self.variables={};self.cells={};self.badges={};self.actions={};self.numeric_entries={}
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
         self.capacity_names={i['capacidad_id']:i['capacidad_nombre'] for i in indicators}
-        self.capacities={capacity_label(name):identity for identity,name in self.capacity_names.items()}
+        self.capacities={name:identity for identity,name in self.capacity_names.items()}
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.grid(row=0,column=0,sticky='ew',pady=(0,6));bar.grid_columnconfigure(2,weight=1)
         ctk.CTkLabel(bar,text='Capacidad',font=ctk.CTkFont(size=14,weight='bold')).grid(row=0,column=0,padx=(0,8))
         self.choice=ctk.CTkComboBox(bar,values=list(self.capacities),state='readonly',width=220,height=34,font=ctk.CTkFont(size=14),command=lambda _:self.render())

@@ -681,7 +681,8 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(len(caps),3)
         db.crear_o_actualizar_sesion_clase(self.session,self.course,self.comp,'3°','A','Prueba','',1,[(c[0],'Evidencia propia') for c in caps])
         db.guardar_indicadores_instrumento_sesion(self.session,'Lista de Cotejo',[dict(capacidad_id=c[0],criterio='Evidencia '+c[1],puntaje_maximo=1) for c in caps])
-        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session);self.app.update()
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        self.app.after(450,self.app.quit);self.app.mainloop();self.app.update_idletasks()
         matrix=self.app._embedded_evaluation.matrix
         self.assertEqual([i['capacidad_id'] for i in matrix.items],[c[0] for c in caps])
         for n,c in enumerate(caps,1):self.assertEqual(self.app.planilla_nativa.heading(f'Cap {n}','text'),capacity_label(c[1]))

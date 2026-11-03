@@ -80,6 +80,7 @@ class EvaluationMatrix(ctk.CTkFrame):
             text=label(box,'');text.configure(font=ctk.CTkFont(size=12));text.pack(fill='x',padx=7,pady=(0,6))
             self.level_boxes.append((box,button,text))
         if self.items and panel.by_student:self.select(next(iter(panel.by_student)),self.items[0]['id'])
+        self._draw_headers()
         self.bind('<Configure>',self._queue_layout,add='+');self._queue_layout()
 
     def _header_tooltip(self):
