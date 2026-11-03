@@ -615,7 +615,9 @@ class DesktopTests(unittest.TestCase):
         self.app.edicion_desbloqueada=True
         values=[dict(capacidad_id=self.cap,criterio=f'Evidencia observable {n}',puntaje_maximo=1) for n in range(count)]
         ids=db.guardar_indicadores_instrumento_sesion(self.session,'Lista de Cotejo',values)
-        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session);self.app.update()
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        # Wait for the real debounced layout before using native cell coordinates.
+        self.app.after(450,self.app.quit);self.app.mainloop();self.app.update_idletasks()
         return self.app._embedded_evaluation,ids
 
     def test_fast_checklist_click_keyboard_undo_and_save_without_grades(self):
