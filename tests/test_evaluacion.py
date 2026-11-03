@@ -71,11 +71,17 @@ class EvaluationDataTests(unittest.TestCase):
         self.assertEqual(grades[(self.student,self.cap)],0);self.assertFalse(pending)
         self.save({second:None},0)
         grades,pending=grade_answers(get_indicators(self.session,self.path),get_answers(self.session,self.path))
-        self.assertFalse(grades);self.assertEqual(pending,{(self.student,self.cap)})
+        self.assertEqual(grades[(self.student,self.cap)],0);self.assertEqual(pending,{(self.student,self.cap)})
 
     def test_decimal_half_is_rounded_up_and_unevaluated_is_not_zero(self):
         self.assertEqual(normalized_grade('Rúbrica',[('1.2345',2)]),12.35)
         with self.assertRaises(ValueError):normalized_grade('Lista de Cotejo',[('Sí',10),(None,10)])
+
+    def test_partial_weighted_grade_uses_only_answered_maxima_including_zero(self):
+        self.assertEqual(normalized_grade('Rúbrica',[(3,4),(None,10),(0,6)],allow_pending=True),6)
+        self.assertEqual(normalized_grade('Rúbrica',[(3,4),(None,10)],allow_pending=True),15)
+        with self.assertRaises(ValueError):normalized_grade('Rúbrica',[(None,10)],allow_pending=True)
+        with self.assertRaises(ValueError):normalized_grade('Rúbrica',[(5,4),(None,10)],allow_pending=True)
 
     def test_partial_answers_protect_their_class_and_capacity(self):
         first,second=self.indicators();self.save({first:'B'},None)

@@ -137,6 +137,6 @@ def grade_answers(indicators,answers):
             values=[(answers.get((student,i['id'])),i['puntaje_maximo'],i['puntajes']) for i in items]
             filled=[v for v,m,p in values if v is not None and str(v).strip()]
             if not filled:continue
-            if len(filled)<len(values):pending.add((student,cap));continue
-            grades[(student,cap)]=normalized_grade(items[0]['tipo'],values)
+            if len(filled)<len(values):pending.add((student,cap))
+            grades[(student,cap)]=normalized_grade(items[0]['tipo'],values,allow_pending=True)
     return grades,pending

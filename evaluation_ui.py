@@ -198,7 +198,7 @@ class EvaluationTools:
             self._criteria_view_bar.grid_columnconfigure(1,weight=1)
             self._criteria_tabs=ctk.CTkSegmentedButton(self._criteria_view_bar,values=['Criterios','Resultados y asistencia'],command=self.cambiar_vista_evaluacion,height=34)
             self._criteria_tabs.grid(row=0,column=0,padx=8,pady=5)
-            caption=ctk.CTkLabel(self._criteria_view_bar,text='Una respuesta por criterio · Nota de capacidad calculada',font=ctk.CTkFont(size=13),anchor='w')
+            caption=ctk.CTkLabel(self._criteria_view_bar,text='Puntajes editables · Nota provisional si quedan criterios pendientes',font=ctk.CTkFont(size=13),anchor='w')
             caption.grid(row=0,column=1,sticky='ew',padx=8);wrap_label(caption)
             self._criteria_view_caption=caption
         if self.tabview.get()!='Ingresar Calificativos':return

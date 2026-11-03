@@ -1,11 +1,12 @@
 """Shared readable, boxed instruments for viewing, editing and evaluation."""
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk,messagebox
 import customtkinter as ctk
 from widgets import scroll_area,wrap_label,SafeDialog
 from interfaz import pixel_scale,scrollbar
-from instrumentos import LEVELS,LEVEL_NAMES,criterion_caption,normalized,answer_points
-from grade_cells import PALETTE
+from instrumentos import LEVELS,LEVEL_NAMES,criterion_caption,normalized,answer_points,entered_answer
+from grade_cells import PALETTE,achievement
+from escala import thresholds,DEFAULT
 
 
 def number(value):return format(float(value),'.12g')
@@ -38,7 +39,7 @@ class InstrumentGrid(ctk.CTkFrame):
     def __init__(self,master,indicators,*,on_choice=None):
         super().__init__(master,fg_color='transparent')
         self._preserve_theme=True
-        self.indicators=indicators;self.on_choice=on_choice;self.variables={};self.cells={};self.badges={};self.actions={}
+        self.indicators=indicators;self.on_choice=on_choice;self.variables={};self.cells={};self.badges={};self.actions={};self.numeric_entries={}
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
         self.capacity_names={i['capacidad_id']:i['capacidad_nombre'] for i in indicators}
         self.capacities={f'{n} de {len(self.capacity_names)}':identity for n,identity in enumerate(self.capacity_names,1)}
@@ -54,7 +55,7 @@ class InstrumentGrid(ctk.CTkFrame):
 
     def render(self):
         for child in self.content.winfo_children():child.destroy()
-        self.variables={};self.cells={};self.badges={};self.actions={}
+        self.variables={};self.cells={};self.badges={};self.actions={};self.numeric_entries={}
         capacity=self.capacities.get(self.choice.get())
         items=[i for i in self.indicators if i['capacidad_id']==capacity]
         if not items:return
@@ -78,6 +79,11 @@ class InstrumentGrid(ctk.CTkFrame):
             if self.on_choice:
                 actions=ctk.CTkFrame(criterion,fg_color='transparent');actions.pack(fill='x',padx=10,pady=(3,8));self.actions[identity]=actions
                 if rubric:
+                    label(actions,'Puntaje manual',text_color='#475569').pack(anchor='w')
+                    field=ctk.CTkFrame(actions,fg_color='transparent');field.pack(fill='x',pady=(2,6))
+                    entry=ctk.CTkEntry(field,width=85,height=30);entry.pack(side='left',padx=(0,5));self.numeric_entries[identity]=entry
+                    entry.bind('<Return>',lambda e,i=identity:(self._manual(i),'break')[1])
+                    ctk.CTkButton(field,text='Aplicar',width=72,height=30,command=lambda i=identity:self._manual(i)).pack(side='left')
                     ctk.CTkRadioButton(actions,text='Sin evidencia · 0',variable=variable,value='NE',
                         command=lambda i=identity:self._choose(i,'NE'),font=ctk.CTkFont(size=14),text_color='#475569').pack(anchor='w',pady=(2,5))
                 ctk.CTkButton(actions,text='Dejar pendiente',height=28,width=135,fg_color='transparent',border_width=1,
@@ -104,6 +110,13 @@ class InstrumentGrid(ctk.CTkFrame):
     def _choose(self,identity,value):
         self.on_choice(identity,value)
 
+    def _manual(self,identity):
+        item=next(i for i in self.indicators if i['id']==identity)
+        try:value=entered_answer(item,self.numeric_entries[identity].get())
+        except ValueError as exc:
+            messagebox.showwarning('Puntaje del criterio',str(exc),parent=self);return False
+        self._choose(identity,value);return True
+
     def show_answers(self,answers):
         self.answers=dict(answers)
         if not self.on_choice:return
@@ -113,7 +126,15 @@ class InstrumentGrid(ctk.CTkFrame):
             item=next(i for i in self.indicators if i['id']==identity)
             if value is None:caption='Pendiente'
             elif token in LEVELS or token in ('Sí','No','NE'):caption='Sin evidencia: 0 puntos' if token=='NE' else ''
-            else:caption=f'Puntaje registrado: {number(answer_points(item["tipo"],value,item["puntaje_maximo"],item["puntajes"]))}'
+            else:
+                points=answer_points(item['tipo'],value,item['puntaje_maximo'],item['puntajes'])
+                root=self.winfo_toplevel();app=getattr(root,'app',root)
+                path=getattr(app,'_db_path',None)
+                level=achievement(20*points/item['puntaje_maximo'],thresholds(path) if path else DEFAULT)
+                caption=f'Puntaje: {number(points)} · Nivel {level}'
+            if identity in self.numeric_entries:
+                entry=self.numeric_entries[identity];entry.delete(0,'end')
+                if value is not None:entry.insert(0,number(answer_points(item['tipo'],value,item['puntaje_maximo'],item['puntajes'])))
             self.badges[identity].configure(text=caption)
             if caption:self.badges[identity].pack(fill='x',padx=10,pady=2,before=self.actions[identity])
             else:self.badges[identity].pack_forget()

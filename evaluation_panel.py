@@ -17,6 +17,11 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         self.by_id={i['id']:i for i in indicators};self.by_student={student_id(s):s for s in students}
         self.current_student=next(iter(self.by_student),None);self.original={};self.answers={};self._resize_job=None
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
+        self._panel_view='Grupo'
+        modes=ctk.CTkFrame(self,fg_color='transparent');modes.grid(row=0,column=0,sticky='ew',padx=8,pady=3);modes.grid_columnconfigure(1,weight=1)
+        self.mode_choice=ctk.CTkSegmentedButton(modes,values=['Grupo','Individual'],height=31,command=self._change_view)
+        self.mode_choice.grid(row=0,column=0,sticky='w');self.mode_choice.set('Grupo')
+        label(modes,'Escriba puntos o elija un nivel · Los criterios pendientes se guardan.').grid(row=0,column=1,sticky='ew',padx=12)
         self.students_bar=ctk.CTkFrame(app._criteria_view_bar,fg_color='transparent')
         self.students_bar.grid_columnconfigure(1,weight=1)
         label(self.students_bar,'Estudiante').grid(row=0,column=0,padx=(0,8))
@@ -48,6 +53,10 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         ctk.CTkButton(footer,text='Anterior',width=90,height=32,command=lambda:self._move(-1)).pack(side='left',padx=(0,6))
         ctk.CTkButton(footer,text='Siguiente',width=90,height=32,command=lambda:self._move(1)).pack(side='left')
         ctk.CTkButton(footer,text='Recalcular resultados',width=165,height=32,command=self._aplicar_calculo).pack(side='right')
+        from evaluation_matrix import EvaluationMatrix
+        self.matrix=EvaluationMatrix(self,self)
+        self.matrix.grid(row=1,column=0,sticky='nsew',padx=5,pady=4)
+        self.pane.grid_remove()
         self.reload_from_root(saved=True)
         if self.current_student is not None:self.select_student(self.current_student)
         self.bind('<Configure>',self._queue_layout,add='+');self._queue_layout()
@@ -58,12 +67,30 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         if capacity is not None:
             caption=next((name for name,identity in self.grid_view.capacities.items() if identity==capacity),None)
             if caption and caption!=self.grid_view.choice.get():self.grid_view.choice.set(caption);self.grid_view.render()
+        if hasattr(self,'matrix'):
+            identity=self.matrix.selected[1]
+            if capacity is not None:identity=next((i['id'] for i in self.indicadores_db if i['capacidad_id']==capacity),identity)
+            self.matrix.select(student,identity)
         self._refresh()
 
     def _refresh(self):
+        if hasattr(self,'matrix') and self.matrix.selected and self._panel_view=='Grupo':
+            cap=self.by_id[self.matrix.selected[1]]['capacidad_id']
+            caption=next((name for name,identity in self.grid_view.capacities.items() if identity==cap),None)
+            if caption and self.grid_view.choice.get()!=caption:self.grid_view.choice.set(caption);self.grid_view.render()
         super()._refresh()
         caption=next((name for name,student in self.student_labels.items() if student==self.current_student),'')
         self.student_choice.set(caption)
+        if hasattr(self,'matrix'):
+            if self.matrix.selected and self.matrix.selected[0]!=self.current_student:self.matrix.select(self.current_student,self.matrix.selected[1])
+            self.matrix.refresh(self.answers)
+
+    def _change_view(self,caption):
+        self._panel_view=caption
+        if caption=='Grupo':self.pane.grid_remove();self.matrix.grid()
+        else:self.matrix.grid_remove();self.pane.grid()
+        self._refresh()
+        self._layout_state=None;self._queue_layout()
 
     def reload_from_root(self,saved=False):
         if saved:self.original=get_answers(self.sesion['id'],self.app._db_path)
@@ -95,10 +122,10 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
     def _layout(self):
         self._resize_job=None
         compact=self.winfo_width()/pixel_scale(self)<1050
-        key=(compact,self.app._evaluation_view)
+        key=(compact,self.app._evaluation_view,self._panel_view)
         if key==getattr(self,'_layout_state',None):return
         self._layout_state=key
-        if key[1]!='criteria':self.students_bar.grid_remove();self.app._criteria_view_caption.grid();return
+        if key[1]!='criteria' or self._panel_view=='Grupo':self.students_bar.grid_remove();self.app._criteria_view_caption.grid();return
         if compact:
             self.pane.forget(self.left);self.students_bar.grid(row=0,column=1,sticky='ew',padx=8,pady=4)
             self.app._criteria_view_caption.grid_remove();self.student_title.grid_remove()

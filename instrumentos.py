@@ -107,7 +107,7 @@ def checklist_value(value):
     raise ValueError('Cotejo: seleccione Sí o No. Una celda vacía queda sin evaluar.')
 
 
-def normalized_grade(kind,values):
+def normalized_grade(kind,values,*,allow_pending=False):
     """values are (entered score/answer, maximum) for one student's capacity."""
     kind=instrument_kind(kind)
     if not values:raise ValueError('La capacidad no tiene indicadores.')
@@ -115,8 +115,21 @@ def normalized_grade(kind,values):
     for entry in values:
         raw,limit=entry[:2];scores=entry[2] if len(entry)>2 else None
         limit=valid_number(limit,.000001,20,'Máximo del indicador')
-        if raw is None or str(raw).strip()=='':raise ValueError('Complete todos los indicadores de la capacidad; vacío no equivale a cero.')
+        if raw is None or str(raw).strip()=='':
+            if allow_pending:continue
+            raise ValueError('Complete todos los indicadores de la capacidad; vacío no equivale a cero.')
         value=answer_points(kind,raw,limit,scores)
         total+=decimal(value);maximum+=decimal(limit)
+    if not maximum:raise ValueError('La capacidad sigue pendiente; no hay criterios evaluados.')
     return normalized_total(total,maximum)
+
+
+def entered_answer(item,raw):
+    """Canonical editable answer; blank, zero and an achievement level stay distinct."""
+    if raw is None or not str(raw).strip():return None
+    if item['tipo']=='Lista de Cotejo':return 'Sí' if checklist_value(raw) else 'No'
+    token=str(raw).strip().upper()
+    if token in LEVELS:return token
+    if normalized(raw) in ('ne','sin evidencia'):return 'NE'
+    return format(answer_points(item['tipo'],raw,item['puntaje_maximo'],item['puntajes']),'.12g')
 

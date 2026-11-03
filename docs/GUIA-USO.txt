@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.8
+REGISTRO DOCENTE 1.8.1
 
 EMPEZAR Y GUARDAR
 
@@ -129,7 +129,7 @@ La hoja 3_Notas_Capacidades muestra el resultado calculado. Allí no se escribe 
 
 Ejemplo: una capacidad tiene dos criterios de 10 puntos. Un estudiante obtiene 6 en el primero y 8 en el segundo. Su nota es (6 + 8) ÷ (10 + 10) × 20 = 14/20. Si los máximos son 6 y 4 y en cotejo responde Sí y No, la nota es 6 ÷ 10 × 20 = 12/20.
 
-Todos los criterios de una capacidad deben estar completos para importar su nota. Una capacidad completamente vacía conserva su nota anterior; un cero es una nota real.
+Puede importar avances con criterios pendientes. La nota provisional usa solo los criterios evaluados: puntos obtenidos ÷ máximos evaluados × 20. Si una capacidad tiene dos criterios de 10 y solo responde 6 en uno, su nota provisional es 12/20; al agregar 8 en el otro pasa a 14/20. Una capacidad completamente vacía al importar conserva su nota anterior; un cero es una respuesta real. El resumen de Excel muestra el avance.
 
 4. IMPORTE EL ARCHIVO
 
@@ -143,13 +143,15 @@ Puede importar solo el instrumento dejando las respuestas vacías y evaluar desp
 
 Diseñar/Editar abre el editor por capacidades. Añada los criterios que necesite, redacte los cuatro descriptores y ajuste los puntos. Guardar instrumento conserva las notas anteriores hasta que vuelva a evaluar.
 
-En la pantalla principal, Criterios muestra cada criterio de la capacidad. Seleccione el estudiante y la capacidad; marque un nivel o Sí/No en cada fila. Use el selector de estudiantes o Anterior/Siguiente para avanzar.
+En la pantalla principal, Criterios → Grupo muestra estudiantes en filas y criterios en columnas. Los nombres quedan fijos al desplazarse. Seleccione una celda para ver la capacidad, el criterio, su máximo y los cuatro descriptores. Haga doble clic para escribir puntos manuales, una letra C/B/A/AD o Sí/No. Enter avanza al siguiente estudiante, Tab al siguiente criterio y Escape cancela la edición. También puede escribir en Puntaje o nivel y pulsar Aplicar.
+
+La vista Individual conserva la rúbrica por estudiante y añade un campo de Puntaje manual por criterio. Puede seguir marcando niveles o Sí/No. Las letras de los puntajes manuales se calculan con la escala configurada, normalizando cada puntaje respecto al máximo del criterio.
 
 Resultados y asistencia muestra las notas calculadas por capacidad y permite registrar asistencia y comentarios. Con rúbrica o cotejo, pulsar una nota abre sus criterios para evaluarlos. Con Nota directa puede ingresar una nota final de cero a veinte.
 
 Pulse Guardar notas para confirmar tanto las respuestas como las notas calculadas. Hasta entonces puede deshacer y recuperar borradores. Recalcular resultados aplica el instrumento actual a las respuestas registradas, útil si cambió sus puntajes.
 
-Si deja una capacidad incompleta, se muestra pendiente de completar; su nota anterior publicada se conserva hasta una evaluación completa. Una evaluación nueva no toma vacíos como ceros.
+Si faltan respuestas, la nota de capacidad queda señalada como provisional y los pendientes no cuentan como cero. Al completar los criterios pasa a nota completa. Dejar pendiente retira esa respuesta; si retira todas las respuestas de una capacidad, la nota vuelve a quedar pendiente. Los cambios se confirman con Guardar notas.
 
 6. CONFIGURACIÓN Y DOCUMENTOS
 

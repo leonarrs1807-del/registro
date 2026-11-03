@@ -75,12 +75,13 @@ class InstrumentWorkbookTests(unittest.TestCase):
         self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(0.0,)])
         self.assertEqual(self.read('SELECT asistio,comentario FROM Asistencia_Y_Comentarios_Clase'),[(0,'Ya entregó')])
 
-    def test_partial_indicators_reject_entire_import(self):
+    def test_partial_checklist_imports_evaluated_criteria_only(self):
         self.saved();wb=self.model('Lista de Cotejo');wb[IND]['C4']='Cambio no confirmado';wb[RAW]['D2']='Sí'
-        with self.assertRaisesRegex(ValueError,'todos los indicadores'):self.apply(wb)
-        self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(17.0,)])
-        self.assertEqual(self.read('SELECT criterio_precisado FROM Sesion_Capacidades'),[('Justifica cada paso',)])
-        self.assertEqual(db.obtener_indicadores_instrumento_sesion(self.session,self.path),[])
+        self.assertEqual(self.apply(wb),(2,1))
+        self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(20.0,)])
+        self.assertEqual(self.read('SELECT criterio_precisado FROM Sesion_Capacidades'),[('Cambio no confirmado',)])
+        from evaluacion_datos import get_answers
+        self.assertEqual(list(get_answers(self.session,self.path).values()),['Sí'])
 
     def test_manual_and_indicator_answers_cannot_overwrite_each_other(self):
         wb=self.model();wb[FINAL]['D2']=18;wb[RAW]['D2']=12

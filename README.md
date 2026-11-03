@@ -4,6 +4,25 @@ Aplicación de escritorio para estudiantes, sesiones, rúbricas, asistencia y
 evaluación por competencias. Funciona con Python 3.12, Tkinter y SQLite, sin
 servidor ni conexión permanente a Internet.
 
+## Revisión 1.8.1: puntajes manuales y vista del grupo
+
+La vista **Grupo** compara estudiantes en filas y criterios en columnas, con sus
+nombres fijos y los descriptores del criterio seleccionado debajo. Doble clic
+permite escribir puntos, C/B/A/AD o Sí/No; Enter avanza de estudiante y Tab de
+criterio. La vista Individual conserva la rúbrica completa y añade puntaje manual.
+Las letras se calculan con la escala configurada, normalizando los puntos del
+criterio a veinte. Un cero cuenta como respuesta y una celda vacía queda pendiente.
+
+Se pueden guardar e importar avances parciales. La nota provisional divide los
+puntos obtenidos entre los máximos de los criterios evaluados y multiplica por
+veinte; los pendientes se señalan y no cuentan como cero. Al completar los criterios
+se obtiene la nota completa. Excel incluye el avance y una vista de paneles sin
+selecciones repetidas. Las notas ya guardadas se recalculan solo al evaluar o al
+pulsar Recalcular resultados.
+
+Los cambios en mejoras-escritorio generan una revisión personal de Windows. La
+compilación comercial queda para una acción manual o una etiqueta de versión.
+
 ## Versión 1.8: Excel desde el inicio y evaluación por criterio
 
 En Calificaciones, **Herramientas → Plantilla Excel** está disponible sin diseñar

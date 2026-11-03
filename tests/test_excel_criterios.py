@@ -70,11 +70,29 @@ class ExcelFirstTests(unittest.TestCase):
         wb[EVALUAR]['D2']=6;wb[EVALUAR]['E2']=8;wb[EVALUAR]['F2']=0;self.apply(wb)
         self.assertEqual(self.read('SELECT capacidad_id,nota FROM Notas_Sesion_Capacidad ORDER BY capacidad_id'),[(self.cap,14.0),(other,0.0)])
 
-    def test_partial_criterion_rejects_import_and_keeps_previous_grade(self):
+    def test_partial_criterion_imports_a_provisional_grade_without_zero_for_missing(self):
         self.saved();wb=self.model();self.complete(wb);wb[EVALUAR]['D2']='A'
-        with self.assertRaisesRegex(ValueError,'todos los indicadores'):self.apply(wb)
+        self.assertEqual(self.apply(wb),(2,1))
+        self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(15.5,)])
+        self.assertEqual(list(get_answers(self.session,self.path).values()),['A'])
+
+    def test_exported_views_have_one_selection_per_pane_after_round_trip(self):
+        wb=self.model();self.complete(wb);wb.save(self.file)
+        checked=openpyxl.load_workbook(self.file);self.addCleanup(checked.close)
+        for sheet in checked.worksheets[:3]:
+            panes=[selection.pane for selection in sheet.sheet_view.selection]
+            self.assertEqual(len(panes),len(set(panes)))
+            self.assertEqual(set(panes),{'topRight','bottomLeft','bottomRight'})
+            self.assertEqual(sheet.sheet_view.pane.state,'frozen')
+        self.assertEqual(checked[IND]['D3'].value,'Inicio (C)')
+        self.assertEqual(checked[IND]['G3'].value,'Logro destacado (AD)')
+        self.assertIn('Avance de criterios',[c.value for c in checked[RESUMEN][1]])
+
+    def test_invalid_numeric_answer_rolls_back_even_with_pending_criteria(self):
+        self.saved();wb=self.model();self.complete(wb);wb[EVALUAR]['D2']=11
+        with self.assertRaises(ValueError):self.apply(wb)
         self.assertEqual(self.read('SELECT nota FROM Notas_Sesion_Capacidad'),[(17.0,)])
-        self.assertFalse(db.obtener_indicadores_instrumento_sesion(self.session,self.path))
+        self.assertFalse(get_answers(self.session,self.path))
 
     def test_capacity_summary_cannot_replace_individual_answers(self):
         self.saved();wb=self.model();self.complete(wb);wb[RESUMEN]['D2']=19

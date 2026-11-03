@@ -4,6 +4,7 @@ import openpyxl
 from openpyxl.styles import Font,Alignment,PatternFill,Border,Side
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.views import Selection
 from db_safety import connection,valid_number
 from instrumentos import instrument_kind,normalized,normalized_grade,definition,validate_definition,LEVELS,criterion_caption
 from escala import thresholds
@@ -20,8 +21,17 @@ def _integer(value,label):
     except (TypeError,ValueError):raise ValueError(label+': identificador inválido.') from None
 
 
+def freeze_view(sheet,cell):
+    # openpyxl inserts extra selections whenever freeze_panes is assigned again.
+    # Clear the previous view first so Excel has one selection per pane.
+    sheet.sheet_view.pane=None
+    sheet.sheet_view.selection=[Selection(activeCell=cell,sqref=cell)]
+    sheet.freeze_panes=cell
+    sheet.sheet_view.topLeftCell='A1'
+
+
 def _format_sheet(sheet,header_row,identity_columns=()):
-    sheet.freeze_panes=f'D{header_row+1}';sheet.sheet_view.showGridLines=False
+    freeze_view(sheet,f'D{header_row+1}');sheet.sheet_view.showGridLines=False
     sheet.auto_filter.ref=f'A{header_row}:{get_column_letter(sheet.max_column)}{max(header_row,sheet.max_row)}'
     edge=Side(style='thin',color='CBD5E1')
     for row in sheet.iter_rows():
@@ -85,7 +95,7 @@ def _export_v3(destination,course,grade,section,title,competency,capacities,kind
     sheet.append(['CAP_ID','Capacidad','Criterio observable']+(['Inicio (C)','En proceso (B)','Logro esperado (A)','Logro destacado (AD)','Máximo','IND_ID','Puntos C','Puntos B','Puntos A','Puntos AD'] if rubric else ['Registro','Máximo','Evaluación','IND_ID']))
     for item in definitions:
         sheet.append([item['capacidad_id'],item['capacidad_nombre'],item['criterio']]+([item['descriptores'][l] for l in LEVELS]+[item['puntaje_maximo'],item['ident']]+[item['puntajes'][l] for l in LEVELS] if rubric else ['Sí / No',item['puntaje_maximo'],kind,item['ident']]))
-    _format_sheet(sheet,3,(1,9 if rubric else 7));sheet.freeze_panes='D4'
+    _format_sheet(sheet,3,(1,9 if rubric else 7))
     for column,width in [('A',10),('B',34),('C',42)]:sheet.column_dimensions[column].width=width
     for col in range(4,sheet.max_column+1):sheet.column_dimensions[get_column_letter(col)].width=32 if rubric and col<=7 else 14
     sheet.column_dimensions['A'].hidden=True;sheet.column_dimensions['I' if rubric else 'G'].hidden=True
@@ -300,7 +310,7 @@ def _import_workbook(wb,formulas,session,grade,section,path,db):
                     values=[(editable_value(ws,row,columns[d['id']]),d['maximum'],d['item']['puntajes']) for d in selected]
                     if not any(v is not None and str(v).strip() for v,_,_ in values):continue
                     if cap in data['notas_por_capacidad']:raise ValueError('No complete las hojas 2 y 3 para la misma capacidad; elija notas finales o indicadores.')
-                    try:data['notas_por_capacidad'][cap]=normalized_grade(kind,values)
+                    try:data['notas_por_capacidad'][cap]=normalized_grade(kind,values,allow_pending=True)
                     except ValueError as exc:raise ValueError(f'Hoja {ws.title}, fila {row}: {exc}') from exc
                     data.setdefault('raw_answers',{}).update({d['id']:value[0] for d,value in zip(selected,values)})
         changing=[d for d in updates.values() if d['notas_por_capacidad'] or d.get('comentario')]

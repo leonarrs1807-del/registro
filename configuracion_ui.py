@@ -53,7 +53,7 @@ class ConfigurationTools:
             ctk.CTkButton(licensing,text='Mi cuenta y cursos',height=38,command=self.mostrar_licencia).pack(anchor='w',padx=18,pady=8)
             label(licensing,'Crea primero tu usuario en esta computadora. Después guarda la solicitud para el vendedor e importa la licencia que recibas.').pack(fill='x',padx=18,pady=10)
         else:
-            label(licensing,'Para preparar la edición de venta: abre RegistroLicencias, pulsa Crear mis claves y comparte únicamente license_public_key.pem. Conserva registro_privada.pem y su contraseña para emitir las licencias de tus compradores.').pack(fill='x',padx=18,pady=10)
+            label(licensing,'Esta entrega es una revisión personal. La clave pública del vendedor ya está incorporada al proyecto para la próxima compilación comercial. Conserva el mismo archivo registro_privada.pem y su contraseña para emitir las licencias de tus compradores.').pack(fill='x',padx=18,pady=10)
         return courses
 
     def importar_licencia_configuracion(self):

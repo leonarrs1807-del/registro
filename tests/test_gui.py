@@ -525,7 +525,7 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(float(tree.item(iid,'values')[4]),14)
         self.app.deshacer_planilla()
         self.assertEqual(panel.answers[(self.student,first)],'B');self.assertNotIn((self.student,second),panel.answers)
-        self.assertEqual(tree.item(iid,'values')[4],'')
+        self.assertEqual(float(tree.item(iid,'values')[4]),12)
         self.app.deshacer_planilla(redo=True)
         self.assertEqual(panel.answers[(self.student,second)],'A')
         self.app.cambiar_interfaz_visual('Gris Profesional')
@@ -540,3 +540,62 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(self.app.config_tabs.get(),'Licencia')
         self.assertEqual(self.app.config_import_license.cget('state'),'disabled')
         self.assertFalse(self.errors)
+
+    def test_group_matrix_manual_points_navigation_and_partial_save(self):
+        from evaluacion_datos import get_answers
+        other=db.agregar_estudiante('Beto','Segundo','3°','A')
+        self.app.edicion_desbloqueada=True
+        rows=[dict(capacidad_id=self.cap,criterio=f'Evidencia {n}',puntaje_maximo=10) for n in (1,2)]
+        first,second=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',rows)
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        panel=self.app._embedded_evaluation;matrix=panel.matrix
+        self.app.update();self.assertEqual(panel._panel_view,'Grupo')
+        self.assertEqual(len(matrix.table.get_children()),2)
+        matrix.begin_edit(self.student,first);matrix.editor.delete(0,'end');matrix.editor.insert(0,'7,25');matrix.commit_edit('down')
+        self.assertEqual(matrix.selected,(other,first));matrix.cancel_edit()
+        self.assertEqual(matrix.table.set(str(self.student),str(first)),'7.25 (A)')
+        matrix.select(self.student,first)
+        self.assertIn('provisional',matrix.note.cget('text'));self.assertIn('14.5 / 20 (A)',matrix.note.cget('text'))
+        matrix.begin_edit(other,first);matrix.editor.delete(0,'end');matrix.editor.insert(0,'0');matrix.commit_edit('next')
+        self.assertEqual(matrix.selected,(other,second));matrix.cancel_edit()
+        self.assertEqual(matrix.table.set(str(other),str(first)),'0 (C)')
+        self.assertEqual(matrix.table.set(str(other),str(second)),'Pendiente')
+        matrix.select(self.student,first)
+        with patch('tkinter.messagebox.showwarning'):
+            self.assertFalse(matrix.apply_value('11'))
+        self.assertEqual(panel.answers[(self.student,first)],'7.25')
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        self.assertEqual(get_answers(self.session,self.app._db_path),{(self.student,first):'7.25',(other,first):'0'})
+        with db.obtener_conexion() as conn:
+            self.assertEqual(dict(conn.execute('SELECT estudiante_id,nota FROM Notas_Sesion_Capacidad')),{self.student:14.5,other:0})
+        self.assertFalse(self.errors)
+
+    def test_individual_rubric_accepts_manual_points_and_zero(self):
+        self.app.edicion_desbloqueada=True
+        first,=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Explica la evidencia',10)])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        panel=self.app._embedded_evaluation;panel._change_view('Individual');self.app.update()
+        entry=panel.grid_view.numeric_entries[first];entry.insert(0,'8,25')
+        self.assertTrue(panel.grid_view._manual(first));self.assertEqual(panel.answers[(self.student,first)],'8.25')
+        self.assertIn('Nivel A',panel.grid_view.badges[first].cget('text'))
+        entry.delete(0,'end');entry.insert(0,'0');panel.grid_view._manual(first)
+        tree=self.app.planilla_nativa
+        self.assertEqual(float(tree.item(tree.get_children()[0],'values')[4]),0)
+        self.assertFalse(self.errors)
+
+    def test_group_selection_keeps_capacity_context_and_cancels_uncommitted_edit(self):
+        self.app.edicion_desbloqueada=True
+        other=db.obtener_capacidades_por_competencia(self.comp)[1][0]
+        db.crear_o_actualizar_sesion_clase(self.session,self.course,self.comp,'3°','A','Dos capacidades','',1,[(self.cap,'Representa'),(other,'Explica')])
+        first,second=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Representa',10),(other,'Explica',20)])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        panel=self.app._embedded_evaluation;self.app.update()
+        panel.matrix.select(self.student,second)
+        self.assertEqual(panel.grid_view.capacities[panel.grid_view.choice.get()],other)
+        self.assertIn('Explica',panel.matrix.title.cget('text'))
+        panel.matrix.begin_edit(self.student,second);panel.matrix.editor.insert(0,'18');panel.matrix.cancel_edit()
+        self.assertNotIn((self.student,second),panel.answers)
+        self.app.abrir_evaluacion_por_criterios(self.student,self.cap)
+        self.assertEqual(panel.matrix.selected,(self.student,first))
+        panel.matrix.begin_edit(self.student,first);panel.matrix.editor.insert(0,'9')
+        self.app.destroy();self.assertFalse(self.errors)

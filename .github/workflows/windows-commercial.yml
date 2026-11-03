@@ -2,7 +2,6 @@ name: Registro Docente comercial - Windows
 on:
   workflow_dispatch:
   push:
-    branches: ['mejoras-escritorio']
     tags: ['v*']
 permissions:
   contents: read

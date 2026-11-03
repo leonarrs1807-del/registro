@@ -69,10 +69,10 @@ class EvaluationActions:
         items=[i for i in self.indicadores_db if i['capacidad_id']==cap]
         filled=[(i,self.answers.get((self.current_student,i['id']))) for i in items if self.answers.get((self.current_student,i['id'])) is not None]
         total=sum(answer_points(i['tipo'],v,i['puntaje_maximo'],i['puntajes']) for i,v in filled)
-        maximum=sum(i['puntaje_maximo'] for i in items)
-        text=f'{len(filled)}/{len(items)} criterios · {number(total)}/{number(maximum)} puntos · '
+        maximum=sum(i['puntaje_maximo'] for i,v in filled)
+        text=f'{len(filled)}/{len(items)} criterios · {number(total)}/{number(maximum)} puntos evaluados · '
         text+=f'Nota calculada: {number(value)} / 20' if value is not None else 'Capacidad pendiente.'
-        if (self.current_student,cap) in pending:text+=' Complete los criterios restantes para calcular la nota.'
+        if (self.current_student,cap) in pending:text+=' · Provisional: solo incluye los criterios evaluados.'
         tree=getattr(self.app,'planilla_nativa',None)
         if tree:
             column=next((n for n,c in enumerate(self.sesion['capacidades'],4) if c['capacidad_id']==cap),None)
@@ -116,7 +116,7 @@ class EvaluationActions:
         self.app.recordar_planilla()
         pending=stage_to_grid(self)
         self.app.actualizar_herramientas_evaluacion()
-        if pending:self.app.lbl_estado.configure(text='Cambios pendientes · Las capacidades incompletas conservan la nota anterior hasta completarse.')
+        if pending:self.app.lbl_estado.configure(text='Cambios pendientes · Nota provisional calculada con los criterios evaluados; los pendientes no cuentan como cero.')
         self._applied=True;self.destroy()
 
     def _close_requested(self):

@@ -1,16 +1,21 @@
-REGISTRO DOCENTE 1.8 - REVISION PARA LEONARDO ROQUE
+REGISTRO DOCENTE 1.8.1 - REVISION PARA LEONARDO ROQUE
 
 Este paquete permite revisar el nuevo diseño y sus cálculos en Windows.
 Es una compilación personal para el propietario, sin activación comercial.
 Todavía no es el instalador para vender a los clientes.
 
-La edición comercial definitiva requiere license_public_key.pem, generado
-por Leonardo en su computadora con RegistroLicencias. Nunca comparta
-registro_privada.pem ni su contraseña.
+La clave pública comercial ya está incorporada en el código. Esta entrega
+es personal para revisar las mejoras antes de compilar la edición de venta.
+Conserve su clave privada y contraseña para emitir licencias cuando corresponda.
 
 Extraiga el ZIP completo. Puede instalar RegistroDocente-Setup.exe o abrir
 dist/RegistroDocente/RegistroDocente.exe con todos sus archivos al lado.
 GUIA-USO.txt explica las nuevas pantallas de evaluación y configuración.
 
-El paquete RegistroLicencias-SoloVendedor se descarga por separado.
-No lo entregue a los compradores.
+NOVEDADES DE ESTA REVISION
+- Vista Grupo: estudiantes en filas, criterios en columnas y descriptores visibles.
+- Doble clic para ingresar puntos manuales; Enter cambia de estudiante y Tab de criterio.
+- Puede elegir C/B/A/AD o un número entre cero y el máximo del criterio.
+- Los avances parciales se guardan y calculan una nota provisional con lo evaluado.
+  Los pendientes no se convierten en cero. La vista Individual sigue disponible.
+- Excel corrige los paneles repetidos e incluye el avance de criterios.

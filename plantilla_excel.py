@@ -52,8 +52,8 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
                 entry['points_row']=row+1
             layout.append(entry)
         _format_sheet(sheet,3)
-        sheet.auto_filter.ref=None;sheet.freeze_panes='D4';sheet.sheet_view.zoomScale=90
-        sheet.sheet_view.topLeftCell='B1';sheet.row_dimensions[3].height=42
+        sheet.auto_filter.ref=None;sheet.sheet_view.zoomScale=90
+        sheet.row_dimensions[3].height=42
         widths={'A':10,'B':24,'C':28,'D':22,'E':22,'F':22,'G':22,'H':10,'I':10}
         for col,width in widths.items():sheet.column_dimensions[col].width=width
         sheet.column_dimensions['A'].hidden=True
@@ -106,11 +106,16 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
                 entries=[(entry,m) for entry,m in zip(layout,raw_map) if entry['cap']==mapping['cap']]
                 cells=[f'{get_column_letter(m["column"])}{row}' for entry,m in entries]
                 missing=','.join(f"'{EVALUAR}'!{cell}=\"\"" for cell in cells)
-                points='+'.join(_point_formula(cell,entry['row'],meta['kind']) for (entry,m),cell in zip(entries,cells))
-                maxima=','.join(f"'{IND}'!$H${entry['row']}" if rubric else f"'{IND}'!$E${entry['row']}" for entry,m in entries)
+                points='+'.join(f'IF(\'{EVALUAR}\'!{cell}="",0,{_point_formula(cell,entry["row"],meta["kind"])})' for (entry,m),cell in zip(entries,cells))
+                maxima=','.join(f'IF(\'{EVALUAR}\'!{cell}="",0,\'{IND}\'!${"H" if rubric else "E"}${entry["row"]})' for (entry,m),cell in zip(entries,cells))
                 if not rubric:points=points.replace("'1_Indicadores_Instrumento'!$H$","'1_Indicadores_Instrumento'!$E$")
-                formula=f'=IF(OR({missing}),"",IFERROR(ROUND(20*({points})/SUM({maxima}),2),"Revisar"))'
+                formula=f'=IF(AND({missing}),"",IFERROR(ROUND(20*({points})/SUM({maxima}),2),"Revisar"))'
                 summary.cell(row,mapping['column'],formula).number_format='0.00'
+        status_col=summary.max_column+1;summary.cell(1,status_col,'Avance de criterios')
+        summary.column_dimensions[get_column_letter(status_col)].width=24
+        for row in range(2,raw.max_row+1):
+            count='+'.join(f'IF(\'{EVALUAR}\'!{get_column_letter(m["column"])}{row}="",0,1)' for m in raw_map)
+            summary.cell(row,status_col,f'=IF(({count})=0,"Pendiente",IF(({count})={len(raw_map)},"Completo","Parcial "&({count})&"/{len(raw_map)}"))')
         summary.protection.sheet=True;summary.protection.formatColumns=False
         summary.data_validations.dataValidation=[]
         instructions=wb['Instrucciones'];instructions.delete_rows(1,instructions.max_row)
@@ -119,7 +124,7 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
             '2. Cada capacidad puede tener varios criterios. Los bloques son independientes: escriba una evidencia observable por bloque. Para cambiar su cantidad, descargue una plantilla nueva y elija cuántos necesita por capacidad; puede hacerlo sin diseñar primero en el programa.',
             '3. En 2_Evaluar_Criterios cada estudiante tiene una columna POR CRITERIO. Marque C, B, A o AD (rúbrica), o Sí/No (cotejo). También puede ingresar puntos numéricos en rúbrica. Vacío significa pendiente; Sin evidencia y No valen cero.',
             '4. En 3_Notas_Capacidades se calcula el resultado de TODOS los criterios de cada capacidad. Esta hoja es de consulta: no escriba una nota única para reemplazar los criterios.',
-            '5. Nota = suma de puntos obtenidos ÷ suma de máximos × 20. Dos criterios de 10 puntos, con 6 y 8 obtenidos, dan 14/20. Complete todos los criterios de una capacidad antes de importarla.',
+            '5. Nota = suma de puntos obtenidos ÷ suma de máximos EVALUADOS × 20. Dos criterios de 10 puntos, con 6 y 8 obtenidos, dan 14/20. Puede guardar o importar avances: si faltan criterios la nota es provisional. Los pendientes no cuentan como cero; revise la columna Avance de criterios.',
             '6. Guarde como XLSX. En Calificaciones pulse Importar Excel, revise el instrumento y los cambios y confirme. Se guardan las respuestas de cada criterio y las notas calculadas; asistencias y comentarios vacíos se conservan.',
             '7. Puede importar solo el instrumento dejando las respuestas vacías. Después evalúe los criterios en la pantalla principal y pulse Guardar notas.',
             'Conserve las columnas ocultas, los nombres y los códigos. La aplicación vuelve a calcular las notas desde las respuestas; no depende de resultados guardados de fórmulas de Excel.']
