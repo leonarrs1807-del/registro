@@ -665,7 +665,8 @@ class DesktopTests(unittest.TestCase):
         before=matrix.identity.winfo_rootx();values=matrix.identity.item(str(self.student),'values')
         matrix.table.xview_moveto(1);self.app.update_idletasks()
         self.assertGreater(matrix.table.xview()[0],0)
-        self.assertGreater(matrix.criteria_header.xview()[0],0)
+        first_header=matrix.criteria_header.find_all()[0]
+        self.assertLess(matrix.criteria_header.coords(first_header)[0],0)
         self.assertEqual(matrix.criteria_header.winfo_rootx(),matrix.table.winfo_rootx())
         self.assertFalse(self.app._evaluation_panel.container.winfo_ismapped())
         self.assertEqual(matrix.identity.winfo_rootx(),before);self.assertEqual(matrix.identity.item(str(self.student),'values'),values)

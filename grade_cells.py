@@ -138,6 +138,15 @@ class GradeTreeview(ttk.Treeview):
 
 class CriterionTreeview(GradeTreeview):
     """Cotejo states and rubric points use their own cell appearance."""
+    def xview(self,*args):
+        result=super().xview(*args)
+        if args and callable(getattr(self,'on_horizontal_change',None)):self.on_horizontal_change()
+        return result
+
+    def xview_moveto(self,*args):
+        super().xview_moveto(*args)
+        if callable(getattr(self,'on_horizontal_change',None)):self.on_horizontal_change()
+
     def cell_appearance(self,value,column,limits):
         if value in ('Sí','No','Sin evaluar','Pendiente'):
             return {'Sí':('#dcfce7','#166534','✓ Sí'),'No':('#fee2e2','#991b1b','✕ No'),

@@ -51,6 +51,8 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.table.bind('<Configure>',self._draw_headers,add='+');self.identity.bind('<Configure>',self._draw_headers,add='+')
         self.criteria_header.bind('<Configure>',self._draw_headers,add='+')
         Tooltip(self.criteria_header,self._header_tooltip)
+        self.table.on_horizontal_change=self._sync_header
+        self._header_offset=0
         for student,s in panel.by_student.items():
             self.identity.insert('','end',iid=str(student),values=(s.get('Codigo_Unico',''),f"{s.get('Apellidos','')}, {s.get('Nombres','')}"))
             self.table.insert('','end',iid=str(student),values=(*['Sin evaluar']*len(self.items),f'0/{len(self.items)}',*([len(self.items)] if self.checklist else [])))
@@ -84,7 +86,7 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.bind('<Configure>',self._queue_layout,add='+');self._queue_layout()
 
     def _header_tooltip(self):
-        x=self.criteria_header.canvasx(self.criteria_header.winfo_pointerx()-self.criteria_header.winfo_rootx());offset=0
+        x=self.criteria_header.winfo_pointerx()-self.criteria_header.winfo_rootx()+self._header_offset;offset=0
         for item,col in zip(self.items,self.columns):
             offset+=self.table.column(col,'width')
             if x<offset:return item['capacidad_nombre']+' · '+criterion_caption(item)
@@ -92,7 +94,13 @@ class EvaluationMatrix(ctk.CTkFrame):
 
     def _xscroll(self,first,last):
         self._horizontal_bar.set(first,last)
-        if hasattr(self,'criteria_header'):self.criteria_header.xview_moveto(first)
+        if hasattr(self,'criteria_header'):self._sync_header()
+
+    def _sync_header(self):
+        total=sum(self.table.column(col,'width') for col in self.table['columns'])
+        offset=round(float(self.table.xview()[0])*total)
+        self.criteria_header.move('all',getattr(self,'_header_offset',0)-offset,0)
+        self._header_offset=offset
 
     def _draw_headers(self,event=None):
         if getattr(self,'_destroying',False):return
@@ -111,7 +119,7 @@ class EvaluationMatrix(ctk.CTkFrame):
                 self.criteria_header.create_text(offset+7,40*scale,anchor='nw',text=textwrap.shorten(criterion_caption(item),width=66,placeholder='…'),fill='#dbeafe',font=font,width=width-14)
             else:self.criteria_header.create_text(offset+width/2,height/2,text=self.table.heading(col,'text'),fill='white',font=bold,width=width-14)
             offset+=width
-        self.criteria_header.configure(scrollregion=(0,0,offset,height));self.criteria_header.xview_moveto(self.table.xview()[0])
+        self._header_offset=0;self._sync_header()
 
     def _queue_layout(self,event=None):
         if getattr(self,'_destroying',False):return
