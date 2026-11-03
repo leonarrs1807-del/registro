@@ -137,9 +137,9 @@ class PageBook(ctk.CTkFrame):
         self._pages[name].grid();self._pages[name].tkraise();self._current=name
         for title,button in self._buttons.items():
             selected=title==name
-            button.configure(fg_color='#2563eb' if selected else 'transparent',
-                             image=icon(self.ITEMS[title][1],active=selected,master=self),
-                             text_color='#ffffff' if selected else ('#334155','#e2e8f0'))
+            button.configure(fg_color=('#bae6fd','#075985') if selected else 'transparent',
+                             image=icon(self.ITEMS[title][1],active=selected and ctk.get_appearance_mode()=="Dark",master=self),
+                             text_color=('#075985','#f0f9ff') if selected else ('#334155','#e2e8f0'))
         if self.expanded and self.winfo_width()/pixel_scale(self)<1000:self.set_expanded(False)
         root=self.winfo_toplevel()
         if hasattr(root,'tabview') and hasattr(root,'al_mostrar_pagina'):root.al_mostrar_pagina(name)
@@ -162,8 +162,8 @@ def grade_panels(master,headers,tree_class,key="nombres_notas"):
     tree.grid(row=0,column=0,sticky='nsew')
     identity=GradeTreeview(left,columns=('codigo','alumno'),show='headings',selectmode='browse')
     scale=pixel_scale(master)
-    identity.heading('codigo',text='Código');identity.heading('alumno',text='Apellidos y nombres')
-    identity.column('codigo',width=round(75*scale),minwidth=round(45*scale),stretch=False)
+    identity.heading('codigo',text='N°');identity.heading('alumno',text='Apellidos y nombres')
+    identity.column('codigo',width=round(38*scale),minwidth=round(28*scale),stretch=False)
     identity.column('alumno',width=round(235*scale),minwidth=round(80*scale),stretch=True)
     identity.grid(row=0,column=0,sticky='nsew')
     def both(*args):tree.yview(*args);identity.yview(*args)

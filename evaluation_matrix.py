@@ -12,20 +12,22 @@ from evaluacion_datos import grade_answers
 from calculos import normalized_total
 from cotejo import capacity_label,summary as checklist_summary,configuration
 import textwrap
+from colores import HEADER,HEADER_TEXT,BORDER
 
 
 class EvaluationMatrix(ctk.CTkFrame):
     def __init__(self,master,panel):
         super().__init__(master,fg_color='transparent')
         self.panel=panel;self._preserve_theme=True;self.answers={};self.grades={};self.pending=set();self.selected=None;self.editor=None;self._syncing=False
-        self.checklist=panel.tipo_inst=='Lista de Cotejo';self._layout_job=None;self._details_preference=None
+        self.checklist=panel.tipo_inst=='Lista de Cotejo';self._layout_job=None;self._details_preference=None;self._resizing=None
         self.items=list(panel.by_id.values());self.columns=[str(i['id']) for i in self.items]
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(0,weight=1)
-        body=ctk.CTkFrame(self,fg_color='transparent');body.grid(row=0,column=0,sticky='nsew');body.grid_columnconfigure(1,weight=1);body.grid_rowconfigure(1,weight=1)
+        body=ctk.CTkFrame(self,fg_color='transparent');body.grid(row=0,column=0,sticky='nsew');body.grid_columnconfigure(2,weight=1);body.grid_rowconfigure(1,weight=1)
         scale=pixel_scale(self)
         self.identity=ttk.Treeview(body,columns=('code','name'),show='',selectmode='browse',height=8)
-        for col,text,width in [('code','Código',75),('name','Estudiante',210)]:
-            self.identity.heading(col,text=text);self.identity.column(col,width=round(width*scale),minwidth=round(55*scale),stretch=False)
+        prefs=panel.app._preferencias()
+        for col,text,width,minimum in [('code','N°',prefs.get('criteria_number_width',38),28),('name','Apellidos y nombres',prefs.get('criteria_name_width',300),160)]:
+            self.identity.heading(col,text=text);self.identity.column(col,width=round(width*scale),minwidth=round(minimum*scale),stretch=False)
         self.identity.grid(row=1,column=0,sticky='nsw')
         self.table=CriterionTreeview(body,columns=(*self.columns,'progress',*(['pending'] if self.checklist else [])),show='',selectmode='browse',height=8)
         self.table.set_grade_columns(self.columns);self.table.on_double_click=self._double
@@ -38,23 +40,32 @@ class EvaluationMatrix(ctk.CTkFrame):
             self.table.column(col,width=round(190*scale),minwidth=round(135*scale),stretch=False,anchor='center')
         self.table.heading('progress',text='Cumple / Evaluados' if self.checklist else 'Evaluados');self.table.column('progress',width=round((155 if self.checklist else 100)*scale),stretch=False,anchor='center')
         if self.checklist:self.table.heading('pending',text='Pendientes');self.table.column('pending',width=round(100*scale),stretch=False,anchor='center')
-        self.table.grid(row=1,column=1,sticky='nsew')
-        self.sy=scrollbar(body,'vertical',self._yview);self.sy.grid(row=1,column=2,sticky='ns')
-        sx=scrollbar(body,'horizontal',self.table.xview);sx.grid(row=2,column=1,sticky='ew')
+        self.table.grid(row=1,column=2,sticky='nsew')
+        self.sy=scrollbar(body,'vertical',self._yview);self.sy.grid(row=1,column=3,sticky='ns')
+        sx=scrollbar(body,'horizontal',self.table.xview);sx.grid(row=2,column=2,sticky='ew')
         self._horizontal_bar=sx
         self.table.configure(xscrollcommand=self._xscroll,yscrollcommand=lambda a,b:self._scroll(self.table,self.identity,a,b))
         self.identity.configure(yscrollcommand=lambda a,b:self._scroll(self.identity,self.table,a,b))
-        self.name_header=tk.Canvas(body,height=round(88*scale),highlightthickness=0,background='#1e3a8a')
+        self.name_header=tk.Canvas(body,height=round(88*scale),highlightthickness=0,background=HEADER)
         self.name_header.grid(row=0,column=0,sticky='ew')
-        self.criteria_header=tk.Canvas(body,height=round(88*scale),highlightthickness=0,background='#1e3a8a')
-        self.criteria_header.grid(row=0,column=1,sticky='ew')
+        self.criteria_header=tk.Canvas(body,height=round(88*scale),highlightthickness=0,background=HEADER)
+        self.criteria_header.grid(row=0,column=2,sticky='ew')
+        self.resize_grip=tk.Frame(body,width=5,bg='#cbd5e1',cursor='sb_h_double_arrow')
+        self.resize_grip.grid(row=0,column=1,rowspan=3,sticky='ns')
+        self.resize_grip.bind('<Button-1>',lambda e:self._start_resize(e,'name'))
+        self.resize_grip.bind('<B1-Motion>',self._resize_identity)
+        self.resize_grip.bind('<ButtonRelease-1>',self._finish_resize)
+        self.name_header.bind('<Motion>',self._resize_cursor)
+        self.name_header.bind('<Button-1>',self._start_resize)
+        self.name_header.bind('<B1-Motion>',self._resize_identity)
+        self.name_header.bind('<ButtonRelease-1>',self._finish_resize)
         self.table.bind('<Configure>',self._draw_headers,add='+');self.identity.bind('<Configure>',self._draw_headers,add='+')
         self.criteria_header.bind('<Configure>',self._draw_headers,add='+')
         Tooltip(self.criteria_header,self._header_tooltip)
         self.table.on_horizontal_change=self._sync_header
         self._header_offset=0
-        for student,s in panel.by_student.items():
-            self.identity.insert('','end',iid=str(student),values=(s.get('Codigo_Unico',''),f"{s.get('Apellidos','')}, {s.get('Nombres','')}"))
+        for number_index,(student,s) in enumerate(panel.by_student.items(),1):
+            self.identity.insert('','end',iid=str(student),values=(f'{number_index:02}',f"{s.get('Apellidos','')}, {s.get('Nombres','')}"))
             self.table.insert('','end',iid=str(student),values=(*['Sin evaluar']*len(self.items),f'0/{len(self.items)}',*([len(self.items)] if self.checklist else [])))
         self.table.bind('<ButtonRelease-1>',self._clicked,add='+')
         self.table.bind('<<TreeviewSelect>>',self._selected_row,add='+')
@@ -65,25 +76,53 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.table.bind('<Shift-Tab>',lambda e:self.move_cell('previous'))
         self.table.bind('<F2>',lambda e:self.begin_edit())
         self.table.bind('<KeyPress>',self._typed,add='+')
-        self.detail_host=ctk.CTkFrame(self,width=300,corner_radius=8);self.detail_host.grid_propagate(False)
+        for tree in (self.table,self.identity):
+            for key,move in [('Up','up'),('Down','down'),('Left','left'),('Right','right')]:
+                tree.bind('<'+key+'>',lambda e,m=move:self.move_cell(m))
+        self.detail_host=ctk.CTkFrame(self,width=290,corner_radius=8);self.detail_host.grid_propagate(False);self.detail_host.pack_propagate(False)
         detail=scroll_area(self.detail_host,auto_hide=True);detail.pack(fill='both',expand=True);detail.grid_columnconfigure(0,weight=1)
         label(detail,'Criterio seleccionado').grid(row=0,column=0,sticky='ew',padx=10,pady=8)
-        self.descriptor_title=label(detail,'');self.descriptor_title.grid(row=1,column=0,sticky='ew',padx=10,pady=5)
+        self.descriptor_title=label(detail,'');self.descriptor_title.configure(font=ctk.CTkFont(size=14,weight='bold'));self.descriptor_title.grid(row=1,column=0,sticky='ew',padx=10,pady=5)
         self.value=ctk.CTkEntry(self,width=95,height=30)
         self.value.bind('<Return>',lambda e:self.apply_value())
-        self.title=label(self,'Seleccione un criterio de la tabla.');self.title.grid(row=1,column=0,columnspan=2,sticky='ew',padx=8,pady=(5,2))
-        self.note=label(self,'');self.note.grid(row=2,column=0,columnspan=2,sticky='ew',padx=8,pady=2)
-        self.hint=label(self,'S: cumple · N: no cumple · Supr: pendiente · Enter: siguiente estudiante · Tab: siguiente criterio.' if self.checklist else 'Doble clic: escribir · Enter: siguiente estudiante · Tab: siguiente criterio · Supr: pendiente.');self.hint.grid(row=3,column=0,columnspan=2,sticky='ew',padx=8,pady=2)
+        self.title=label(self,'Seleccione un criterio de la tabla.')
+        self.note=label(self,'');self.note.configure(font=ctk.CTkFont(size=13));self.note.grid(row=1,column=0,columnspan=2,sticky='ew',padx=8,pady=(3,0))
+        self.hint=label(self,'S: cumple · N: no cumple · Supr: pendiente · Enter: siguiente estudiante · Tab: siguiente criterio.' if self.checklist else 'Doble clic: escribir · Enter: siguiente estudiante · Tab: siguiente criterio · Supr: pendiente.')
+        Tooltip(self.table,lambda:self.hint.cget('text'))
         self.descriptors=ctk.CTkFrame(detail,fg_color='transparent');self.descriptors.grid(row=2,column=0,sticky='ew',padx=6,pady=3)
         self.level_boxes=[]
         for col in range(4):
             box=ctk.CTkFrame(self.descriptors,corner_radius=4);box.pack(fill='x',padx=2,pady=4)
             button=ctk.CTkButton(box,text='',height=29,command=lambda n=col:self.choose_level(n));button.pack(fill='x',padx=5,pady=(5,2))
-            text=label(box,'');text.configure(font=ctk.CTkFont(size=12));text.pack(fill='x',padx=7,pady=(0,6))
+            text=label(box,'');text.configure(font=ctk.CTkFont(size=13,weight='bold'));text.pack(fill='x',padx=7,pady=(0,6))
             self.level_boxes.append((box,button,text))
         if self.items and panel.by_student:self.select(next(iter(panel.by_student)),self.items[0]['id'])
         self._draw_headers()
         self.bind('<Configure>',self._queue_layout,add='+');self._queue_layout()
+
+    def _resize_cursor(self,event):
+        edge=self.identity.column('code','width')
+        self.name_header.configure(cursor='sb_h_double_arrow' if abs(event.x-edge)<9 or event.x>self.name_header.winfo_width()-9 else '')
+
+    def _start_resize(self,event,column=None):
+        if column is None:
+            edge=self.identity.column('code','width')
+            column='code' if abs(event.x-edge)<9 else 'name' if event.x>self.name_header.winfo_width()-9 else None
+        if column:self._resizing=(column,event.x_root,self.identity.column(column,'width'))
+
+    def _resize_identity(self,event):
+        if not self._resizing:return
+        column,x,width=self._resizing;scale=pixel_scale(self)
+        minimum,maximum=(28,80) if column=='code' else (160,max(200,self.winfo_width()/scale*.62))
+        self.identity.column(column,width=round(min(maximum*scale,max(minimum*scale,width+event.x_root-x))))
+        self._draw_headers()
+
+    def _finish_resize(self,event=None):
+        if not self._resizing:return
+        self._resizing=None;app=self.panel.app;scale=pixel_scale(self)
+        app._criteria_name_width=round(self.identity.column('name','width')/scale)
+        app._criteria_number_width=round(self.identity.column('code','width')/scale)
+        app._guardar_ventana()
 
     def _header_tooltip(self):
         x=self.criteria_header.winfo_pointerx()-self.criteria_header.winfo_rootx()+self._header_offset;offset=0
@@ -106,18 +145,18 @@ class EvaluationMatrix(ctk.CTkFrame):
         if getattr(self,'_destroying',False):return
         scale=pixel_scale(self);height=round(88*scale);font=('Segoe UI',-round(12*scale));bold=(*font,'bold')
         self.name_header.delete('all');offset=0
-        for col,text in [('code','Código'),('name','Estudiante')]:
-            width=self.identity.column(col,'width');self.name_header.create_rectangle(offset,0,offset+width,height,outline='#cbd5e1',fill='#1e3a8a')
-            self.name_header.create_text(offset+width/2,height/2,text=text,fill='white',font=bold,width=width-8);offset+=width
+        for col,text in [('code','N°'),('name','Apellidos y nombres')]:
+            width=self.identity.column(col,'width');self.name_header.create_rectangle(offset,0,offset+width,height,outline=BORDER,fill=HEADER)
+            self.name_header.create_text(offset+width/2,height/2,text=text,fill=HEADER_TEXT,font=bold,width=width-8);offset+=width
         self.name_header.configure(width=offset)
         self.criteria_header.delete('all');offset=0
         for col in self.table['columns']:
-            width=self.table.column(col,'width');self.criteria_header.create_rectangle(offset,0,offset+width,height,outline='#cbd5e1',fill='#1e3a8a')
+            width=self.table.column(col,'width');self.criteria_header.create_rectangle(offset,0,offset+width,height,outline=BORDER,fill=HEADER)
             if col in self.columns:
                 item=self.items[self.columns.index(col)]
-                self.criteria_header.create_text(offset+7,6*scale,anchor='nw',text=capacity_label(item['capacidad_nombre']),fill='white',font=bold,width=width-14)
-                self.criteria_header.create_text(offset+7,40*scale,anchor='nw',text=textwrap.shorten(criterion_caption(item),width=66,placeholder='…'),fill='#dbeafe',font=font,width=width-14)
-            else:self.criteria_header.create_text(offset+width/2,height/2,text=self.table.heading(col,'text'),fill='white',font=bold,width=width-14)
+                self.criteria_header.create_text(offset+7,6*scale,anchor='nw',text=capacity_label(item['capacidad_nombre']),fill=HEADER_TEXT,font=bold,width=width-14)
+                self.criteria_header.create_text(offset+7,40*scale,anchor='nw',text=textwrap.shorten(criterion_caption(item),width=66,placeholder='…'),fill=HEADER_TEXT,font=font,width=width-14)
+            else:self.criteria_header.create_text(offset+width/2,height/2,text=self.table.heading(col,'text'),fill=HEADER_TEXT,font=bold,width=width-14)
             offset+=width
         self._header_offset=0;self._sync_header()
 
@@ -128,7 +167,7 @@ class EvaluationMatrix(ctk.CTkFrame):
 
     def _layout(self):
         self._layout_job=None
-        opened=not self.checklist and (self._details_preference if self._details_preference is not None else self.winfo_width()/pixel_scale(self)>=1050)
+        opened=self._details_preference if self._details_preference is not None else not self.checklist and self.winfo_width()/pixel_scale(self)>=1250
         if opened:self.detail_host.grid(row=0,column=1,sticky='nsew',padx=(8,0))
         else:self.detail_host.grid_remove()
 
@@ -163,7 +202,7 @@ class EvaluationMatrix(ctk.CTkFrame):
                 if self.checklist:self.apply_value('No' if self.answers.get(self.selected)=='Sí' else 'Sí')
 
     def select(self,student,indicator):
-        self.selected=(student,indicator)
+        self.selected=(student,indicator);self.table.active_cell=(str(student),str(indicator));self.table.queue_colors()
         for tree in (self.table,self.identity):
             if tree.selection()!=(str(student),):tree.selection_set(str(student))
             tree.focus(str(student))
@@ -195,7 +234,8 @@ class EvaluationMatrix(ctk.CTkFrame):
         student,identity=self.selected;item=self.panel.by_id[identity];s=self.panel.by_student[student]
         context=f"{s.get('Apellidos','')}, {s.get('Nombres','')} · {item['capacidad_nombre']}\n{criterion_caption(item)}"
         self.title.configure(text=context if self.checklist else context+f" · Máximo: {number(item['puntaje_maximo'])}")
-        self.descriptor_title.configure(text=f"{item['capacidad_nombre']}\n{criterion_caption(item)}")
+        self.descriptor_title.configure(text=f"{item['capacidad_nombre']}\n\n{criterion_caption(item)}")
+        if self.checklist:self.descriptors.grid_remove()
         if self.checklist:
             state=getattr(self,'summary',{}).get((student,item['capacidad_id']),dict(cumplidos=0,evaluados=0,pendientes=len(self.items)))
             rule=getattr(self.panel.app,'_cotejo_pending_rule',None) or configuration(self.panel.sesion['id'],self.panel.app._db_path)[0]
@@ -250,11 +290,20 @@ class EvaluationMatrix(ctk.CTkFrame):
         if not self.selected:return 'break'
         student,identity=self.selected;students=list(self.panel.by_student)
         row=students.index(student);col=self.columns.index(str(identity))
-        if move=='down':row=min(row+1,len(students)-1)
+        if move in ('down','up'):row=max(0,min(row+(1 if move=='down' else -1),len(students)-1))
+        elif move in ('left','right'):col=max(0,min(col+(1 if move=='right' else -1),len(self.items)-1))
         else:
             index=max(0,min(len(students)*len(self.items)-1,row*len(self.items)+col+(1 if move=='next' else -1)))
             row,col=divmod(index,len(self.items))
-        self.select(students[row],self.items[col]['id']);self.table.see(str(students[row]));return 'break'
+        self.select(students[row],self.items[col]['id']);self._see_selection();return 'break'
+
+    def _see_selection(self):
+        student,identity=self.selected;self.table.see(str(student))
+        widths=[self.table.column(c,'width') for c in self.table['columns']]
+        index=self.columns.index(str(identity));start=sum(widths[:index]);end=start+widths[index]
+        total=sum(widths);left=self.table.xview()[0]*total;viewport=max(1,self.table.winfo_width()-4)
+        if start<left:self.table.xview_moveto(start/total)
+        elif end>left+viewport:self.table.xview_moveto(max(0,end-viewport)/total)
 
     def begin_edit(self,student=None,indicator=None,initial=None):
         if self.checklist:return 'break'
@@ -262,7 +311,7 @@ class EvaluationMatrix(ctk.CTkFrame):
         if self.editor is not None:self.cancel_edit()
         if student is not None:self.select(student,indicator)
         if not self.selected:return 'break'
-        student,identity=self.selected;col=str(identity);self.table.see(str(student));bounds=self.table.bbox(str(student),col)
+        student,identity=self.selected;col=str(identity);self._see_selection();bounds=self.table.bbox(str(student),col)
         if not bounds:return 'break'
         x,y,w,h=bounds;self.editor=tk.Entry(self.table,justify='center',font=('Segoe UI',-round(14*pixel_scale(self))))
         self.table.editor=self.editor
@@ -274,12 +323,15 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.editor.bind('<Tab>',lambda e:self.commit_edit('next'))
         self.editor.bind('<Shift-Tab>',lambda e:self.commit_edit('previous'))
         self.editor.bind('<Escape>',lambda e:self.cancel_edit())
+        self.editor.bind('<Control-z>',lambda e:self.cancel_edit())
+        for key,move in [('Up','up'),('Down','down'),('Left','left'),('Right','right')]:
+            self.editor.bind('<'+key+'>',lambda e,m=move:self.commit_edit(m))
         self.editor.bind('<FocusOut>',lambda e:self.commit_edit())
         return 'break'
 
     def cancel_edit(self):
         if self.editor is not None:
-            editor=self.editor;self.editor=None;self.table.editor=None;editor.destroy()
+            editor=self.editor;self.editor=None;self.table.editor=None;editor.destroy();self.table.focus_set()
         return 'break'
 
     def commit_edit(self,move=None):
@@ -288,15 +340,9 @@ class EvaluationMatrix(ctk.CTkFrame):
         raw=self.editor.get();student,identity=self.selected
         try:value=entered_answer(self.panel.by_id[identity],raw)
         except ValueError as exc:
-            self.hint.configure(text=str(exc),text_color='#b91c1c');self.editor.focus_set();return 'break'
+            self.hint.configure(text=str(exc),text_color='#b91c1c');self.panel.app.lbl_estado.configure(text=str(exc));self.editor.focus_set();return 'break'
         self.cancel_edit();self.panel.set_answer(student,identity,value)
-        if move:
-            students=list(self.panel.by_student);row=students.index(student);col=self.columns.index(str(identity))
-            if move=='down':row=min(row+1,len(students)-1)
-            else:
-                index=max(0,min(len(students)*len(self.items)-1,row*len(self.items)+col+(1 if move=='next' else -1)))
-                row,col=divmod(index,len(self.items))
-            self.select(students[row],self.items[col]['id']);self.begin_edit()
+        if move:self.move_cell(move);self.begin_edit()
         return 'break'
 
     def destroy(self):

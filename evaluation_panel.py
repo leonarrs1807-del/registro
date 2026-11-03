@@ -1,6 +1,7 @@
 """An embedded evaluation workspace: every criterion is answered before its total."""
 from tkinter import ttk
 import customtkinter as ctk
+from colores import button as sky_button,tabs as sky_tabs
 from instrument_evaluate import EvaluationActions,stage_to_grid,student_id
 from instrument_widgets import InstrumentGrid,label
 from evaluacion_datos import get_answers
@@ -19,22 +20,25 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
         self._panel_view='Grupo'
         modes=ctk.CTkFrame(self,fg_color='transparent');modes.grid(row=0,column=0,sticky='ew',padx=8,pady=3);modes.grid_columnconfigure(1,weight=1)
-        self.mode_choice=ctk.CTkSegmentedButton(modes,values=['Grupo','Individual'],height=31,command=self._change_view)
+        self.mode_choice=ctk.CTkSegmentedButton(modes,**sky_tabs(),values=['Grupo','Individual'],height=31,command=self._change_view)
         self.mode_choice.grid(row=0,column=0,sticky='w');self.mode_choice.set('Grupo')
-        label(modes,'Marque Sí / No · Conversión a nota opcional.' if self.tipo_inst=='Lista de Cotejo' else 'Puntajes manuales · Las letras siguen su escala.').grid(row=0,column=1,sticky='ew',padx=12)
+        ctk.CTkButton(modes,**sky_button(),text='Deshacer',height=30,width=85,command=lambda:app.deshacer_planilla()).grid(row=0,column=1,padx=(10,4),sticky='w')
+        ctk.CTkButton(modes,**sky_button(),text='Rehacer',height=30,width=80,command=lambda:app.deshacer_planilla(True)).grid(row=0,column=2,padx=4,sticky='w')
+        modes.grid_columnconfigure(1,weight=0);modes.grid_columnconfigure(3,weight=1)
         if self.tipo_inst=='Lista de Cotejo':self.mode_choice.grid_remove()
-        else:ctk.CTkButton(modes,text='Descriptores',height=30,width=120,command=lambda:self.matrix.toggle_details()).grid(row=0,column=2,padx=5)
+        ctk.CTkButton(modes,**sky_button(),text='Criterio' if self.tipo_inst=='Lista de Cotejo' else 'Descriptores',height=30,width=120,command=lambda:self.matrix.toggle_details()).grid(row=0,column=4,padx=5)
+        ctk.CTkButton(modes,**sky_button(),text='Convertir a nota…' if self.tipo_inst=='Lista de Cotejo' else 'Recalcular',height=30,width=155 if self.tipo_inst=='Lista de Cotejo' else 110,command=self._aplicar_calculo).grid(row=0,column=3,padx=6,sticky='e')
         self.students_bar=ctk.CTkFrame(app._criteria_view_bar,fg_color='transparent')
         self.students_bar.grid_columnconfigure(1,weight=1)
         label(self.students_bar,'Estudiante').grid(row=0,column=0,padx=(0,8))
-        self.student_labels={f"{s.get('Codigo_Unico','')} · {s.get('Apellidos','')}, {s.get('Nombres','')}":identity for identity,s in self.by_student.items()}
+        self.student_labels={f"{n:02} · {s.get('Apellidos','')}, {s.get('Nombres','')}":identity for n,(identity,s) in enumerate(self.by_student.items(),1)}
         self.student_choice=ctk.CTkComboBox(self.students_bar,values=list(self.student_labels),height=36,state='readonly',command=lambda caption:self.select_student(self.student_labels[caption]))
         self.student_choice.grid(row=0,column=1,sticky='ew')
         self.pane=split(self,'criterios_principal');self.pane.grid(row=1,column=0,sticky='nsew',padx=4,pady=4)
         self.left=ctk.CTkFrame(self.pane);self.left.grid_rowconfigure(0,weight=1);self.left.grid_columnconfigure(0,weight=1)
         self.roster=ttk.Treeview(self.left,columns=('codigo','nombre','avance'),show='headings',selectmode='browse')
         scale=pixel_scale(self)
-        for key,title,width in [('codigo','Código',65),('nombre','Estudiante',160),('avance','Eval.',65)]:
+        for key,title,width in [('codigo','N°',38),('nombre','Estudiante',210),('avance','Eval.',65)]:
             self.roster.heading(key,text=title);self.roster.column(key,width=round(width*scale),minwidth=round((90 if key=='nombre' else width)*scale),stretch=key=='nombre')
         self.roster.grid(row=0,column=0,sticky='nsew')
         sy=scrollbar(self.left,'vertical',self.roster.yview);sy.grid(row=0,column=1,sticky='ns')
@@ -49,12 +53,12 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         self.pane.add(self.left,width=round(300*scale),minsize=round(210*scale),stretch='never')
         self.pane.add(right,minsize=round(360*scale),stretch='always')
         self._right=right
-        for identity,student in self.by_student.items():self.roster.insert('','end',iid=str(identity),values=(student.get('Codigo_Unico',''),f"{student.get('Apellidos','')}, {student.get('Nombres','')}",''))
+        for n,(identity,student) in enumerate(self.by_student.items(),1):self.roster.insert('','end',iid=str(identity),values=(f'{n:02}',f"{student.get('Apellidos','')}, {student.get('Nombres','')}",''))
         self.roster.bind('<<TreeviewSelect>>',self._student_changed)
         footer=ctk.CTkFrame(self,fg_color='transparent');footer.grid(row=2,column=0,sticky='ew',padx=8,pady=5)
-        self.previous_button=ctk.CTkButton(footer,text='Anterior',width=90,height=32,command=lambda:self._move(-1))
-        self.next_button=ctk.CTkButton(footer,text='Siguiente',width=90,height=32,command=lambda:self._move(1))
-        ctk.CTkButton(footer,text='Convertir a nota…' if self.tipo_inst=='Lista de Cotejo' else 'Recalcular resultados',width=165,height=32,command=self._aplicar_calculo).pack(side='right')
+        self.previous_button=ctk.CTkButton(footer,**sky_button(),text='Anterior',width=90,height=32,command=lambda:self._move(-1))
+        self.next_button=ctk.CTkButton(footer,**sky_button(),text='Siguiente',width=90,height=32,command=lambda:self._move(1))
+        self._student_footer=footer;footer.grid_forget()
         from evaluation_matrix import EvaluationMatrix
         self.matrix=EvaluationMatrix(self,self)
         self.matrix.grid(row=1,column=0,sticky='nsew',padx=5,pady=4)
@@ -91,8 +95,8 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         self._panel_view=caption
         if caption=='Grupo':self.pane.grid_remove();self.matrix.grid()
         else:self.matrix.grid_remove();self.pane.grid()
-        if caption=='Individual':self.previous_button.pack(side='left',padx=(0,6));self.next_button.pack(side='left')
-        else:self.previous_button.pack_forget();self.next_button.pack_forget()
+        if caption=='Individual':self._student_footer.grid(row=2,column=0,sticky='ew',padx=8,pady=5);self.previous_button.pack(side='left',padx=(0,6));self.next_button.pack(side='left')
+        else:self._student_footer.grid_forget();self.previous_button.pack_forget();self.next_button.pack_forget()
         self._refresh()
         self._layout_state=None;self._queue_layout()
 

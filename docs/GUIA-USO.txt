@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.9.0 - FULL PERSONAL PARA LEONARDO
+REGISTRO DOCENTE 1.10.0 - FULL PERSONAL PARA LEONARDO
 
 EMPEZAR Y GUARDAR
 
@@ -209,3 +209,56 @@ EDICIÓN DE PREPARACIÓN: si Licencia y cuenta indica que falta la clave públic
 REGISTRO VACÍO
 
 Archivo → Nuevo registro vacío crea un documento nuevo sin estudiantes, actividades ni notas; conserva docente, currículo y preferencias. El registro anterior conserva sus datos y se crea un respaldo. Una instalación nueva también comienza sin estudiantes de ejemplo.
+
+TABLAS CELESTES, TECLADO Y EXCEL COMPLETO (FULL 1.10)
+
+La tabla presenta N° y apellidos y nombres, sin códigos. Para ampliar el nombre,
+arrastre la barra entre el nombre y los criterios. También puede ajustar el ancho
+de N° desde su encabezado. Las dos columnas permanecen fijas al desplazar las notas.
+
+Las flechas permiten subir, bajar, volver al criterio anterior y avanzar al siguiente.
+La celda queda visible al recorrer muchas columnas o estudiantes. F2 o doble clic abre
+la edición. Enter y Tab guardan la celda y avanzan. Esc cancela el texto que está
+escribiendo. Deshacer/Rehacer y Ctrl+Z/Ctrl+Y recuperan respuestas anteriores antes de
+guardar. El cálculo resumido ocupa una sola franja al pie; el criterio y los
+niveles en negrita aparecen en el panel derecho, sin repetirse debajo de la tabla.
+
+EXPORTAR LA TABLA CON LAS RESPUESTAS
+Pulse Exportar tabla en Calificaciones. Se incluyen los alumnos reales y las
+respuestas que ya ingresó, incluidos los cambios de la planilla que aún no haya
+confirmado en la base. El archivo usa N°, nombres fijos, encabezados celestes y
+colores de logro. No modifica sus datos. Instrumento contiene los criterios y
+Registro contiene las respuestas por estudiante. Con Nota directa se exportan
+las notas finales de capacidad.
+
+IMPORTAR Y ADAPTAR
+Puede editar la tabla exportada y volver a importarla. Instrumento permite cambiar
+los nombres de competencias, capacidades y criterios. Puede agregar columnas de
+criterios a Registro y escribir el nombre de la capacidad y del criterio en sus
+dos encabezados. Los criterios faltantes se crean con un máximo de 20 y los
+niveles predeterminados de la escala; puede completarlos en Instrumento.
+Se conservan los criterios existentes. Al cambiar de competencia o instrumento
+se crea una actividad aparte, conservando la anterior.
+
+También se leen tablas simples de notas con una columna Estudiante o Apellidos
+y nombres, y las capacidades como encabezados de las columnas siguientes.
+Puede indicar Competencia en una fila anterior al encabezado, con su nombre en
+la celda siguiente. Si no aparece, se usa la competencia de la actividad abierta.
+Los estudiantes nuevos deben tener la forma Apellidos, Nombres. Nunca se asignan
+notas automáticamente a dos estudiantes con el mismo nombre.
+
+La vista previa enumera lo que se agregará y permite revisar notas y observaciones.
+Confirmar crea un respaldo y guarda todos los cambios; cancelar no modifica el
+registro. Un dato inválido cancela la importación completa. Seleccione el curso,
+nivel y salón del archivo antes de importar. Las plantillas antiguas conservan
+su compatibilidad y sus verificaciones de identidad.
+
+MATRIZ FINAL: NÚMEROS, LETRAS O AMBOS
+En Matriz pulse Exportar matriz Excel. Elija Solo números (17), Solo letras (A)
+o Número y letra (17 (A)); luego elija dónde guardar. La letra se calcula según
+la escala de logro que tenga configurada. El archivo muestra N° y nombre, con
+competencias y capacidades completas y sin códigos visibles.
+La exportación en letras conserva las notas numéricas originales en información
+interna para que una reimportación sin cambios no pierda precisión. Si desea
+cambiar una nota al importar, escriba su número o número (letra): una letra por
+sí sola no permite deducir una nota numérica exacta.

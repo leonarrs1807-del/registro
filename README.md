@@ -1,3 +1,11 @@
+## Full personal 1.10.0
+
+Tablas celestes con N°, nombre ajustable y fijo al deslizar, flechas para recorrer
+celdas, controles de deshacer y más filas visibles. El criterio se concentra en
+el panel lateral con texto en negrita. Exportación de tablas completas e importación
+con vista previa que agrega el currículo faltante. La matriz final se descarga en
+números, letras o ambos y conserva las notas exactas para reimportar.
+
 ## Versión 1.9.0 Full personal
 
 Entrega para Leonardo con todos los cursos y módulos, sin activación comercial.

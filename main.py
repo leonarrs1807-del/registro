@@ -87,15 +87,15 @@ TEMAS_INTERFAZ: Dict[str, Dict[str, str]] = {
     },
     "Claro Institucional": {
         "appearance": "Light",
-        "bg_main": "#f1f5f9",
+        "bg_main": "#f0f9ff",
         "bg_card": "#ffffff",
         "fg_text": "#0f172a",
         "tree_bg": "#ffffff",
         "tree_fg": "#0f172a",
-        "tree_head_bg": "#1e3a8a",
-        "tree_head_fg": "#ffffff",
-        "tree_sel": "#2563eb",
-        "accent": "#1d4ed8",
+        "tree_head_bg": "#e0f2fe",
+        "tree_head_fg": "#075985",
+        "tree_sel": "#bae6fd",
+        "accent": "#38bdf8",
     },
     "Esmeralda Docente": {
         "appearance": "Dark",
@@ -635,7 +635,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         estilo.map(
             "Treeview",
             background=[("selected", cfg_t["tree_sel"])],
-            foreground=[("selected", "#ffffff")],
+            foreground=[("selected", "#075985" if nombre_tema=="Claro Institucional" else "#ffffff")],
         )
         # Configure alternating row colors for subtle grid
         stripe_color = "#334155" if "Oscuro" in nombre_tema else "#f3f4f6"
@@ -2110,6 +2110,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             )
             if resultado is None:
                 return
+            if hasattr(resultado,'session_id'):
+                self._planilla_pendiente=False
+                self.refrescar_curriculo_importado()
+                self.recargar_tabla_actividades_creadas()
+                self.abrir_actividad_en_pestana_calificar(resultado.session_id)
+                self.recargar_buscador_alumnos();self.recargar_matriz_completa()
+                messagebox.showinfo('Tabla importada',f'Se importaron {resultado[1]} estudiantes y {resultado[0]} criterios o capacidades. Se agregaron {len(resultado.changes)} elementos que faltaban.')
+                return
             ind_cant, alum_cant = resultado
             inds = obtener_indicadores_instrumento_sesion(sesion_id)
             if inds and "Rúbrica" in inds[0]["tipo"]:
@@ -2482,7 +2490,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             row.append(comentario.replace("\n", " ") if comentario else "")
             tags = ("odd",) if len(tree.get_children()) % 2 == 0 else ("even",)
             item=tree.insert("", "end", values=row, tags=tags)
-            identity.insert("", "end", iid=item,values=(row[1],row[2]))
+            identity.insert("", "end", iid=item,values=(f'{len(tree.get_children()):02}',row[2]))
 
         self._undo=[];self._redo=[]
         self._datos_estudiantes = estudiantes
@@ -2925,7 +2933,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         cols = ["ID", "Codigo", "Estado", "Estudiante"]
         encabezados_cfg: List[Tuple[str, str, int]] = [
             ("ID", "ID", 42),
-            ("Codigo", "Código (4A01)", 95),
+            ("Codigo", "N°", 38),
             ("Estado", "Estado", 80),
             ("Estudiante", "Apellidos y Nombres", 220),
         ]
@@ -2957,7 +2965,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
 
         self.tree_matriz.set_grade_columns([c for c in cols if "_Cap" in c or c.startswith("PROM")])
-        self.tree_matriz.configure(columns=cols)
+        self.tree_matriz.configure(columns=cols,displaycolumns=[c for c in cols if c not in ("ID","Estado")])
         for col_id, texto_h, ancho in encabezados_cfg:
             self.tree_matriz.heading(col_id, text=texto_h)
             self.tree_matriz.column(
@@ -2970,10 +2978,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         for item in self.tree_matriz.get_children():
             self.tree_matriz.delete(item)
 
-        for f in filas_matriz:
+        for row_number,f in enumerate(filas_matriz,1):
             row_vals: List[Any] = [
                 f["estudiante_id"],
-                f["codigo_unico"],
+                f'{row_number:02}',
                 f["estado"],
                 f"{f['apellidos']}, {f['nombres']}",
             ]
@@ -3072,8 +3080,11 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         grado = self.combo_grado_global.get()
         seccion = self.combo_seccion_global.get()
 
+        from excel_dialogs import GradeDisplayOptions
+        options=GradeDisplayOptions(self);self.wait_window(options)
+        if options.result is None:return
         ruta = self.elegir_destino(
-            title="Exportar Registro Detallado con Colores y Divisiones a Excel",
+            title="Exportar matriz final a Excel",
             defaultextension=".xlsx",
             initialfile=f"Registro_Detallado_{curso}_{grado}_{seccion}.xlsx",
             filetypes=[("Archivo Excel", "*.xlsx")],
@@ -3081,12 +3092,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if not ruta:
             return
 
-        exportar_matriz_completa_excel(ruta, curso, grado, seccion, estructura_comp, filas_matriz)
+        exportar_matriz_completa_excel(ruta, curso, grado, seccion, estructura_comp, filas_matriz,presentacion=options.result,db_path=self._db_path)
         import reportes
         reportes.decorate_workbook(ruta, self.insignia_exportacion())
         messagebox.showinfo(
             "Excel con Colores Exportado",
-            f"Se creó el archivo Excel con códigos por sección ({grado}{seccion}01...) y divisiones de columna a color en:\n{ruta}",
+            f"Se exportó la matriz con N°, nombres y el formato elegido de notas:\n{ruta}",
         )
 
     def accion_importar_matriz_excel_con_notas(self) -> None:

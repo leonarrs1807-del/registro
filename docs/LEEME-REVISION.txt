@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.9.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 1.10.0 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -22,3 +22,17 @@ NOVEDADES
 En una instalación nueva el alumnado está vacío. Al actualizar se conservan
 los registros existentes; para empezar limpio use Nuevo registro vacío.
 GUIA-USO.txt explica las pantallas y los respaldos.
+
+MEJORAS DE LA FULL 1.10
+- Tema celeste en tablas, botones y archivos Excel.
+- N° 01, 02… junto al nombre. Sin mostrar el código del estudiante.
+- Arrastre el borde a la derecha del nombre para ensancharlo; se recuerda el ancho.
+- Flechas: moverse por estudiantes y criterios; la tabla desplaza la celda a la vista.
+- Deshacer/Rehacer o Ctrl+Z/Ctrl+Y corrigen respuestas sin volver a escribir todo.
+- El criterio se muestra en el panel derecho, con texto en negrita. Se retiró su
+  repetición inferior y los controles se subieron para mostrar más estudiantes.
+- Exportar tabla guarda el alumnado y las respuestas ya ingresadas en dos hojas.
+- Importar Excel revisa y agrega competencias, capacidades y criterios que falten.
+  Si cambia la competencia, crea una actividad aparte y conserva la anterior.
+- Exportar matriz Excel permite escoger números, letras o ambos: 17, A, 17 (A).
+  Incluso el archivo de letras conserva los números originales para reimportarlo.

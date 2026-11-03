@@ -1536,7 +1536,12 @@ def exportar_matriz_completa_excel(
     seccion: str,
     estructura_comp: List[Dict[str, Any]],
     filas_matriz: List[Dict[str, Any]],
+    presentacion=None,
+    db_path: Path = DB_PATH,
 ) -> None:
+    if presentacion is not None:
+        from matriz_excel import export_matrix
+        return export_matrix(ruta_destino,nombre_curso,grado,seccion,estructura_comp,filas_matriz,db_path,presentacion)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"Registro_{grado}_{seccion}"
@@ -1724,6 +1729,10 @@ def importar_matriz_notas_desde_excel(
     ruta_archivo: str, grado_def: str = "3°", seccion_def: str = "A", db_path: Path = DB_PATH
 ) -> Tuple[int, int]:
     wb = openpyxl.load_workbook(ruta_archivo, data_only=True)
+    if 'Registro_Meta' in wb and dict(wb['Registro_Meta'].iter_rows(max_col=2,values_only=True)).get('format')=='registro-matriz':
+        from matriz_excel import import_matrix
+        try:return import_matrix(wb,db_path,grado_def,seccion_def)
+        finally:wb.close()
     ws = wb.active
     filas = list(ws.iter_rows(values_only=True))
     if len(filas) < 3:

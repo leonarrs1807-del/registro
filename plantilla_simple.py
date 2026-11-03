@@ -7,6 +7,7 @@ from openpyxl.utils import get_column_letter,column_index_from_string
 from openpyxl.comments import Comment
 from instrumentos import LEVELS,default_scores,normalized
 from cotejo import capacity_label
+from colores import HEADER,HEADER_TEXT
 from escala import thresholds
 
 INSTRUMENTO='Instrumento'
@@ -111,6 +112,12 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
         meta.update(version=5,raw_columns=json.dumps(mappings,ensure_ascii=False),simple_raw_width=width,orientation=not rubric,simple_headers=json.dumps(header_formulas,ensure_ascii=False),simple_limits=json.dumps(limits))
         wb[META].delete_rows(1,wb[META].max_row)
         for key,value in meta.items():wb[META].append([key,value])
+        for ws in (design,raw):
+            for row in ws:
+                for cell in row:
+                    color=cell.fill.fgColor
+                    if color.type=='rgb' and str(color.rgb)[-6:].upper() in ('1E3A8A','1E293B','0F172A','2563EB','1D4ED8'):
+                        cell.fill=PatternFill('solid',fgColor=HEADER[1:]);font=copy(cell.font);font.color=HEADER_TEXT[1:];cell.font=font
         wb._sheets=[design,raw,summary,wb[META]];wb.active=0;wb.save(destination)
     finally:wb.close()
 

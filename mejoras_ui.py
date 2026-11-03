@@ -88,6 +88,8 @@ class ClassroomTools:
         if not hasattr(self,'_zoom'):return
         data=self._preferencias()
         data.update({'view_version':2,'nav_expanded':self.tabview.expanded,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
+        data['criteria_name_width']=getattr(self,'_criteria_name_width',data.get('criteria_name_width',300))
+        data['criteria_number_width']=getattr(self,'_criteria_number_width',data.get('criteria_number_width',38))
         panes={}
         for name,pane in getattr(self,'_split_panes',{}).items():
             if pane.winfo_exists() and len(pane.panes())>=2:
@@ -152,6 +154,24 @@ class ClassroomTools:
         documento.save_document(path,target);storage.activate_period(target)
         self.archivo_guardado(path,f'Registro vacío creado. Copia del anterior: {saved}')
         self._reiniciar(target)
+
+    def refrescar_curriculo_importado(self):
+        import db
+        rows=db.obtener_competencias_por_curso(self.obtener_curso_activo_id(),self._db_path)
+        selected=self.crear_comp_map.get(self.crear_combo_comp.get())
+        self.competencias_curso_actual=rows
+        self.crear_comp_map={f'Competencia {n}':identity for n,(identity,name) in enumerate(rows,1)}
+        self.crear_combo_comp.configure(values=list(self.crear_comp_map))
+        caption=next((name for name,identity in self.crear_comp_map.items() if identity==selected),None)
+        if caption:self.crear_combo_comp.set(caption)
+        self.busc_comp_map={'Todas las Competencias':None,**{name:identity for identity,name in rows}}
+        self.busc_combo_comp.configure(values=list(self.busc_comp_map))
+        if hasattr(self,'stats_combo_comp'):self.stats_combo_comp.configure(values=['Todas las Competencias']+[name for identity,name in rows])
+        selection=self.tree_competencias.selection()
+        self.tree_competencias.delete(*self.tree_competencias.get_children())
+        for n,(identity,name) in enumerate(rows,1):self.tree_competencias.insert('','end',iid=str(identity),values=(n,name))
+        if selection and self.tree_competencias.exists(selection[0]):
+            self.tree_competencias.selection_set(selection[0]);self._cargar_tree_capacidades(int(selection[0]))
 
     def exportar_notas(self):
         course=self.obtener_curso_activo_id()

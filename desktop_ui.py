@@ -41,7 +41,7 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.9.0 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
+        self.title(f'Registro Docente 1.10.0 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
@@ -247,9 +247,14 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
                 summary = f'Estudiantes procesados: {result[0]}. Notas que se cargarán: {result[1]}.'
             else:
                 summary = f'Indicadores: {result[0]}. Estudiantes con calificaciones: {result[1]}.'
+            if function.__name__!='importar_rubrica_o_cotejo_desde_excel' and getattr(result,'changes',None):
+                summary+='\nSe agregarán: '+'; '.join(result.changes[:12])+('…' if len(result.changes)>12 else '')
             if function.__name__=='importar_rubrica_o_cotejo_desde_excel':
                 from instrument_design import InstrumentPreview
-                preview=InstrumentPreview(self,staged_db,args[0],result)
+                if hasattr(result,'session_id'):
+                    from excel_dialogs import TableImportPreview
+                    preview=TableImportPreview(self,staged_db,result)
+                else:preview=InstrumentPreview(self,staged_db,args[0],result)
                 self.wait_window(preview)
                 if not preview.confirmed:return None
             else:

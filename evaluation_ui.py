@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
+from colores import button as sky_button,tabs as sky_tabs
 import db,reportes
 from widgets import scroll_area,wrap_label,Tooltip
 from interfaz import pixel_scale
@@ -18,14 +19,16 @@ class EvaluationTools:
         self.calif_combo_actividad=ctk.CTkComboBox(bar,state='readonly',width=240,height=36,command=self._al_cambiar_actividad_en_calificar)
         self.calif_combo_actividad.grid(row=0,column=1,sticky='ew',padx=6)
         Tooltip(self.calif_combo_actividad,lambda:self.calif_combo_actividad.get())
-        self._save_grades=ctk.CTkButton(bar,text='Guardar notas',height=36,width=130,command=self.accion_guardar_planilla_calificacion_completa)
+        self._save_grades=ctk.CTkButton(bar,**sky_button(),text='Guardar notas',height=36,width=130,command=self.accion_guardar_planilla_calificacion_completa)
         self._save_grades.grid(row=0,column=3,padx=(8,0))
-        self._tools_toggle=ctk.CTkButton(bar,text='Herramientas',height=34,width=135,command=self.alternar_herramientas)
+        self._tools_toggle=ctk.CTkButton(bar,**sky_button(),text='Herramientas',height=34,width=135,command=self.alternar_herramientas)
         self._tools_toggle.grid(row=0,column=2,padx=6)
         Tooltip(self._tools_toggle,'Evaluación y plantillas Excel')
+        self._table_export=ctk.CTkButton(bar,**sky_button(),text='Exportar tabla',height=34,width=125,command=self.exportar_tabla_actual)
+        self._table_export.grid(row=0,column=4,padx=(8,0))
         self._grade_bar=bar
         self._competency_label=ctk.CTkLabel(bar,text='Competencia: seleccione una actividad',anchor='w',justify='left',font=ctk.CTkFont(size=16,weight='bold'))
-        self._competency_label.grid(row=2,column=0,columnspan=4,sticky='ew',padx=2,pady=(7,0));wrap_label(self._competency_label)
+        self._competency_label.grid(row=2,column=0,columnspan=5,sticky='ew',padx=2,pady=(7,0));wrap_label(self._competency_label)
         self.grade_workspace=ctk.CTkFrame(page,fg_color='transparent')
         self.grade_workspace.grid(row=1,column=0,sticky='nsew',padx=8,pady=(0,8))
         self.grade_workspace.grid_rowconfigure(0,weight=1);self.grade_workspace.grid_columnconfigure(0,weight=1)
@@ -36,12 +39,12 @@ class EvaluationTools:
         host.container.grid_propagate(False)
         self._evaluation_panel=host;host.grid_columnconfigure(0,weight=1)
         self._tools_open=False;self._tools_resize_job=None
-        self._tools_close=ctk.CTkButton(host,text='Volver a las notas',height=34,command=self.alternar_herramientas)
+        self._tools_close=ctk.CTkButton(host,**sky_button(),text='Volver a las notas',height=34,command=self.alternar_herramientas)
         self._tools_close.grid(row=0,column=0,sticky='ew',padx=12,pady=8)
         def title(text,row):
             ctk.CTkLabel(host,text=text,anchor='w',font=ctk.CTkFont(size=15,weight='bold')).grid(row=row,column=0,sticky='ew',padx=12,pady=(12,4))
         def button(text,row,callback):
-            value=ctk.CTkButton(host,text=text,height=38,command=callback,font=ctk.CTkFont(size=14))
+            value=ctk.CTkButton(host,**sky_button(),text=text,height=38,command=callback,font=ctk.CTkFont(size=14))
             value.grid(row=row,column=0,sticky='ew',padx=12,pady=4);return value
         title('Cómo evaluar',1)
         mode_host=ctk.CTkFrame(host,fg_color='transparent');mode_host.grid(row=2,column=0,sticky='ew',padx=12,pady=4);mode_host.grid_columnconfigure(0,weight=1)
@@ -54,9 +57,9 @@ class EvaluationTools:
         templates=ctk.CTkFrame(host,fg_color='transparent');templates.grid(row=4,column=0,sticky='ew',padx=12,pady=4)
         templates.grid_columnconfigure((0,1),weight=1,uniform='plantillas')
         self._templates_group=templates
-        self._design_button=ctk.CTkButton(templates,text='Diseñar',height=36,width=100,command=self.configurar_instrumento,font=ctk.CTkFont(size=14))
+        self._design_button=ctk.CTkButton(templates,**sky_button(),text='Diseñar',height=36,width=100,command=self.configurar_instrumento,font=ctk.CTkFont(size=14))
         self._design_button.grid(row=0,column=0,sticky='ew',padx=(0,4))
-        self._export_button=ctk.CTkButton(templates,text='Plantilla Excel',height=36,width=110,command=lambda:self.exportar_modelo_actual(self.calif_combo_modo_inst.get()),font=ctk.CTkFont(size=14))
+        self._export_button=ctk.CTkButton(templates,**sky_button(),text='Plantilla Excel',height=36,width=110,command=lambda:self.exportar_modelo_actual(self.calif_combo_modo_inst.get()),font=ctk.CTkFont(size=14))
         self._export_button.grid(row=0,column=1,sticky='ew',padx=(4,0))
         Tooltip(self._design_button,'Diseñar o editar el instrumento aquí')
         Tooltip(self._export_button,'Crear y descargar una plantilla para completar en Excel')
@@ -95,7 +98,7 @@ class EvaluationTools:
         width=self.grade_workspace.winfo_width()/pixel_scale(self)
         panel=self._evaluation_panel.container
         docked=False
-        narrow=self._grade_bar.winfo_width()/pixel_scale(self)<650
+        narrow=self._grade_bar.winfo_width()/pixel_scale(self)<800
         state=(docked,narrow,self._tools_open)
         if state==getattr(self,'_grade_layout_state',None):
             if not self._tools_open and panel.winfo_manager():panel.place_forget();panel.grid_forget()
@@ -109,8 +112,12 @@ class EvaluationTools:
                 panel.place(relx=1,rely=0,relheight=1,anchor='ne');panel.lift()
             else:panel.place_forget()
         self._tools_toggle.configure(text='Ocultar' if self._tools_open else 'Herramientas')
-        if narrow:self.calif_combo_actividad.grid(row=1,column=0,columnspan=4,pady=6)
-        else:self.calif_combo_actividad.grid(row=0,column=1,columnspan=1,pady=0)
+        if narrow:
+            self.calif_combo_actividad.grid(row=1,column=0,columnspan=4,pady=6)
+            self._tools_toggle.grid(row=1,column=4,pady=6)
+        else:
+            self.calif_combo_actividad.grid(row=0,column=1,columnspan=1,pady=0)
+            self._tools_toggle.grid(row=0,column=2,pady=0)
         if docked:self._tools_toggle.grid_remove()
 
     def alternar_herramientas(self):
@@ -173,6 +180,25 @@ class EvaluationTools:
         for state in getattr(self,'_undo',[])+getattr(self,'_redo',[]):
             state['answers']=reconcile(state.get('answers',{}))
 
+    def exportar_tabla_actual(self):
+        context=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
+        if not context:
+            messagebox.showinfo('Seleccione una actividad','Abra la actividad que desea exportar.');return
+        if getattr(self.planilla_nativa,'_entry',None):self.planilla_nativa._entry.event_generate('<FocusOut>')
+        panel=getattr(self,'_embedded_evaluation',None)
+        if panel and panel.winfo_exists() and panel.matrix.editor is not None:
+            panel.matrix.commit_edit()
+            if panel.matrix.editor is not None:return
+        path=self.elegir_destino(title='Exportar la tabla con notas y observaciones',defaultextension='.xlsx',initialfile='Calificaciones.xlsx',filetypes=[('Excel','*.xlsx')])
+        if not path:return
+        from excel_tablas import export_activity
+        from grade_cells import grade_number
+        grades={}
+        for row in self._filas_planilla():
+            for index,cap in enumerate(context['capacidades'],4):grades[(int(row[0]),cap['capacidad_id'])]=grade_number(row[index])
+        count=export_activity(path,self.id_actividad_calificando,self._db_path,answers=getattr(self,'_instrument_pending',{}),grades=grades,roster=self._datos_estudiantes)
+        self.archivo_guardado(path,f'Tabla exportada con {count} estudiantes, notas y observaciones. Puede editarla e importarla aquí.')
+
     def exportar_modelo_actual(self,kind):
         activity=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
         if not activity:
@@ -204,13 +230,13 @@ class EvaluationTools:
         if not hasattr(self,'_criteria_view_bar') or not self._criteria_view_bar.winfo_exists():
             self._criteria_view_bar=ctk.CTkFrame(self.f_tabla_planilla,fg_color='transparent')
             self._criteria_view_bar.grid_columnconfigure(1,weight=1)
-            self._criteria_tabs=ctk.CTkSegmentedButton(self._criteria_view_bar,values=['Criterios','Resultados y asistencia'],command=self.cambiar_vista_evaluacion,height=34)
+            self._criteria_tabs=ctk.CTkSegmentedButton(self._criteria_view_bar,**sky_tabs(),values=['Criterios','Resultados y asistencia'],command=self.cambiar_vista_evaluacion,height=34)
             self._criteria_tabs.grid(row=0,column=0,padx=8,pady=5)
             caption=ctk.CTkLabel(self._criteria_view_bar,text='Puntajes editables · Nota provisional si quedan criterios pendientes',font=ctk.CTkFont(size=13),anchor='w')
             caption.grid(row=0,column=1,sticky='ew',padx=8);wrap_label(caption)
             self._criteria_view_caption=caption
         if self.tabview.get()!='Ingresar Calificativos':return
-        self._criteria_view_caption.configure(text='Cumplimiento y pendientes · Conversión a nota opcional y revisada' if self.calif_combo_modo_inst.get()=='Lista de Cotejo' else 'Puntajes manuales · Nota provisional si quedan criterios pendientes')
+        self._criteria_view_caption.configure(text='Clic o S/N: marcar · Flechas: moverse · Supr: pendiente' if self.calif_combo_modo_inst.get()=='Lista de Cotejo' else 'Flechas: moverse · F2: editar · Esc: cancelar')
         self._criteria_view_bar.grid(row=0,column=0,columnspan=3,sticky='ew')
         if getattr(self,'_evaluation_view',None) not in ('criteria','results'):self._evaluation_view='criteria'
         self._mostrar_vista_evaluacion()

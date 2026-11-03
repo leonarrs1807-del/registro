@@ -172,6 +172,9 @@ def import_template(session,source,grade,section,path):
 
 def _import_workbook(wb,formulas,session,grade,section,path,db):
     meta={row[0].value:row[1].value for row in wb[META].iter_rows(max_col=2)} if META in wb.sheetnames else {}
+    if meta.get('format')=='registro-tabla' or not meta and IND not in wb and FINAL not in wb and str(wb.active.cell(3,1).value or '').strip().upper()!='CAP_ID':
+        from excel_tablas import import_activity
+        return import_activity(wb,formulas,session,grade,section,path)
     if meta.get('format')=='registro-instrumento' and meta.get('version')==5:
         from plantilla_simple import normalize_form
         converted,checked=normalize_form(wb,formulas,path)

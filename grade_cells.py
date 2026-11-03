@@ -123,7 +123,7 @@ class GradeTreeview(ttk.Treeview):
                 label=self._cell_pool[used];used+=1
                 background,foreground,text=appearance
                 label.configure(text=text,background=background,foreground=foreground,font=self._cell_font,
-                    highlightthickness=1 if row in selected else 0,highlightbackground='#3b82f6')
+                    highlightthickness=2 if getattr(self,'active_cell',None)==(row,column) else 1 if row in selected else 0,highlightbackground='#2563eb')
                 label.place(x=x+1,y=y+1,width=max(1,w-2),height=max(1,h-2))
         for label in self._cell_pool[used:]:label.place_forget()
         editor=getattr(self,'_entry',None) or getattr(self,'editor',None)

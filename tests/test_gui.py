@@ -691,3 +691,76 @@ class DesktopTests(unittest.TestCase):
         for cap in caps:self.assertIn(capacity_label(cap[1]),texts)
         self.assertIn(db.obtener_competencias_por_curso(self.course)[0][1],self.app._competency_label.cget('text'))
         self.assertFalse(self.errors)
+
+    def test_matrix_number_name_resize_arrows_and_compact_footer(self):
+        from types import SimpleNamespace
+        for n in range(28):db.agregar_estudiante(f'Alumno {n:02}',f'Apellido {n:02}','3°','A')
+        panel,ids=self._checklist_panel(count=12);matrix=panel.matrix
+        self.assertEqual(matrix.identity.heading('code','text'),'N°')
+        self.assertEqual(matrix.identity.item(matrix.identity.get_children()[0],'values')[0],'01')
+        self.assertFalse(matrix.title.winfo_ismapped());self.assertFalse(matrix.hint.winfo_ismapped())
+        before=matrix.identity.column('name','width');matrix._start_resize(SimpleNamespace(x_root=400),'name')
+        matrix._resize_identity(SimpleNamespace(x_root=480));matrix._finish_resize()
+        self.assertGreater(matrix.identity.column('name','width'),before)
+        self.assertEqual(self.app._preferencias()['criteria_name_width'],self.app._criteria_name_width)
+        first=next(iter(panel.by_student));matrix.select(first,ids[0]);matrix.table.focus_force();self.app.update()
+        matrix.table.event_generate('<Right>');self.app.update();self.assertEqual(matrix.selected,(first,ids[1]))
+        matrix.table.event_generate('<Left>');self.app.update();self.assertEqual(matrix.selected,(first,ids[0]))
+        for _ in range(11):matrix.move_cell('right')
+        self.assertGreater(matrix.table.xview()[0],0)
+        for _ in range(28):matrix.move_cell('down')
+        self.app.update_idletasks();self.assertGreater(matrix.identity.yview()[0],0)
+        self.assertEqual(matrix.identity.selection(),matrix.table.selection());self.assertFalse(self.errors)
+
+    def test_rubric_arrows_cancel_and_undo_restore_incorrect_entry(self):
+        self.app.edicion_desbloqueada=True
+        first,second=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Explica',10),(self.cap,'Comprueba',10)])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        self.app.after(450,self.app.quit);self.app.mainloop();matrix=self.app._embedded_evaluation.matrix
+        matrix.begin_edit(self.student,first);matrix.editor.insert(0,'8');matrix.commit_edit('right')
+        self.assertEqual(matrix.selected,(self.student,second));self.assertIsNotNone(matrix.editor)
+        matrix.editor.insert(0,'999');matrix.cancel_edit()
+        self.assertNotIn((self.student,second),matrix.panel.answers)
+        self.app.deshacer_planilla();self.assertNotIn((self.student,first),matrix.panel.answers)
+        self.app.deshacer_planilla(True);self.assertEqual(float(matrix.panel.answers[(self.student,first)]),8)
+        self.assertEqual(matrix.descriptor_title.cget('font').cget('weight'),'bold')
+        self.assertFalse(self.errors)
+
+    def test_filled_table_export_and_adapted_import_preview_cancel_then_confirm(self):
+        import openpyxl
+        from excel_dialogs import TableImportPreview
+        panel,ids=self._checklist_panel();panel.set_answer(self.student,ids[0],'Sí')
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        file=app_storage.data_dir()/'tabla_completa.xlsx'
+        with patch.object(self.app,'elegir_destino',return_value=str(file)),patch.object(self.app,'archivo_guardado'):
+            self.app.exportar_tabla_actual()
+        wb=openpyxl.load_workbook(file);self.assertEqual(wb['Registro']['C7'].value,'Sí');wb['Instrumento']['B3']='Competencia nueva importada';wb.save(file);wb.close()
+        with db.obtener_conexion() as conn:before=conn.execute('SELECT COUNT(*) FROM Competencias').fetchone()[0]
+        def answer(accept):
+            for window in self.app.winfo_children():
+                if isinstance(window,TableImportPreview) and window.ready:
+                    window.confirm() if accept else window.destroy();return
+            self.app.after(60,lambda:answer(accept))
+        for accept in (False,True):
+            self.app.after(60,lambda chosen=accept:answer(chosen))
+            with patch('tkinter.filedialog.askopenfilename',return_value=str(file)),patch('tkinter.messagebox.showinfo'):
+                self.app._subir_excel_instrumento_a_sesion(self.session)
+            with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Competencias').fetchone()[0],before+int(accept))
+        self.assertNotEqual(self.app.id_actividad_calificando,self.session)
+        self.assertIn('Competencia nueva importada',[name for identity,name in self.app.competencias_curso_actual])
+        self.assertIn('Competencia nueva importada',self.app._competency_label.cget('text'));self.assertFalse(self.errors)
+
+    def test_final_matrix_export_lets_teacher_choose_number_and_letter(self):
+        import openpyxl
+        from excel_dialogs import GradeDisplayOptions
+        db.guardar_calificaciones_y_asistencia_sesion(self.session,[dict(estudiante_id=self.student,notas_por_capacidad={self.cap:17})])
+        self.app.tabview.set('Matriz General');self.app.recargar_matriz_completa();file=app_storage.data_dir()/'matriz_ambos.xlsx'
+        def choose():
+            for window in self.app.winfo_children():
+                if isinstance(window,GradeDisplayOptions) and window.ready:window.choice.set('ambos');window.confirm();return
+            self.app.after(60,choose)
+        self.app.after(60,choose)
+        with patch.object(self.app,'elegir_destino',return_value=str(file)),patch.object(self.app,'insignia_exportacion',return_value=None),patch('tkinter.messagebox.showinfo'):
+            self.app.accion_exportar_matriz_excel()
+        wb=openpyxl.load_workbook(file);self.addCleanup(wb.close)
+        self.assertEqual(wb.active['A2'].value,'N°');self.assertEqual(wb.active['C4'].value,'17 (A)');self.assertFalse(self.errors)
