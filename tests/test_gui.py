@@ -561,6 +561,10 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(matrix.table.set(str(other),str(first)),'0 (C)')
         self.assertEqual(matrix.table.set(str(other),str(second)),'Pendiente')
         matrix.select(self.student,first)
+        matrix.apply_value('5.2495')
+        self.assertEqual(matrix.table.set(str(self.student),str(first)),'5.2495 (B)')
+        self.assertIn('10.5 / 20 (B)',matrix.note.cget('text'))
+        matrix.apply_value('7.25')
         with patch('tkinter.messagebox.showwarning'):
             self.assertFalse(matrix.apply_value('11'))
         self.assertEqual(panel.answers[(self.student,first)],'7.25')
@@ -578,6 +582,8 @@ class DesktopTests(unittest.TestCase):
         entry=panel.grid_view.numeric_entries[first];entry.insert(0,'8,25')
         self.assertTrue(panel.grid_view._manual(first));self.assertEqual(panel.answers[(self.student,first)],'8.25')
         self.assertIn('Nivel A',panel.grid_view.badges[first].cget('text'))
+        entry.delete(0,'end');entry.insert(0,'5.2495');panel.grid_view._manual(first)
+        self.assertIn('Nivel B',panel.grid_view.badges[first].cget('text'))
         entry.delete(0,'end');entry.insert(0,'0');panel.grid_view._manual(first)
         tree=self.app.planilla_nativa
         self.assertEqual(float(tree.item(tree.get_children()[0],'values')[4]),0)

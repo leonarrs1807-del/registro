@@ -7,6 +7,7 @@ from interfaz import pixel_scale,scrollbar
 from instrumentos import LEVELS,LEVEL_NAMES,criterion_caption,normalized,answer_points,entered_answer
 from grade_cells import PALETTE,achievement
 from escala import thresholds,DEFAULT
+from calculos import normalized_total
 
 
 def number(value):return format(float(value),'.12g')
@@ -130,7 +131,7 @@ class InstrumentGrid(ctk.CTkFrame):
                 points=answer_points(item['tipo'],value,item['puntaje_maximo'],item['puntajes'])
                 root=self.winfo_toplevel();app=getattr(root,'app',root)
                 path=getattr(app,'_db_path',None)
-                level=achievement(20*points/item['puntaje_maximo'],thresholds(path) if path else DEFAULT)
+                level=achievement(normalized_total(points,item['puntaje_maximo']),thresholds(path) if path else DEFAULT)
                 caption=f'Puntaje: {number(points)} · Nivel {level}'
             if identity in self.numeric_entries:
                 entry=self.numeric_entries[identity];entry.delete(0,'end')

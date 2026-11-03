@@ -9,6 +9,7 @@ from escala import thresholds
 from interfaz import pixel_scale,scrollbar
 from widgets import prepare_destroy
 from evaluacion_datos import grade_answers
+from calculos import normalized_total
 
 
 class EvaluationMatrix(ctk.CTkFrame):
@@ -107,7 +108,7 @@ class EvaluationMatrix(ctk.CTkFrame):
                 raw=answers.get((student,item['id']))
                 if raw is None:values.append('Pendiente');continue
                 filled+=1;points=answer_points(item['tipo'],raw,item['puntaje_maximo'],item['puntajes'])
-                level=achievement(20*points/item['puntaje_maximo'],limits)
+                level=achievement(normalized_total(points,item['puntaje_maximo']),limits)
                 values.append(f'{number(points)} ({level})')
             self.table.item(str(student),values=(*values,f'{filled}/{len(self.items)}'))
         self._detail()
