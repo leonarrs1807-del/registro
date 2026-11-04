@@ -355,6 +355,8 @@ def inicializar_db(db_path: Path = DB_PATH) -> None:
             cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Clases'")
         if "tipo_instrumento" not in cols_ses:
             cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN tipo_instrumento TEXT NOT NULL DEFAULT 'Normal'")
+        if 'modo_ingreso' not in cols_ses:cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN modo_ingreso TEXT NOT NULL DEFAULT 'capacidades'")
+        if 'tipo_actividad' not in cols_ses:cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN tipo_actividad TEXT NOT NULL DEFAULT 'Actividad'")
         if "cotejo_regla" not in cols_ses:
             cursor.execute("ALTER TABLE Sesiones_Clase ADD COLUMN cotejo_regla TEXT")
             # A migration preserves previously published grades and labels them as legacy.
@@ -919,6 +921,8 @@ def crear_o_actualizar_sesion_clase(
     categoria: str = "Clases",
     fecha_str: Optional[str] = None,
     db_path: Path = DB_PATH,
+    tipo_actividad=None,
+    metodo=None,
 ) -> int:
     fecha_final = date.fromisoformat(fecha_str or date.today().isoformat()).isoformat()
     peso_clase = valid_number(peso_clase, 0.000001, 1000000, "Peso")
@@ -992,6 +996,14 @@ def crear_o_actualizar_sesion_clase(
                 """,
                 (sid, cap_id, criterio.strip()),
             )
+        if tipo_actividad is not None:
+            if tipo_actividad not in ('Actividad','Prueba','Trabajo','Ficha de trabajo'):raise ValueError('Tipo de actividad no válido.')
+            if tipo_actividad=='Ficha de trabajo' and categoria!='Trabajos':raise ValueError('Las fichas de trabajo pertenecen a Trabajos.')
+            cur.execute('UPDATE Sesiones_Clase SET tipo_actividad=? WHERE id=?',(tipo_actividad,sid))
+        if metodo is not None:
+            if metodo not in ('Nota global','Nota directa','Rúbrica','Lista de Cotejo'):raise ValueError('Método no válido.')
+            kind=metodo if metodo in ('Rúbrica','Lista de Cotejo') else 'Normal'
+            cur.execute('UPDATE Sesiones_Clase SET tipo_instrumento=?,modo_ingreso=? WHERE id=?',(kind,'global' if metodo=='Nota global' else 'capacidades',sid))
         conn.commit()
         return sid
 
@@ -1025,7 +1037,7 @@ def obtener_sesiones_clase(
         SELECT s.id, s.curso_id, s.competencia_id, c.nombre AS competencia_nombre,
                s.grado, s.seccion, COALESCE(s.categoria, 'Clases') AS categoria,
                s.titulo_tema, s.proposito, s.peso_clase, s.archivada,
-               COALESCE(s.tipo_instrumento, 'Normal') AS tipo_instrumento, s.fecha
+               COALESCE(s.tipo_instrumento, 'Normal') AS tipo_instrumento, s.modo_ingreso,s.tipo_actividad,s.fecha
         FROM Sesiones_Clase s
         JOIN Competencias c ON s.competencia_id = c.id
         WHERE s.curso_id = ? AND s.grado = ? AND s.seccion = ?
@@ -1067,7 +1079,8 @@ def guardar_calificaciones_y_asistencia_sesion(
             actualizar_peso_actividad(sesion_id, nuevo_peso, db_path)
         if nuevo_instrumento is not None:
             from instrumentos import instrument_kind
-            kind='Normal' if nuevo_instrumento=='Nota directa' else instrument_kind(nuevo_instrumento)
+            kind='Normal' if nuevo_instrumento in ('Nota directa','Nota global') else instrument_kind(nuevo_instrumento)
+            cur.execute('UPDATE Sesiones_Clase SET modo_ingreso=? WHERE id=?',('global' if nuevo_instrumento=='Nota global' else 'capacidades',sesion_id))
             cur.execute('UPDATE Sesiones_Clase SET tipo_instrumento=? WHERE id=?',(kind,sesion_id))
             if kind!='Lista de Cotejo':cur.execute('UPDATE Sesiones_Clase SET cotejo_regla=NULL,cotejo_pendiente=0 WHERE id=?',(sesion_id,))
         session = cur.execute("SELECT grado, seccion FROM Sesiones_Clase WHERE id=?", (sesion_id,)).fetchone()
@@ -1959,3 +1972,13 @@ def guardar_tamano_letra_preferido(tamano: str, db_path: Path = DB_PATH) -> None
 def actualizar_pesos_actividades(pesos, db_path: Path = DB_PATH):
     for sid, value in pesos:
         actualizar_peso_actividad(sid, value, db_path)
+
+
+@atomic
+def guardar_notas_globales_sesion(sesion_id,notas,db_path: Path = DB_PATH):
+    """One grade per student, copied once to each selected session capacity."""
+    with obtener_conexion(db_path) as conn:
+        caps=[r[0] for r in conn.execute('SELECT capacidad_id FROM Sesion_Capacidades WHERE sesion_id=?',(sesion_id,))]
+        if not caps:raise ValueError('Seleccione las capacidades de la actividad.')
+        rows=[dict(estudiante_id=student,preservar_asistencia=True,notas_por_capacidad={c:(None if note is None else valid_number(note)) for c in caps}) for student,note in notas.items()]
+        guardar_calificaciones_y_asistencia_sesion(sesion_id,rows,db_path,nuevo_instrumento='Nota global')

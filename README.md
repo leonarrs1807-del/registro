@@ -1,3 +1,11 @@
+## Full personal 1.11.0
+
+Fichas por nombre dentro de Trabajos, sin adjuntos. Entrada de una nota global por
+estudiante para las capacidades seleccionadas, o nota por capacidad, rúbrica y cotejo.
+Conserva los porcentajes de los rubros y sus pesos relativos. Exporta el propósito
+de la clase con encabezados compactos y un resumen de capacidades opcional.
+Corrige la escala de las notas y de la lista de temas en Prácticas.
+
 ## Full personal 1.10.0
 
 Tablas celestes con N°, nombre ajustable y fijo al deslizar, flechas para recorrer

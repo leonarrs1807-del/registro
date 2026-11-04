@@ -48,7 +48,7 @@ class EvaluationTools:
             value.grid(row=row,column=0,sticky='ew',padx=12,pady=4);return value
         title('Cómo evaluar',1)
         mode_host=ctk.CTkFrame(host,fg_color='transparent');mode_host.grid(row=2,column=0,sticky='ew',padx=12,pady=4);mode_host.grid_columnconfigure(0,weight=1)
-        self.calif_combo_modo_inst=ctk.CTkComboBox(mode_host,values=['Nota directa','Lista de Cotejo','Rúbrica'],state='readonly',height=36,
+        self.calif_combo_modo_inst=ctk.CTkComboBox(mode_host,values=['Nota global','Nota directa','Lista de Cotejo','Rúbrica'],state='readonly',height=36,
             command=self.cambiar_metodo_evaluacion)
         self.calif_combo_modo_inst.set('Nota directa');self.calif_combo_modo_inst.grid(row=0,column=0,sticky='ew')
         self._instrument_status=ctk.CTkLabel(mode_host,text='',justify='left',anchor='w',wraplength=220,font=ctk.CTkFont(size=14))
@@ -63,13 +63,15 @@ class EvaluationTools:
         self._export_button.grid(row=0,column=1,sticky='ew',padx=(4,0))
         Tooltip(self._design_button,'Diseñar o editar el instrumento aquí')
         Tooltip(self._export_button,'Crear y descargar una plantilla para completar en Excel')
+        self._summary_export=button('Exportar con resumen por capacidad',5,lambda:self.exportar_tabla_actual(True))
         self._import_button=button('Importar Excel',6,self.accion_importar_rubrica_cotejo_en_calificacion)
         button('Ver actividad e instrumento',7,self.detalles_calificacion)
         title('Actividad',8)
         button('Asistencia de todos',9,self.accion_marcar_asistencia_todos)
         line=ctk.CTkFrame(host,fg_color='transparent');line.grid(row=10,column=0,sticky='ew',padx=12,pady=6);line.grid_columnconfigure(1,weight=1)
-        ctk.CTkLabel(line,text='Peso',font=ctk.CTkFont(size=14)).grid(row=0,column=0,padx=(0,8))
+        ctk.CTkLabel(line,text='Peso relativo',font=ctk.CTkFont(size=14)).grid(row=0,column=0,padx=(0,8))
         self.calif_entry_peso=ctk.CTkEntry(line,width=90,height=36);self.calif_entry_peso.grid(row=0,column=1,sticky='ew')
+        Tooltip(self.calif_entry_peso,'1: igual importancia; 2: doble dentro del mismo rubro. El porcentaje se define en Ponderaciones.')
         self.calif_combo_orden=ctk.CTkComboBox(host,values=['Apellidos (A-Z)','Código (Ej. 4A01)','Apellidos (Z-A)','Nombres (A-Z)'],
             state='readonly',height=36,command=lambda _:self.dibujar_planilla_calificacion())
         self.calif_combo_orden.set('Apellidos (A-Z)');self.calif_combo_orden.grid(row=11,column=0,sticky='ew',padx=12,pady=6)
@@ -132,12 +134,14 @@ class EvaluationTools:
         activity=bool(getattr(self,'actividades_creadas_map',{}).get(getattr(self,'id_actividad_calificando',None)))
         loaded=getattr(self,'_loaded_instrument_kind',None)
         ready=loaded==kind and bool(getattr(self,'_loaded_ind_count',0))
-        direct=kind=='Nota directa'
-        self._instrument_status.configure(text='Escriba la nota final de cada capacidad.' if direct else f"{getattr(self,'_loaded_ind_count',0)} criterios · Una respuesta por criterio" if ready else 'Empiece con una plantilla Excel o diseñe el instrumento aquí.')
+        direct=kind in ('Nota directa','Nota global')
+        self._instrument_status.configure(text='Una nota se aplica a las capacidades seleccionadas de esta actividad.' if kind=='Nota global' else 'Escriba la nota final de cada capacidad.' if direct else f"{getattr(self,'_loaded_ind_count',0)} criterios · Una respuesta por criterio" if ready else 'Empiece con una plantilla Excel o diseñe el instrumento aquí.')
         self.btn_evaluar.configure(text='Ingresar notas' if direct else 'Evaluar criterios',state='normal' if has_data and (direct or ready) else 'disabled')
         for widget in (self._templates_group,self._import_button):
             if direct:widget.grid_remove()
             else:widget.grid()
+        if kind=='Rúbrica' and ready:self._summary_export.grid()
+        else:self._summary_export.grid_remove()
         self._design_button.configure(text='Editar' if ready else 'Diseñar',state='normal' if activity else 'disabled')
         self._export_button.configure(state='normal' if activity else 'disabled')
         self._evaluation_steps.configure(text='1. Haga doble clic en una nota.\n2. Escriba de 0 a 20.\n3. Pulse Guardar notas.' if direct else
@@ -146,9 +150,16 @@ class EvaluationTools:
         self._sincronizar_vistas_evaluacion(ready and not direct)
 
     def cambiar_metodo_evaluacion(self,value):
+        embedded=getattr(self,'_embedded_evaluation',None)
+        if embedded and embedded.winfo_exists() and embedded.matrix.editor is not None:
+            self.calif_combo_modo_inst.set(embedded.tipo_inst);embedded.matrix.commit_edit()
+            if embedded.matrix.editor is not None:return
+        self.calif_combo_modo_inst.set(value)
+        panel=getattr(self,'_global_grade_panel',None)
+        if panel and panel.winfo_exists() and panel.editor is not None and not panel.commit():self.calif_combo_modo_inst.set('Nota global');return
         self._evaluation_view=None
         self.dibujar_planilla_calificacion()
-        ready=value=='Nota directa' or (getattr(self,'_loaded_instrument_kind',None)==value and getattr(self,'_loaded_ind_count',0))
+        ready=value in ('Nota directa','Nota global') or (getattr(self,'_loaded_instrument_kind',None)==value and getattr(self,'_loaded_ind_count',0))
         if ready and getattr(self,'edicion_desbloqueada',False) and getattr(self,'id_actividad_calificando',None):self.marcar_planilla_pendiente()
 
     def configurar_instrumento(self):
@@ -180,7 +191,7 @@ class EvaluationTools:
         for state in getattr(self,'_undo',[])+getattr(self,'_redo',[]):
             state['answers']=reconcile(state.get('answers',{}))
 
-    def exportar_tabla_actual(self):
+    def exportar_tabla_actual(self,include_summary=False):
         context=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
         if not context:
             messagebox.showinfo('Seleccione una actividad','Abra la actividad que desea exportar.');return
@@ -191,12 +202,14 @@ class EvaluationTools:
             if panel.matrix.editor is not None:return
         path=self.elegir_destino(title='Exportar la tabla con notas y observaciones',defaultextension='.xlsx',initialfile='Calificaciones.xlsx',filetypes=[('Excel','*.xlsx')])
         if not path:return
+        panel=getattr(self,'_global_grade_panel',None)
+        if panel and panel.winfo_exists() and panel.editor is not None and not panel.commit():return
         from excel_tablas import export_activity
         from grade_cells import grade_number
         grades={}
         for row in self._filas_planilla():
             for index,cap in enumerate(context['capacidades'],4):grades[(int(row[0]),cap['capacidad_id'])]=grade_number(row[index])
-        count=export_activity(path,self.id_actividad_calificando,self._db_path,answers=getattr(self,'_instrument_pending',{}),grades=grades,roster=self._datos_estudiantes)
+        count=export_activity(path,self.id_actividad_calificando,self._db_path,answers=getattr(self,'_instrument_pending',{}),grades=grades,roster=self._datos_estudiantes,include_summary=include_summary)
         self.archivo_guardado(path,f'Tabla exportada con {count} estudiantes, notas y observaciones. Puede editarla e importarla aquí.')
 
     def exportar_modelo_actual(self,kind):
@@ -221,6 +234,20 @@ class EvaluationTools:
     def _sincronizar_vistas_evaluacion(self,ready):
         if getattr(self,'_closing_ui',False) or not getattr(self,'planilla_nativa',None):return
         if not hasattr(self,'_results_pane') or not self._results_pane.winfo_exists():return
+        global_panel=getattr(self,'_global_grade_panel',None)
+        global_mode=self.calif_combo_modo_inst.get()=='Nota global'
+        if global_panel and global_panel.winfo_exists() and (not global_mode or global_panel.session!=self.id_actividad_calificando):global_panel.grid_remove()
+        if global_mode:
+            bar=getattr(self,'_criteria_view_bar',None)
+            if bar and bar.winfo_exists():bar.grid_remove()
+            embedded=getattr(self,'_embedded_evaluation',None)
+            if embedded and embedded.winfo_exists():embedded.grid_remove()
+            if not global_panel or not global_panel.winfo_exists() or global_panel.session!=self.id_actividad_calificando:
+                if global_panel and global_panel.winfo_exists():global_panel.destroy()
+                from nota_global_ui import GlobalGradePanel
+                global_panel=GlobalGradePanel(self.f_tabla_planilla,self);self._global_grade_panel=global_panel
+            else:global_panel.refresh()
+            self._results_pane.grid_remove();global_panel.grid(row=1,column=0,columnspan=3,sticky='nsew');self._evaluation_view='global';self._programar_herramientas();return
         if not ready:
             bar=getattr(self,'_criteria_view_bar',None)
             if bar and bar.winfo_exists():bar.grid_remove()
@@ -277,6 +304,8 @@ class EvaluationTools:
         self._mostrar_vista_evaluacion(student,capacity)
 
     def recargar_evaluacion_guardada(self):
+        global_panel=getattr(self,'_global_grade_panel',None)
+        if global_panel and global_panel.winfo_exists():global_panel.refresh()
         panel=getattr(self,'_embedded_evaluation',None)
         if panel and panel.winfo_exists():panel.reload_from_root(saved=True)
 

@@ -87,8 +87,10 @@ class GradeTreeview(ttk.Treeview):
         from db import DB_PATH
         limits=thresholds(getattr(root,'_db_path',DB_PATH))
         style=ttk.Style(self);font=style.lookup('Treeview','font')
-        if font!=getattr(self,'_cell_font_key',None):
-            self._cell_font=tkfont.Font(root=self,font=font);self._cell_font.configure(weight='bold');self._cell_font_key=font
+        native=getattr(root,'_native_table_font_size',-16)
+        key=(font,native)
+        if key!=getattr(self,'_cell_font_key',None):
+            self._cell_font=tkfont.Font(root=self,family='Segoe UI',size=native,weight='bold');self._cell_font_key=key
         minimum=self._cell_font.measure('20.00 (AD)')+18
         for column in self.grade_columns:
             if self.column(column,'width')<minimum:self.column(column,width=minimum,minwidth=minimum)

@@ -105,6 +105,12 @@ def export_form(destination,course,grade,section,title,competency,capacities,kin
                 for cell in row:
                     if cell.data_type=='f':
                         cell.value=re.sub(r"'2_Evaluar_Criterios'!([A-Z]+)(\d+)",shift,cell.value).replace("'"+IND+"'!","'"+INSTRUMENTO+"'!")
+        if session:
+            from evaluacion_datos import activity
+            purpose=activity(session,path).get('proposito') or ''
+            if purpose:
+                design['A2']=str(design['A2'].value or '')+'\nPropósito: '+purpose
+                design['A2'].alignment=Alignment(wrap_text=True,vertical='center');design.row_dimensions[2].height=60
         for entry in layout:
             design.cell(entry['row'],3).comment=Comment('Complete el criterio de esta sesión. Los bloques nuevos que deje totalmente vacíos se omiten al importar.','Registro Docente')
         design.title=INSTRUMENTO;raw.title=REGISTRO;summary.sheet_state='hidden'

@@ -78,7 +78,7 @@ class PointsPanel(ctk.CTkFrame):
         self.panel=split(self,'temas_puntos');self.panel.grid(row=1,column=0,sticky='nsew',padx=8,pady=6)
         left=ctk.CTkFrame(self.panel);left.grid_columnconfigure(0,weight=1);left.grid_rowconfigure(1,weight=1)
         ctk.CTkLabel(left,text='Temas',font=ctk.CTkFont(weight='bold')).grid(row=0,column=0,padx=8,pady=8,sticky='w')
-        self.listing=tk.Listbox(left,font=('Segoe UI',13),exportselection=False,activestyle='dotbox',width=18,borderwidth=0,highlightthickness=0)
+        self.listing=tk.Listbox(left,font=('Segoe UI',getattr(app,'_native_table_font_size',-16)),exportselection=False,activestyle='dotbox',width=18,borderwidth=0,highlightthickness=0)
         self.listing.grid(row=1,column=0,sticky='nsew',padx=8,pady=4)
         from interfaz import scrollbar
         sb=scrollbar(left,'vertical',self.listing.yview);sb.grid(row=1,column=1,sticky='ns');self.listing.configure(yscrollcommand=sb.set)

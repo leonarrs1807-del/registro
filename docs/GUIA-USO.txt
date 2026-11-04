@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.10.0 - FULL PERSONAL PARA LEONARDO
+REGISTRO DOCENTE 1.11.0 - FULL PERSONAL PARA LEONARDO
 
 EMPEZAR Y GUARDAR
 
@@ -262,3 +262,40 @@ La exportación en letras conserva las notas numéricas originales en informaci�
 interna para que una reimportación sin cambios no pierda precisión. Si desea
 cambiar una nota al importar, escriba su número o número (letra): una letra por
 sí sola no permite deducir una nota numérica exacta.
+
+FICHAS DENTRO DE TRABAJOS Y NOTA GLOBAL (FULL PERSONAL 1.11)
+
+En Actividades elija Tipo de actividad → Ficha de trabajo. El rubro pasa a
+Trabajos. Escriba el nombre de la ficha y, si corresponde, el propósito de la clase.
+Seleccione la competencia. No se adjuntan ni cargan archivos de las fichas.
+
+Cómo evaluar ofrece Nota global, Nota directa por capacidad, Rúbrica o Lista de
+Cotejo, tanto para pruebas como para fichas. Nota global permite escribir una sola
+nota de cero a veinte por estudiante. Esa nota se repite en las capacidades
+seleccionadas de la actividad: 5 en cuatro capacidades sigue dando promedio 5.
+Las demás competencias no reciben esa nota. Ver / cambiar capacidades permite
+revisar o ajustar la selección; por defecto se seleccionan todas al elegir una
+competencia. La selección se conserva al guardar.
+
+En Calificaciones, la nota global muestra una columna de nota, asistencia y
+comentario. Enter baja al siguiente estudiante. Esc cancela el texto en edición;
+Deshacer/Rehacer o Ctrl+Z/Ctrl+Y recuperan cambios anteriores antes de guardar.
+Guarde las notas para confirmarlas. Vacío es pendiente y cero es una nota real.
+Al pasar desde notas diferentes por capacidad, verá Diferentes hasta que escriba
+la nota que quiere aplicar; cambiar de método por sí solo conserva las notas.
+
+Las fichas utilizan el porcentaje de Trabajos de Ponderaciones. Peso relativo 1
+significa la misma importancia que los demás trabajos con peso 1; peso 2 implica
+el doble dentro del rubro. No significa 1 % ni 2 %. Los porcentajes de los rubros
+siguen sumando cien y no se crea otro rubro para fichas.
+
+La rúbrica y el cotejo conservan su funcionamiento por criterios. El cotejo sigue
+como orientación por defecto; convertirlo a nota es opcional y requiere revisión.
+
+Exportar tabla incluye el propósito de la clase en Instrumento y Registro, con
+encabezados compactos. El resumen numérico por capacidad se omite para evitar
+repeticiones. Si lo necesita, abra Herramientas → Exportar con resumen por capacidad.
+Plantilla Excel también incorpora el propósito que guardó en la actividad.
+
+Las notas y los nombres usan una escala de letra coherente, sin multiplicar el
+tamaño de las notas. La lista de temas de Prácticas sigue el tamaño de las tablas.

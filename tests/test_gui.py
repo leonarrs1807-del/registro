@@ -764,3 +764,64 @@ class DesktopTests(unittest.TestCase):
             self.app.accion_exportar_matriz_excel()
         wb=openpyxl.load_workbook(file);self.addCleanup(wb.close)
         self.assertEqual(wb.active['A2'].value,'N°');self.assertEqual(wb.active['C4'].value,'17 (A)');self.assertFalse(self.errors)
+
+    def test_global_grade_five_applies_to_selected_capacities_and_supports_undo_save(self):
+        self.app.edicion_desbloqueada=True
+        caps=db.obtener_capacidades_por_competencia(self.comp)
+        sid=db.crear_o_actualizar_sesion_clase(None,self.course,self.comp,'3°','A','Ficha de ecuaciones','Explicar una solución',1,[(c[0],'') for c in caps],categoria='Trabajos',tipo_actividad='Ficha de trabajo',metodo='Nota global')
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(sid)
+        self.app.after(450,self.app.quit);self.app.mainloop()
+        self.assertEqual(self.app.calif_combo_modo_inst.get(),'Nota global');self.assertEqual(self.app._evaluation_view,'global')
+        panel=self.app._global_grade_panel;iid=panel.table.get_children()[0]
+        self.assertEqual(panel.table['displaycolumns'],('Asistencia','Nota global','Comentario'))
+        panel.edit(iid);panel.editor.insert(0,'5');self.assertTrue(panel.commit())
+        self.assertEqual(self.app.planilla_nativa.item(iid,'values')[4:-1],tuple('5' for c in caps))
+        self.app.deshacer_planilla();self.assertEqual(panel.table.set(iid,'Nota global'),'')
+        self.app.deshacer_planilla(True);self.assertEqual(panel.table.set(iid,'Nota global'),'5')
+        with patch('tkinter.messagebox.showinfo'):self.app.accion_guardar_planilla_calificacion_completa()
+        with db.obtener_conexion() as conn:
+            self.assertEqual(conn.execute('SELECT DISTINCT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchall(),[(5.0,)])
+            self.assertEqual(conn.execute('SELECT modo_ingreso FROM Sesiones_Clase WHERE id=?',(sid,)).fetchone()[0],'global')
+        self.app.dibujar_planilla_calificacion(forzar=True)
+        self.assertEqual(self.app._global_grade_panel.table.set(self.app._global_grade_panel.table.get_children()[0],'Nota global'),'5')
+        self.assertFalse(self.errors)
+
+    def test_create_worksheet_in_trabajos_with_any_evaluation_method(self):
+        self.app.edicion_desbloqueada=True;self.app.tabview.set('Crear Actividad')
+        self.app.crear_combo_tipo.set('Ficha de trabajo');self.app.al_elegir_tipo_actividad('Ficha de trabajo')
+        self.assertEqual(self.app.crear_combo_categoria.get(),'Trabajos')
+        self.app.crear_entry_titulo.insert(0,'Ficha 1');self.app.crear_combo_metodo.set('Nota global')
+        self.app.crear_txt_proposito.insert('1.0','Resolver ecuaciones justificando cada paso')
+        with patch('tkinter.messagebox.showinfo'),patch('tkinter.messagebox.askyesno',return_value=False):self.app.accion_guardar_nueva_actividad()
+        with db.obtener_conexion() as conn:
+            row=conn.execute("SELECT categoria,tipo_actividad,modo_ingreso,proposito FROM Sesiones_Clase WHERE titulo_tema='Ficha 1'").fetchone()
+        self.assertEqual(row,('Trabajos','Ficha de trabajo','global','Resolver ecuaciones justificando cada paso'))
+        self.assertEqual(self.app.crear_combo_metodo.cget('values'),['Nota global','Nota directa','Rúbrica','Lista de Cotejo'])
+        self.assertFalse(self.errors)
+
+    def test_grade_fonts_match_names_and_practice_list_is_readable(self):
+        import tkinter.font as tkfont
+        from tkinter import ttk
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;iid=tree.get_children()[0];tree._update_value(iid,4,'15');tree.paint_grades()
+        expected=getattr(self.app,'_native_table_font_size')
+        self.assertEqual(tree._cell_font.cget('size'),expected)
+        base=tkfont.Font(root=self.app,font=ttk.Style(self.app).lookup('Treeview','font'))
+        self.assertLessEqual(tree._cell_font.metrics('linespace'),base.metrics('linespace')+3)
+        self.app.actualizar_lista_practicas()
+        font=tkfont.Font(root=self.app,font=self.app.puntos_panel.listing.cget('font'))
+        descriptor=self.app.tk.splitlist(self.app.puntos_panel.listing.cget('font'))
+        self.assertEqual(int(descriptor[1]),expected)
+        self.assertGreaterEqual(font.metrics('linespace'),base.metrics('linespace')-2)
+        self.assertFalse(self.errors)
+
+    def test_switch_to_global_commits_active_rubric_cell_and_keeps_selected_method(self):
+        self.app.edicion_desbloqueada=True
+        identity=db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Explica',10)])[0]
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        self.app.after(450,self.app.quit);self.app.mainloop()
+        matrix=self.app._embedded_evaluation.matrix;matrix.begin_edit(self.student,identity);matrix.editor.insert(0,'8')
+        self.app.calif_combo_modo_inst.set('Nota global');self.app.cambiar_metodo_evaluacion('Nota global')
+        self.assertEqual(self.app.calif_combo_modo_inst.get(),'Nota global')
+        panel=self.app._global_grade_panel;self.assertEqual(panel.table.set(panel.table.get_children()[0],'Nota global'),'16')
+        self.assertFalse(self.errors)

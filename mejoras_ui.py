@@ -155,6 +155,34 @@ class ClassroomTools:
         self.archivo_guardado(path,f'Registro vacío creado. Copia del anterior: {saved}')
         self._reiniciar(target)
 
+    def mostrar_capacidades_actividad(self):
+        if not hasattr(self,'scroll_caps_creacion'):return
+        opened=self.crear_combo_metodo.get()!='Nota global' or getattr(self,'_caps_expanded',False)
+        if opened:self.scroll_caps_creacion.grid()
+        else:self.scroll_caps_creacion.grid_remove()
+        count=sum(bool(w['checkbox'].get()) for w in self.widgets_caps_creacion)
+        self.crear_btn_capacidades.configure(text=f'{count} capacidades seleccionadas · '+('Ocultar' if opened else 'Ver / cambiar'))
+
+    def alternar_capacidades_actividad(self):
+        self._caps_expanded=not getattr(self,'_caps_expanded',False);self.mostrar_capacidades_actividad()
+
+    def al_elegir_tipo_actividad(self,value):
+        rubro={'Actividad':'Clases','Prueba':'Exámenes','Trabajo':'Trabajos','Ficha de trabajo':'Trabajos'}[value]
+        self.crear_combo_categoria.set(rubro);self.actualizar_ayuda_peso_actividad()
+
+    def al_elegir_rubro_actividad(self,value):
+        current=self.crear_combo_tipo.get()
+        if value!='Trabajos' or current not in ('Trabajo','Ficha de trabajo'):
+            self.crear_combo_tipo.set({'Clases':'Actividad','Exámenes':'Prueba','Trabajos':'Trabajo'}.get(value,'Actividad'))
+        self.actualizar_ayuda_peso_actividad()
+
+    def actualizar_ayuda_peso_actividad(self):
+        import db
+        course=self.obtener_curso_activo_id()
+        if course:
+            rubro=self.crear_combo_categoria.get();percent=db.obtener_pesos_rubros_curso(course,self._db_path).get(rubro,0)
+            self.crear_peso_ayuda.configure(text=f'{rubro}: {percent:g} % del curso. Peso 1: igual importancia; peso 2: doble dentro de este rubro. Cambie el porcentaje en Ponderaciones.')
+
     def refrescar_curriculo_importado(self):
         import db
         rows=db.obtener_competencias_por_curso(self.obtener_curso_activo_id(),self._db_path)
@@ -204,6 +232,8 @@ class ClassroomTools:
 
     def _is_grade_widget(self,widget):
         matrix=getattr(getattr(self,'_embedded_evaluation',None),'matrix',None)
+        global_panel=getattr(self,'_global_grade_panel',None)
+        if widget in (getattr(global_panel,'table',None),getattr(global_panel,'identity',None)):return True
         return widget in (getattr(self,'planilla_nativa',None),getattr(self,'identidad_planilla',None),getattr(matrix,'table',None),getattr(matrix,'identity',None))
 
     def deshacer_planilla(self,redo=False):
@@ -287,7 +317,7 @@ class ClassroomTools:
         if not act:messagebox.showinfo('Actividad','Abra primero una actividad en Ingresar Calificativos.');return
         title=simpledialog.askstring('Duplicar actividad','Nombre de la nueva actividad:',initialvalue=act['titulo_tema']+' (copia)')
         if not title:return
-        sid=db.crear_o_actualizar_sesion_clase(None,act['curso_id'],act['competencia_id'],act['grado'],act['seccion'],title,act['proposito'],act['peso_clase'],[(c['capacidad_id'],c['criterio_precisado']) for c in act['capacidades']],categoria=act['categoria'])
+        sid=db.crear_o_actualizar_sesion_clase(None,act['curso_id'],act['competencia_id'],act['grado'],act['seccion'],title,act['proposito'],act['peso_clase'],[(c['capacidad_id'],c['criterio_precisado']) for c in act['capacidades']],categoria=act['categoria'],tipo_actividad=act.get('tipo_actividad','Actividad'),metodo=act['tipo_instrumento'] if act['tipo_instrumento'] in ('Rúbrica','Lista de Cotejo') else 'Nota global' if act.get('modo_ingreso')=='global' else 'Nota directa')
         inds=db.obtener_indicadores_instrumento_sesion(act['id'])
         if inds:db.guardar_indicadores_instrumento_sesion(sid,inds[0]['tipo'],[{k:v for k,v in i.items() if k!='id'} for i in inds])
         self.recargar_cursos_y_contexto();self.abrir_actividad_en_pestana_calificar(sid)

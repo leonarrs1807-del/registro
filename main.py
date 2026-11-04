@@ -613,6 +613,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_size = round(f_size * getattr(self, "_zoom", 1))
         import tkinter.font as tkfont
         native_size=-round(f_size*self._get_window_scaling())
+        self._native_table_font_size=native_size
         table_font=tkfont.Font(root=self,family="Segoe UI",size=native_size)
         r_height=table_font.metrics("linespace")+round(8*self._get_window_scaling())
                 
@@ -642,6 +643,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         estilo.configure("Treeview", rowheight=r_height, font=("Segoe UI", native_size))
         estilo.map("Treeview", background=[("selected", cfg_t["tree_sel"])])
         self.stripe_color = stripe_color
+        self.actualizar_lista_practicas()
         
         # Actualizar colores de las filas intercaladas en todas las tablas
         if hasattr(self, 'planilla_nativa') and self.planilla_nativa:
@@ -1011,17 +1013,18 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_datos1.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(
-            f_datos1, text="Tipo", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Rubro", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=0, sticky="w")
         self.crear_combo_categoria = ctk.CTkComboBox(
             f_datos1,
             values=["Clases", "Exámenes", "Trabajos", "Prácticas / Otros"],
+            command=self.al_elegir_rubro_actividad,
         )
         self.crear_combo_categoria.set("Clases")
         self.crear_combo_categoria.grid(row=1, column=0, padx=(0, 6), pady=(0, 4), sticky="ew")
 
         ctk.CTkLabel(
-            f_datos1, text="Peso", font=ctk.CTkFont(size=12, weight="bold")
+            f_datos1, text="Peso relativo", font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=1, sticky="w")
         self.crear_combo_peso = ctk.CTkComboBox(
             f_datos1,
@@ -1038,7 +1041,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         ).grid(row=4, column=0, sticky="w")
         
         self.crear_entry_titulo = ctk.CTkEntry(
-            f_datos1, placeholder_text="Ej. Clase 1: Ecuaciones / Examen Unidad 1"
+            f_datos1, placeholder_text="Nombre de la clase, prueba, trabajo o ficha"
         )
         self.crear_entry_titulo.grid(row=3, column=0,columnspan=2, pady=(0, 8), sticky="ew")
 
@@ -1047,6 +1050,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_ent_fecha.insert(0, datetime.date.today().isoformat())
         self.crear_ent_fecha.grid(row=4, column=1, pady=(0, 4), sticky="ew")
 
+        ctk.CTkLabel(f_datos1,text='Tipo de actividad',font=ctk.CTkFont(size=12,weight='bold')).grid(row=5,column=0,columnspan=2,sticky='w')
+        self.crear_combo_tipo=ctk.CTkComboBox(f_datos1,values=['Actividad','Prueba','Trabajo','Ficha de trabajo'],state='readonly',command=self.al_elegir_tipo_actividad)
+        self.crear_combo_tipo.set('Actividad');self.crear_combo_tipo.grid(row=6,column=0,columnspan=2,sticky='ew',pady=(0,6))
+        ctk.CTkLabel(f_datos1,text='Cómo evaluar',font=ctk.CTkFont(size=12,weight='bold')).grid(row=7,column=0,columnspan=2,sticky='w')
+        self.crear_combo_metodo=ctk.CTkComboBox(f_datos1,values=['Nota global','Nota directa','Rúbrica','Lista de Cotejo'],state='readonly',command=lambda _:self.mostrar_capacidades_actividad())
+        self.crear_combo_metodo.set('Nota global');self.crear_combo_metodo.grid(row=8,column=0,columnspan=2,sticky='ew')
+        self.crear_peso_ayuda=ctk.CTkLabel(f_datos1,text='Peso 1: igual importancia dentro del rubro. El porcentaje se elige en Ponderaciones.',anchor='w',justify='left',wraplength=310,font=ctk.CTkFont(size=13))
+        self.crear_peso_ayuda.grid(row=9,column=0,columnspan=2,sticky='ew',pady=4);wrap_label(self.crear_peso_ayuda)
         self.crear_txt_proposito = TextBuffer()
 
         f_comp_c = ctk.CTkFrame(panel_form, fg_color="transparent")
@@ -1064,6 +1075,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.lbl_comp_completa.grid(row=2,column=0,sticky="ew",pady=8)
         wrap_label(self.lbl_comp_completa)
 
+        self.crear_btn_capacidades=ctk.CTkButton(f_comp_c,text='Ver / cambiar capacidades',height=30,command=self.alternar_capacidades_actividad)
+        self.crear_btn_capacidades.grid(row=3,column=0,sticky='ew',pady=4)
+        self._caps_expanded=False
         self.scroll_caps_creacion = ctk.CTkFrame(panel_form)
         self.scroll_caps_creacion.grid(row=4, column=0, padx=14, pady=4, sticky="nsew")
         self.scroll_caps_creacion.grid_columnconfigure(0, weight=1)
@@ -1076,7 +1090,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.btn_actualizar_act=ctk.CTkButton(f_btns_c,text="Actualizar",height=34,state="disabled",
             command=self.accion_actualizar_actividad_existente)
         self.btn_actualizar_act.grid(row=0,column=1,sticky="ew",padx=4)
-        ctk.CTkButton(f_btns_c,text="Descripción",height=34,command=lambda:self.editar_texto_actividad(self.crear_txt_proposito,"Descripción de la actividad")).grid(row=1,column=0,sticky="ew",padx=(0,4),pady=6)
+        ctk.CTkButton(f_btns_c,text="Propósito de la clase",height=34,command=lambda:self.editar_texto_actividad(self.crear_txt_proposito,"Propósito de la clase")).grid(row=1,column=0,sticky="ew",padx=(0,4),pady=6)
         ctk.CTkLabel(f_btns_c,text="El instrumento se configura en Calificaciones.",font=ctk.CTkFont(size=13),wraplength=300,justify="left").grid(row=2,column=0,columnspan=2,sticky="ew",pady=6)
 
         panel_lista = ctk.CTkFrame(pane, corner_radius=10)
@@ -2085,6 +2099,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                 }
             )
 
+        self.mostrar_capacidades_actividad()
+
     def _extraer_peso_creacion(self) -> float:
         raw = self.crear_combo_peso.get().strip().split()[0].replace("x", "").replace("%", "")
         return valid_number(raw, 0.000001, 1000000, "Peso")
@@ -2148,6 +2164,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         import datetime
         self.crear_ent_fecha.insert(0, datetime.date.today().isoformat())
         self.crear_combo_peso.set("1")
+        self.crear_combo_metodo.set("Nota global")
+        self.al_elegir_rubro_actividad(self.crear_combo_categoria.get())
         self.btn_actualizar_act.configure(state="disabled")
         if self.competencias_curso_actual:
             txt = next(iter(self.crear_comp_map))
@@ -2198,6 +2216,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             capacidades_y_criterios=caps_seleccionadas,
             categoria=self.crear_combo_categoria.get(),
             fecha_str=self.crear_ent_fecha.get().strip() or None,
+            tipo_actividad=self.crear_combo_tipo.get(),metodo=self.crear_combo_metodo.get(),
         )
         self._formularios_pendientes.discard(str(self.tab_crear))
         self.id_actividad_calificando = sid
@@ -2244,7 +2263,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
                     s["titulo_tema"],
                     s["competencia_nombre"],
                     caps_str,
-                    s.get("tipo_instrumento", "Normal"),
+                    "Nota global" if s.get("modo_ingreso")=="global" else s.get("tipo_instrumento", "Normal"),
                 ),
             )
 
@@ -2283,6 +2302,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.id_actividad_editando = sid
         self.lbl_modo_creacion.configure(text="Editar actividad")
         self.crear_combo_categoria.set(s["categoria"])
+        self.crear_combo_tipo.set(s.get("tipo_actividad","Actividad"))
+        self.crear_combo_metodo.set(s["tipo_instrumento"] if s["tipo_instrumento"] in ("Rúbrica","Lista de Cotejo") else "Nota global" if s.get("modo_ingreso")=="global" else "Nota directa")
         self.crear_combo_peso.set(f"{s['peso_clase']:.1f}")
         self.crear_entry_titulo.delete(0, "end")
         self.crear_entry_titulo.insert(0, s["titulo_tema"])
@@ -2308,6 +2329,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             else:
                 w["checkbox"].deselect()
 
+        self.mostrar_capacidades_actividad()
         self.btn_actualizar_act.configure(state="normal")
 
     def accion_eliminar_actividad_seleccionada(self) -> None:
@@ -2366,7 +2388,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             elif "brica" in t_inst:
                 self.calif_combo_modo_inst.set("Rúbrica")
             else:
-                self.calif_combo_modo_inst.set("Nota directa")
+                self.calif_combo_modo_inst.set("Nota global" if act.get("modo_ingreso")=="global" else "Nota directa")
         self.dibujar_planilla_calificacion(forzar=True)
 
     def dibujar_planilla_calificacion(self, forzar: bool = False) -> None:
@@ -2525,6 +2547,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.planilla_nativa.item(child, values=vals)
 
     def accion_guardar_planilla_calificacion_completa(self) -> None:
+        global_panel=getattr(self,'_global_grade_panel',None)
+        if global_panel and global_panel.winfo_exists() and global_panel.editor is not None:
+            if not global_panel.commit():return
         embedded=getattr(self,'_embedded_evaluation',None)
         if embedded and embedded.winfo_exists() and embedded.matrix.editor is not None:
             embedded.matrix.commit_edit()
@@ -2533,7 +2558,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if not self.verificar_permiso_edicion(): return
         if not self.planilla_nativa: return
         kind=self.calif_combo_modo_inst.get()
-        if kind!='Nota directa' and (getattr(self,'_loaded_instrument_kind',None)!=kind or not getattr(self,'_loaded_ind_count',0)):
+        if kind not in ('Nota directa','Nota global') and (getattr(self,'_loaded_instrument_kind',None)!=kind or not getattr(self,'_loaded_ind_count',0)):
             messagebox.showwarning('Configure la evaluación','Diseñe el instrumento seleccionado antes de guardar. También puede elegir Nota directa para ingresar las notas finales.')
             return
         

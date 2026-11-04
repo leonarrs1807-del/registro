@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.10.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 1.11.0 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -36,3 +36,12 @@ MEJORAS DE LA FULL 1.10
   Si cambia la competencia, crea una actividad aparte y conserva la anterior.
 - Exportar matriz Excel permite escoger números, letras o ambos: 17, A, 17 (A).
   Incluso el archivo de letras conserva los números originales para reimportarlo.
+
+FULL PERSONAL 1.11
+- Fichas de trabajo dentro de Trabajos: solo nombre; no se adjuntan archivos.
+- Nota global por estudiante, aplicada a las capacidades seleccionadas.
+- Las pruebas y fichas también admiten notas por capacidad, rúbrica o cotejo.
+- Porcentaje de Trabajos y pesos relativos conservados.
+- Propósito de la clase en la rúbrica y el registro exportados.
+- Encabezados compactos y resumen por capacidad opcional.
+- Tamaño coherente de notas, nombres y lista de temas de Prácticas.

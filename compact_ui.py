@@ -122,6 +122,10 @@ class CompactTools:
     def evaluar_desde_barra(self):
         activity=getattr(self,'actividades_creadas_map',{}).get(self.id_actividad_calificando)
         if activity:
+            if self.calif_combo_modo_inst.get()=='Nota global':
+                panel=getattr(self,'_global_grade_panel',None)
+                if panel and panel.winfo_exists():panel.edit()
+                return
             if 'Cotejo' not in self.calif_combo_modo_inst.get() and 'Rúbrica' not in self.calif_combo_modo_inst.get():
                 if not self.verificar_permiso_edicion():return
                 tree=self.planilla_nativa

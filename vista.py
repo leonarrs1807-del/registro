@@ -94,3 +94,7 @@ class ViewTools:
         if hasattr(self,'tutorial'):
             self.tutorial.listing.configure(font=('Segoe UI',-round(14*pixel_scale(self))))
             self.tutorial.text.configure(font=('Segoe UI',-round(15*pixel_scale(self))))
+
+    def actualizar_lista_practicas(self):
+        panel=getattr(self,'puntos_panel',None)
+        if panel and panel.winfo_exists():panel.listing.configure(font=('Segoe UI',getattr(self,'_native_table_font_size',-16)))

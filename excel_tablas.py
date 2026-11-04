@@ -1,5 +1,5 @@
 """Readable, editable classroom tables with portable curriculum names."""
-import json,re
+import json,re,textwrap
 from pathlib import Path
 import openpyxl
 from openpyxl.styles import Alignment,Border,Font,PatternFill,Side
@@ -86,7 +86,7 @@ def _table_style(ws,header_rows,start,last,limits,grade_cols=()):
     ws.print_title_rows=f'1:{start-1}';ws.print_area=f'A1:{get_column_letter(ws.max_column)}{max(start,last)}'
 
 
-def export_activity(destination,session,path,answers=None,grades=None,roster=None):
+def export_activity(destination,session,path,answers=None,grades=None,roster=None,include_summary=False):
     import db
     context=activity(session,path);items=get_indicators(session,path);kind=context['tipo_instrumento'];raw=kind!='Normal' and bool(items)
     if roster is None:roster=db.obtener_estudiantes_filtrados(context['grado'],context['seccion'],'',db_path=path)
@@ -99,8 +99,8 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
     if grades is not None:notes.update(grades)
     wb=openpyxl.Workbook();ws=wb.active;ws.title='Registro';design=wb.create_sheet('Instrumento');limits=thresholds(path)
     if not raw:items=[definition(dict(capacidad_id=c['capacidad_id'],capacidad_nombre=c['capacidad_nombre'],criterio=c['criterio_precisado'] or GLOBAL,tipo='Rúbrica',puntaje_maximo=20),limits) for c in context['capacidades']]
-    put(design,1,1,'Rúbrica / lista de cotejo · '+context['titulo_tema']);put(design,2,1,'Curso');put(design,2,2,course)
-    put(design,3,1,'Competencia');put(design,3,2,context['competencia_nombre']);put(design,4,1,'Edite las capacidades y criterios; los nombres permiten adaptarlos al importar.')
+    put(design,1,1,('Rúbrica' if kind=='Rúbrica' else 'Lista de cotejo' if kind=='Lista de Cotejo' else 'Notas de la actividad')+' · '+context['titulo_tema']);put(design,2,1,'Curso / aula / fecha');put(design,2,2,f"{course} · {context['grado']} {context['seccion']} · {context['fecha']}")
+    put(design,3,1,'Competencia');put(design,3,2,context['competencia_nombre']);put(design,4,1,'Propósito de la clase');put(design,4,2,context.get('proposito') or '')
     headers=['Capacidad','Criterio','Máximo','C · Descriptor','B · Descriptor','A · Descriptor','AD · Descriptor','C · Puntos','B · Puntos','A · Puntos','AD · Puntos']
     design.append([])
     for col,value in enumerate(headers,1):put(design,6,col,value)
@@ -109,7 +109,7 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
         for col,value in enumerate(row,1):put(design,n,col,value)
         put(design,n,12,'i'+str(n-7))
     _table_style(design,{1,6},7,design.max_row,limits)
-    design.merge_cells('A1:K1');design.merge_cells('B2:K2');design.merge_cells('B3:K3')
+    design.merge_cells('A1:K1');design.merge_cells('B2:K2');design.merge_cells('B3:K3');design.merge_cells('B4:K4')
     design.row_dimensions[2].height=27;design.row_dimensions[3].height=36
     design.column_dimensions['C'].width=10
     for col in 'HIJK':design.column_dimensions[col].hidden=True
@@ -118,15 +118,15 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
     if kind!='Rúbrica':
         for col in range(3,12):design.column_dimensions[get_column_letter(col)].hidden=True
     put(ws,1,1,context['titulo_tema']);put(ws,2,1,'Competencia: '+context['competencia_nombre'])
-    put(ws,3,1,'Rúbrica: puntos manuales o C/B/A/AD. Vacío = pendiente.' if raw and kind=='Rúbrica' else 'Cotejo: Sí / No; vacío = sin evaluar. No crea notas automáticamente.' if raw else 'Notas finales de capacidad entre cero y veinte. Puede editar e importar esta tabla.')
+    put(ws,3,1,'Propósito: '+(context.get('proposito') or ''))
     put(ws,4,1,'N°');put(ws,4,2,'Apellidos y nombres');keys=[]
     for n,item in enumerate(items):
         col=3+n;key='i'+str(n);keys.append(key)
-        put(ws,4,col,item['capacidad_nombre']);put(ws,5,col,item['criterio'] if raw else 'Nota final / 20');put(ws,6,col,key)
+        put(ws,4,col,item['capacidad_nombre']);put(ws,5,col,('Desempeño global' if normalized(item['criterio'])==normalized(item['capacidad_nombre']) else item['criterio']) if raw else 'Nota final / 20');put(ws,6,col,key)
     count_col=3+len(items)
     put(ws,4,count_col,'Evaluados' if kind!='Lista de Cotejo' else 'Cumple / Evaluados');put(ws,6,count_col,'avance')
     final_cols={}
-    if raw and kind=='Rúbrica':
+    if raw and kind=='Rúbrica' and include_summary:
         for cap in context['capacidades']:
             col=count_col+1+len(final_cols);final_cols[cap['capacidad_id']]=col
             put(ws,4,col,cap['capacidad_nombre']);put(ws,5,col,'Nota de capacidad / 20');put(ws,6,col,'resumen')
@@ -149,7 +149,14 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
     if raw:
         dv=DataValidation(type='list',formula1='"C,B,A,AD,Sin evidencia"' if kind=='Rúbrica' else '"Sí,No"',allow_blank=True);dv.showErrorMessage=False;ws.add_data_validation(dv)
         for col in range(3,3+len(items)):dv.add(f'{get_column_letter(col)}7:{get_column_letter(col)}2000')
-    _meta(wb,dict(format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion']))
+    for row in (1,2,3):ws.cell(row,1).alignment=Alignment(horizontal='left',vertical='center',wrap_text=True)
+    ws.row_dimensions[1].height=26;ws.row_dimensions[2].height=32
+    ws.row_dimensions[3].height=min(60,max(24,14*len(textwrap.wrap(context.get('proposito') or '',110))+8))
+    for row in (4,5):ws.row_dimensions[row].height=min(64,max(28,max(len(textwrap.wrap(str(ws.cell(row,c).value or ''),26)) for c in range(3,ws.max_column+1))*13+8))
+    ws.merge_cells('A4:A5');ws.merge_cells('B4:B5')
+    design.row_dimensions[1].height=26;design.row_dimensions[4].height=min(70,max(26,14*len(textwrap.wrap(context.get('proposito') or '',100))+8));design.row_dimensions[5].height=5;design.row_dimensions[6].height=32
+    for row in range(7,design.max_row+1):design.row_dimensions[row].height=min(110,max(38,max(len(textwrap.wrap(str(design.cell(row,c).value or ''),28)) for c in range(1,8))*13+8))
+    _meta(wb,dict(format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion'],purpose=context.get('proposito') or '',activity_type=context.get('tipo_actividad','Actividad'),category=context['categoria'],entry_mode=context.get('modo_ingreso','capacidades')))
     wb.active=0;wb.save(destination);wb.close();return len(roster)
 
 
@@ -195,6 +202,8 @@ def import_activity(wb,formulas,session,grade,section,path):
         if kind not in ('Normal','Rúbrica','Lista de Cotejo'):raise ValueError('Tipo de instrumento no válido.')
         comp_name=text(wb['Instrumento']['B3'].value) if modern and 'Instrumento' in wb else context['competencia_nombre']
         title=text(ws['A1'].value) if modern else context['titulo_tema']
+        purpose=context.get('proposito','')
+        if modern and 'Instrumento' in wb and normalized(wb['Instrumento']['A4'].value).startswith('proposito'):purpose=text(wb['Instrumento']['B4'].value)
         if not comp_name:raise ValueError('Escriba el nombre de la competencia en Instrumento, B3.')
         competency=find_or_create(conn,'Competencias','curso_id',context['curso_id'],comp_name,changes)
         designs=[]
@@ -237,13 +246,19 @@ def import_activity(wb,formulas,session,grade,section,path):
                     base=definition(item,thresholds(path));item['descriptores']={l:text(design[3+n]) or base['descriptores'][l] for n,l in enumerate(LEVELS)}
                     item['puntajes']={l:design[7+n] if design[7+n] is not None else base['puntajes'][l] for n,l in enumerate(LEVELS)}
                 definitions.append(validate_definition(item,thresholds(path)))
+        source_category=meta.get('category',context['categoria'])
+        source_type=meta.get('activity_type',context.get('tipo_actividad','Actividad')) if 'category' in meta else context.get('tipo_actividad','Actividad')
+        source_mode=meta.get('entry_mode',context.get('modo_ingreso','capacidades'))
+        source_method=kind if kind in ('Rúbrica','Lista de Cotejo') else 'Nota global' if source_mode=='global' else 'Nota directa'
         target=session
-        incompatible=mode=='criterios' and any(i['tipo']!=kind for i in get_indicators(session,path))
+        incompatible=source_category!=context['categoria']
+        incompatible=incompatible or mode=='criterios' and any(i['tipo']!=kind for i in get_indicators(session,path))
         if competency!=context['competencia_id'] or kind!=context['tipo_instrumento'] and context['tipo_instrumento']!='Normal' or incompatible:
-            matches=conn.execute('SELECT id FROM Sesiones_Clase WHERE curso_id=? AND competencia_id=? AND grado=? AND seccion=? AND titulo_tema=? AND tipo_instrumento=?',(context['curso_id'],competency,grade,section,title,kind)).fetchall()
+            matches=conn.execute('SELECT id FROM Sesiones_Clase WHERE curso_id=? AND competencia_id=? AND grado=? AND seccion=? AND titulo_tema=? AND tipo_instrumento=? AND categoria=? AND tipo_actividad=?',(context['curso_id'],competency,grade,section,title,kind,source_category,source_type)).fetchall()
             if len(matches)>1:raise ValueError('Hay varias actividades con ese nombre. Seleccione la que desea importar.')
-            target=matches[0][0] if matches else db.crear_o_actualizar_sesion_clase(None,context['curso_id'],competency,grade,section,title or context['titulo_tema'],'',context['peso_clase'],list(capacity_ids.items()),db_path=path)
+            target=matches[0][0] if matches else db.crear_o_actualizar_sesion_clase(None,context['curso_id'],competency,grade,section,title or context['titulo_tema'],purpose,context['peso_clase'],list(capacity_ids.items()),categoria=source_category,db_path=path,tipo_actividad=source_type,metodo=source_method)
             if not matches:changes.append('Actividad nueva: '+title)
+        conn.execute('UPDATE Sesiones_Clase SET proposito=? WHERE id=?',(purpose,target))
         for cap,criterion in capacity_ids.items():conn.execute('INSERT OR IGNORE INTO Sesion_Capacidades(sesion_id,capacidad_id,criterio_precisado) VALUES(?,?,?)',(target,cap,criterion))
         if mode=='criterios':
             old=get_indicators(target,path);matching={(i['capacidad_id'],normalized(i['criterio'])):i for i in old if i['tipo']==kind}
