@@ -954,3 +954,21 @@ class DesktopTests(unittest.TestCase):
         self.app.unit_filter.set('Todas las unidades');self.app.filtrar_unidad();self.app.update()
         self.assertEqual(self.app.datos_matriz_actual[1][0]['promedio_general'],12)
         self.assertFalse(self.errors)
+
+    def test_unit_export_sanitizes_filename_and_keeps_full_unit_title(self):
+        import periodos,re,openpyxl
+        from excel_dialogs import GradeDisplayOptions
+        unit=periodos.save_unit(db.DB_PATH,None,None,None,'Unidad 1: razones / proporciones')
+        self.app.actualizar_contexto_academico();self.app.tabview.set('Matriz General')
+        self.app.unit_filter.set(next(k for k,v in self.app._unit_labels.items() if v==unit));self.app.filtrar_unidad();self.app.update()
+        file=app_storage.data_dir()/'unidad-exportada.xlsx'
+        def choose():
+            for window in self.app.winfo_children():
+                if isinstance(window,GradeDisplayOptions) and window.ready:window.confirm();return
+            self.app.after(50,choose)
+        self.app.after(50,choose)
+        with patch.object(self.app,'elegir_destino',return_value=str(file)) as destination,patch('tkinter.messagebox.showinfo'):
+            self.app.accion_exportar_matriz_excel()
+        self.assertIsNone(re.search(r'[<>:"/\\|?*]',destination.call_args.kwargs['initialfile']))
+        with __import__('contextlib').closing(openpyxl.load_workbook(file)) as wb:self.assertIn('Unidad 1: razones / proporciones',wb['Matriz final']['A1'].value)
+        self.assertFalse(self.errors)

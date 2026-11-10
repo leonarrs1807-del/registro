@@ -1,5 +1,5 @@
 """Final matrix with selectable numeric/literal display and exact round trips."""
-import json
+import json,re
 import openpyxl
 from openpyxl.styles import Font,PatternFill,Alignment
 from excel_tablas import put,_meta,_table_style,metadata,grade_display,read_grade,find_or_create,student_id,text
@@ -11,6 +11,10 @@ from db_safety import connection
 class MatrixImportResult(tuple):
     def __new__(cls,students,notes,changes):
         result=super().__new__(cls,(students,notes));result.changes=changes;return result
+
+
+def safe_filename(name):
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]','_',str(name))[:160]+'.xlsx'
 
 
 def export_matrix(destination,course,grade,section,structure,rows,path,presentation,unidad_id="all",alcance="Periodo completo"):

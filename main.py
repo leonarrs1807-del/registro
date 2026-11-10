@@ -3136,13 +3136,14 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         from excel_dialogs import GradeDisplayOptions
         options=GradeDisplayOptions(self);self.wait_window(options)
         if options.result is None:return
+        from matriz_excel import safe_filename
         scope_id="all" if options.scope_choice.get()=="all" else self.alcance_unidad()
         scope_name="Periodo completo" if scope_id=="all" else self.nombre_alcance()
         estructura_comp,filas_matriz=calcular_matriz_competencias_y_capacidades(self.obtener_curso_activo_id(),grado,seccion,unidad_id=scope_id)
         ruta = self.elegir_destino(
             title="Exportar matriz final a Excel",
             defaultextension=".xlsx",
-            initialfile=f"Registro_{curso}_{grado}_{seccion}_{scope_name}.xlsx",
+            initialfile=safe_filename(f"Registro_{curso}_{grado}_{seccion}_{scope_name}"),
             filetypes=[("Archivo Excel", "*.xlsx")],
         )
         if not ruta:
