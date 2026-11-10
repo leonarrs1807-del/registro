@@ -406,7 +406,9 @@ class DesktopTests(unittest.TestCase):
 
     def test_personal_workspace_keeps_header_short_and_has_no_trial_banner(self):
         from interfaz import pixel_scale
-        self.assertLess(self.app.barra_top.winfo_height()/pixel_scale(self.app),65)
+        # Two compact rows now include the requested period and unit selectors.
+        self.assertLess(self.app.barra_top.winfo_height()/pixel_scale(self.app),110)
+        self.assertTrue(self.app.period_button.winfo_ismapped())
         self.assertFalse(self.app._license_required)
         self.assertFalse(hasattr(self.app,'_license_label'))
 
@@ -824,4 +826,61 @@ class DesktopTests(unittest.TestCase):
         self.app.calif_combo_modo_inst.set('Nota global');self.app.cambiar_metodo_evaluacion('Nota global')
         self.assertEqual(self.app.calif_combo_modo_inst.get(),'Nota global')
         panel=self.app._global_grade_panel;self.assertEqual(panel.table.set(panel.table.get_children()[0],'Nota global'),'16')
+        self.assertFalse(self.errors)
+
+    def test_period_units_filter_activities_and_preserve_period_notes(self):
+        import periodos
+        unit=periodos.save_unit(db.DB_PATH,self.course,'3°','A','Unidad: fracciones')
+        other=db.crear_o_actualizar_sesion_clase(None,self.course,self.comp,'3°','A','Otra unidad','',1,[(self.cap,'Criterio')],unidad_id=unit)
+        self.app.actualizar_contexto_academico()
+        caption=next(k for k,v in self.app._unit_labels.items() if v==unit)
+        self.app.unit_filter.set(caption);self.app.filtrar_unidad()
+        self.assertEqual(self.app.tree_actividades.get_children(),(str(other),))
+        self.app.unit_filter.set('Todas las unidades');self.app.filtrar_unidad()
+        self.assertEqual(len(self.app.tree_actividades.get_children()),2)
+        self.app.seleccionar_periodo();self.app.update()
+        self.assertTrue(self.app.period_button.cget('text'));self.assertFalse(self.errors)
+
+    def test_global_clipboard_preview_applies_one_undoable_block(self):
+        self.app.edicion_desbloqueada=True
+        self.app.calif_combo_modo_inst.set('Nota global');self.app.actualizar_herramientas_evaluacion();self.app.update()
+        panel=self.app._global_grade_panel;panel.table.selection_set(panel.table.get_children()[0])
+        before=self.app._filas_planilla();self.app.clipboard_clear();self.app.clipboard_append('5')
+        self.app.pegar_planilla();self.app.update();self.assertEqual(self.app._filas_planilla(),before)
+        self.app._paste_apply();self.app.update()
+        self.assertEqual(float(self.app._filas_planilla()[0][4]),5)
+        self.app.deshacer_planilla();self.assertEqual(self.app._filas_planilla(),before)
+        self.assertFalse(self.errors)
+
+    def test_rubric_clipboard_preserves_levels_and_undo(self):
+        self.app.edicion_desbloqueada=True
+        db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Argumenta',20)])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        self.app.calif_combo_modo_inst.set('Rúbrica');self.app.actualizar_herramientas_evaluacion();self.app.cambiar_vista_evaluacion('Criterios');self.app.update()
+        panel=self.app._embedded_evaluation;panel.matrix.table.selection_set(str(self.student))
+        self.app.clipboard_clear();self.app.clipboard_append('A');self.app.pegar_planilla();self.app.update();self.app._paste_apply();self.app.update()
+        self.assertIn('A',self.app._instrument_pending.values())
+        self.app.deshacer_planilla();self.assertNotIn('A',self.app._instrument_pending.values())
+        self.assertFalse(self.errors)
+
+    def test_school_identity_and_report_preview_open_with_uploaded_badge(self):
+        import institucion,reportes
+        from PIL import Image
+        self.app.edicion_desbloqueada=True
+        for key,value in [('nombre','IE de ejemplo'),('codigo','1234567'),('ugel','UGEL de ejemplo')]:
+            entry=self.app._institution_entries[key];entry.delete(0,'end');entry.insert(0,value)
+        self.assertTrue(self.app.guardar_identidad())
+        self.assertEqual(institucion.profile(db.DB_PATH)['codigo'],'1234567')
+        path=app_storage.data_dir()/'insignia-test.png';Image.new('RGB',(80,100),'blue').save(path)
+        reportes.save_logo(path,db.DB_PATH);self.app.actualizar_insignia()
+        self.app.abrir_configuracion('Institución');self.app.vista_previa_informe();self.app.update()
+        self.assertIsNotNone(self.app._institution_image)
+        self.assertFalse(self.errors)
+
+    def test_fill_selected_grade_rows_is_undoable(self):
+        self.app.edicion_desbloqueada=True
+        tree=self.app.planilla_nativa;tree.selection_set(tree.get_children()[0]);before=self.app._filas_planilla()
+        with patch('tkinter.simpledialog.askstring',return_value='16'),patch('tkinter.messagebox.askyesno',return_value=True):self.app.rellenar_seleccion()
+        self.assertEqual(float(self.app._filas_planilla()[0][4]),16)
+        self.app.deshacer_planilla();self.assertEqual(self.app._filas_planilla(),before)
         self.assertFalse(self.errors)

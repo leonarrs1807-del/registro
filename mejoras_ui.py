@@ -16,7 +16,7 @@ class ClassroomTools:
             archive.add_command(label=title,command=callback)
         menu.add_cascade(label='Archivo',menu=archive)
         work=tk.Menu(menu,tearoff=False)
-        for title,callback in [('Recuperar borrador de notas',self.recuperar_borrador),('Duplicar actividad seleccionada',self.duplicar_actividad),('Guardar instrumento en biblioteca',self.guardar_instrumento),('Usar instrumento de biblioteca',self.usar_instrumento),('Ver pendientes y explicación de promedios',self.ver_pendientes),('Archivar / recuperar actividades',self.archivar_actividad),('Bloqueo por inactividad',self.configurar_inactividad),('Cerrar / reabrir periodo',self.alternar_periodo),('Escala de logro por nivel',self.configurar_escala),('Vista previa de nuevas ponderaciones',self.previsualizar_pesos)]:
+        for title,callback in [('Recuperar borrador de notas',self.recuperar_borrador),('Duplicar actividad seleccionada',self.duplicar_actividad),('Guardar instrumento reutilizable en Excel',self.guardar_instrumento),('Importar instrumento Excel',self.usar_instrumento),('Biblioteca interna anterior',self.usar_biblioteca_anterior),('Unidades del periodo',self.gestionar_unidades),('Pegar bloque de notas · Ctrl+V',self.pegar_planilla),('Rellenar estudiantes seleccionados',self.rellenar_seleccion),('Abrir registro por fecha',self.abrir_historial_archivos),('Ver pendientes y explicación de promedios',self.ver_pendientes),('Archivar / recuperar actividades',self.archivar_actividad),('Bloqueo por inactividad',self.configurar_inactividad),('Cerrar / reabrir periodo',self.alternar_periodo),('Escala de logro por nivel',self.configurar_escala),('Vista previa de nuevas ponderaciones',self.previsualizar_pesos)]:
             work.add_command(label=title,command=callback)
         menu.add_cascade(label='Herramientas',menu=work)
         view=tk.Menu(menu,tearoff=False)
@@ -84,7 +84,13 @@ class ClassroomTools:
         except (OSError,ValueError):return {}
 
     def _guardar_ventana(self,event=None):
-        if event is not None and event.widget is not self:return
+        if event is not None:
+            if event.widget is not self:return
+            job=getattr(self,'_window_save_job',None)
+            if job:self.after_cancel(job)
+            self._window_save_job=self.after(250,lambda:self._guardar_ventana())
+            return
+        self._window_save_job=None
         if not hasattr(self,'_zoom'):return
         data=self._preferencias()
         data.update({'view_version':2,'nav_expanded':self.tabview.expanded,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
@@ -112,13 +118,15 @@ class ClassroomTools:
         source=filedialog.askopenfilename(title='Insignia del colegio',filetypes=[('Imagen PNG o JPEG','*.png *.jpg *.jpeg')])
         if source:
             reportes.save_logo(source,self._db_path)
+            self.actualizar_insignia()
             messagebox.showinfo('Insignia guardada','La insignia quedará incluida en los respaldos y documentos internos. Al exportar podrá elegir si desea mostrarla.')
 
     def insignia_exportacion(self):
         image=reportes.logo_bytes(self._db_path)
-        return image if image and messagebox.askyesno('Insignia del colegio','¿Incluir la insignia en este reporte?') else None
+        return image
 
     def guardar_documento(self):
+        if not self.terminar_edicion_actual():return
         panel=getattr(self,'puntos_panel',None)
         if panel and panel.grid_view and not panel.grid_view.finish():return
         tree=getattr(self,'planilla_nativa',None)
@@ -317,7 +325,7 @@ class ClassroomTools:
         if not act:messagebox.showinfo('Actividad','Abra primero una actividad en Ingresar Calificativos.');return
         title=simpledialog.askstring('Duplicar actividad','Nombre de la nueva actividad:',initialvalue=act['titulo_tema']+' (copia)')
         if not title:return
-        sid=db.crear_o_actualizar_sesion_clase(None,act['curso_id'],act['competencia_id'],act['grado'],act['seccion'],title,act['proposito'],act['peso_clase'],[(c['capacidad_id'],c['criterio_precisado']) for c in act['capacidades']],categoria=act['categoria'],tipo_actividad=act.get('tipo_actividad','Actividad'),metodo=act['tipo_instrumento'] if act['tipo_instrumento'] in ('Rúbrica','Lista de Cotejo') else 'Nota global' if act.get('modo_ingreso')=='global' else 'Nota directa')
+        sid=db.crear_o_actualizar_sesion_clase(None,act['curso_id'],act['competencia_id'],act['grado'],act['seccion'],title,act['proposito'],act['peso_clase'],[(c['capacidad_id'],c['criterio_precisado']) for c in act['capacidades']],categoria=act['categoria'],tipo_actividad=act.get('tipo_actividad','Actividad'),unidad_id=act.get('unidad_id') or 0,metodo=act['tipo_instrumento'] if act['tipo_instrumento'] in ('Rúbrica','Lista de Cotejo') else 'Nota global' if act.get('modo_ingreso')=='global' else 'Nota directa')
         inds=db.obtener_indicadores_instrumento_sesion(act['id'])
         if inds:db.guardar_indicadores_instrumento_sesion(sid,inds[0]['tipo'],[{k:v for k,v in i.items() if k!='id'} for i in inds])
         self.recargar_cursos_y_contexto();self.abrir_actividad_en_pestana_calificar(sid)
@@ -367,7 +375,7 @@ class ClassroomTools:
     def alternar_periodo(self):
         import db
         from main import DialogoDesbloquearCandado
-        if not self.licencia_permite():return
+        if not self.licencia_permite() or not self.confirmar_descartar(include_points=True):return
         # Always authenticate, including when reopening a closed period.
         self.edicion_desbloqueada=False
         dialog=DialogoDesbloquearCandado(self);self.wait_window(dialog)
@@ -375,8 +383,11 @@ class ClassroomTools:
         state=self.periodo_cerrado()
         if not messagebox.askyesno('Periodo',('Reabrir el periodo para editar' if state else 'Cerrar el periodo y bloquear cambios')+'?'):return
         storage.backup_database(self._db_path,'cierre-periodo')
-        with db.obtener_conexion() as conn:conn.execute('INSERT OR REPLACE INTO Estado_Periodo VALUES(1,?)',(int(not state),))
-        self.edicion_desbloqueada=False;self.actualizar_visual_candado_y_docente()
+        with db.obtener_conexion() as conn:
+            conn.execute('INSERT OR REPLACE INTO Estado_Periodo VALUES(1,?)',(int(not state),))
+            conn.execute("CREATE TABLE IF NOT EXISTS Cierres_Periodo(id INTEGER PRIMARY KEY,fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,accion TEXT NOT NULL,usuario TEXT NOT NULL)")
+            conn.execute("INSERT INTO Cierres_Periodo(accion,usuario) VALUES(?,?)",('Reapertura' if state else 'Cierre',db.obtener_docente_config().get('usuario','docente')))
+        self.edicion_desbloqueada=False;self.actualizar_visual_candado_y_docente();self.actualizar_contexto_academico()
 
     def previsualizar_pesos(self):
         import db

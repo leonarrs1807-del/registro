@@ -22,7 +22,12 @@ from configuracion_ui import ConfigurationTools
 from licencias_ui import LicenseTools
 
 
-class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
+from periodos_ui import AcademicTools
+from institucion_ui import InstitutionTools
+from flujo_docente_ui import TeacherWorkflowTools
+
+
+class DesktopTools(AcademicTools,InstitutionTools,TeacherWorkflowTools,ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -31,6 +36,7 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
         datos = tk.Menu(menu, tearoff=False)
         datos.add_command(label='Crear respaldo', command=self.crear_respaldo)
         datos.add_command(label='Restaurar respaldo…', command=self.restaurar_respaldo)
+        datos.add_command(label='Abrir registro de una fecha anterior…',command=self.abrir_historial_archivos)
         datos.add_command(label='Historial de notas…', command=self.mostrar_historial)
         datos.add_separator()
         datos.add_command(label='Año escolar y periodo…', command=self.seleccionar_periodo)
@@ -41,7 +47,7 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 1.11.0 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
+        self.title(f'Registro Docente 2.0.0 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
@@ -80,6 +86,8 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
         if widget.winfo_toplevel() != self:
             return
         while widget is not self:
+            if widget in getattr(self,'_institution_entries',{}).values():
+                self._formularios_pendientes.add(str(self.config_tabs.tab('Institución')));return
             if widget is getattr(self, 'entry_buscar_est', None):
                 return
             if widget is getattr(self, 'tab_calificar', None):
@@ -110,6 +118,7 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
             self.lbl_estado.configure(text='Cambios pendientes · Notas todavía sin confirmar')
 
     def confirmar_descartar(self,include_points=False):
+        if not self.terminar_edicion_actual():return False
         if include_points and hasattr(self,"puntos_panel") and not self.puntos_panel.confirm_change():return False
         tree = getattr(self, 'planilla_nativa', None)
         if tree and tree.winfo_exists() and getattr(tree, '_entry', None):
@@ -187,44 +196,6 @@ class DesktopTools(ConfigurationTools,PerformanceTools,EvaluationTools,CompactTo
                 messagebox.showerror('No se pudo revertir', str(exc), parent=window)
         ttk.Button(window, text='Revertir cambio seleccionado', command=revert).pack(pady=8)
         refresh()
-
-    def seleccionar_periodo(self):
-        if not self.confirmar_descartar(include_points=True):
-            return
-        window = tk.Toplevel(self)
-        window.title('Años y periodos independientes')
-        window.geometry('520x380')
-        tk.Label(window, text='Cada periodo conserva sus propias actividades y notas.\nLos periodos nuevos copian el alumnado y currículo, sin notas.').pack(pady=10)
-        paths = sorted(storage.data_dir().glob('*.db'))
-        if self._db_path not in paths:
-            paths.insert(0, self._db_path)
-        listing = tk.Listbox(window)
-        listing.pack(fill='both', expand=True, padx=10)
-        for path in paths:
-            listing.insert('end', path.stem)
-        def open_period():
-            if listing.curselection():
-                path = paths[listing.curselection()[0]]
-                if path.parent.resolve() == storage.data_dir().resolve():
-                    storage.activate_period(path)
-                self._reiniciar(path)
-        def new_period():
-            if not self.verificar_permiso_edicion():
-                return
-            year = simpledialog.askinteger('Año escolar', 'Año (2000–2100):', minvalue=2000, maxvalue=2100, parent=window)
-            if year is None:
-                return
-            period = simpledialog.askinteger('Periodo', 'Periodo (1–4):', minvalue=1, maxvalue=4, parent=window)
-            if period is None:
-                return
-            try:
-                path = storage.create_period(self._db_path, year, period)
-                storage.activate_period(path)
-                self._reiniciar(path)
-            except ValueError as exc:
-                messagebox.showerror('Periodo', str(exc), parent=window)
-        ttk.Button(window, text='Abrir seleccionado', command=open_period).pack(side='left', padx=15, pady=10)
-        ttk.Button(window, text='Crear periodo sin notas', command=new_period).pack(side='right', padx=15, pady=10)
 
     def _importar_con_vista_previa(self, function, *args):
         """Run the real importer on a clone; display source rows before any live write."""

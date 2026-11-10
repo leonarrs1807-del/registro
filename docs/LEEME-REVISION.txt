@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.11.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 2.0.0 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -45,3 +45,13 @@ FULL PERSONAL 1.11
 - Propósito de la clase en la rúbrica y el registro exportados.
 - Encabezados compactos y resumen por capacidad opcional.
 - Tamaño coherente de notas, nombres y lista de temas de Prácticas.
+
+FULL PERSONAL 2.0
+- Bimestres o trimestres con selector visible; unidades dentro del periodo.
+- Ctrl+V con vista previa y relleno de estudiantes seleccionados.
+- Biblioteca reutilizable en archivos Excel por grado, competencia y tema.
+- Abrir un respaldo por fecha como otro documento independiente.
+- Cierre del periodo y registro de reaperturas.
+- Perfil de IE e insignia en informes PDF y registros Excel.
+- Preparación visible de todas las secciones y carga anticipada de gráficos.
+Sus registros anteriores se conservan; no se asignan notas a otros periodos.

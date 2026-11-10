@@ -1,3 +1,13 @@
+## Full personal 2.0.0
+
+- Selector visible de bimestres o trimestres y unidades didácticas por curso y aula.
+- Pegado desde Excel con vista previa y relleno de estudiantes seleccionados, con deshacer.
+- Instrumentos reutilizables en Excel por grado, competencia y tema, sin datos del alumnado.
+- Historial de archivos por fecha: abre una copia independiente y conserva el registro actual.
+- Cierre de periodo con bloqueo de datos y registro de reaperturas.
+- Datos de la IE e insignia guardados con el documento; informes PDF y registros Excel institucionales.
+- Ventana de preparación visible; todas las secciones se construyen al iniciar. Los módulos de gráficos se anticipan durante esa preparación para reducir la espera al cambiar de pantalla.
+
 ## Full personal 1.11.0
 
 Fichas por nombre dentro de Trabajos, sin adjuntos. Entrada de una nota global por

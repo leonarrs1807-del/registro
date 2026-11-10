@@ -35,6 +35,31 @@ class SafeDialog(ctk.CTkToplevel):
         super().destroy()
 
 
+def polish_dialog(window,parent,width,height):
+    """Consistent readable cards and centered, screen-bounded academic dialogs."""
+    window.configure(fg_color=('#f0f9ff','#0f172a'))
+    def visit(widget):
+        if isinstance(widget,ctk.CTkFrame) and widget.cget('fg_color')!='transparent':
+            widget.configure(fg_color=('#ffffff','#1e293b'))
+        if isinstance(widget,(ctk.CTkComboBox,ctk.CTkEntry)):
+            widget.configure(height=36,fg_color=('#ffffff','#1e293b'),border_color=('#cbd5e1','#475569'),border_width=1,corner_radius=6)
+        if isinstance(widget,ctk.CTkComboBox):
+            widget.configure(button_color=('#e0f2fe','#075985'),button_hover_color=('#bae6fd','#0369a1'),dropdown_font=ctk.CTkFont(size=14))
+        try:
+            font=widget.cget('font')
+            if isinstance(font,ctk.CTkFont) and font.cget('size')<14:font.configure(size=14)
+        except (AttributeError,ValueError,tk.TclError):pass
+        if hasattr(widget,'viewport'):
+            widget.configure(fg_color=('#ffffff','#1e293b'))
+            widget.viewport.configure(bg=widget._apply_appearance_mode(('#ffffff','#1e293b')))
+        for child in widget.winfo_children():visit(child)
+    for child in window.winfo_children():visit(child)
+    scale=window._get_window_scaling();screen_w=parent.winfo_screenwidth();screen_h=parent.winfo_screenheight()
+    width=min(width,int(screen_w/scale*.94));height=min(height,int(screen_h/scale*.88))
+    window.geometry(f'{width}x{height}+{max(0,int((screen_w-width*scale)/2))}+{max(0,int((screen_h-height*scale)/2))}')
+    window.grab_set()
+
+
 def scroll_area(master, scrollbar_width=22, auto_hide=False, horizontal=False, min_width=0, **kwargs):
     outer=ctk.CTkFrame(master,**kwargs)
     color=outer._apply_appearance_mode(outer.cget('fg_color'))

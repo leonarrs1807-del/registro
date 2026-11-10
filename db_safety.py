@@ -10,6 +10,7 @@ import sqlite3
 _connections = ContextVar('registro_connections', default={})
 _license_service = None
 _license_required = False
+_schema_work = ContextVar("schema_work",default=False)
 
 
 def set_license_policy(service=None, required=False):
@@ -60,6 +61,7 @@ def _license_guards(conn):
     conn.create_function('registro_area', 2, area)
     conn.create_function('registro_permiso', 2, scope)
     guards = {
+        'Unidades_Didacticas': "registro_permiso('curso',{r}.curso_id)",
         'Cursos': "registro_area({r}.nombre,{r}.nivel)",
         'Competencias': "registro_permiso('curso',{r}.curso_id)",
         'Capacidades': "registro_permiso('competencia',{r}.competencia_id)",
@@ -87,6 +89,30 @@ def _license_guards(conn):
                 WHEN NOT ({condition}) BEGIN SELECT RAISE(ABORT,'Licencia: curso o nivel sin habilitar. Puede consultar y exportar sus datos.'); END''')
 
 
+def schema_work(function):
+    @wraps(function)
+    def wrapped(*args,**kwargs):
+        token=_schema_work.set(True)
+        try:return function(*args,**kwargs)
+        finally:_schema_work.reset(token)
+    return wrapped
+
+
+def _closed_guards(conn):
+    if _schema_work.get():return
+    tables={r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'Estado_Periodo' not in tables:return
+    row=conn.execute('SELECT cerrado FROM Estado_Periodo WHERE id=1').fetchone()
+    if not row or not row[0]:return
+    protected={'Estudiantes','Cursos','Competencias','Capacidades','Sesiones_Clase','Sesion_Capacidades',
+        'Instrumento_Indicadores','Instrumento_Respuestas','Asistencia_Y_Comentarios_Clase',
+        'Notas_Sesion_Capacidad','Notas_Manuales_Capacidad','Pesos_Rubros_Curso','Unidades_Didacticas'}
+    protected.update(t for t in tables if t.startswith('Puntos_'))
+    for table in protected & tables:
+        for operation in ('INSERT','UPDATE','DELETE'):
+            conn.execute(f"CREATE TEMP TRIGGER cerrado_{table}_{operation} BEFORE {operation} ON main.{table} BEGIN SELECT RAISE(ABORT,'Periodo cerrado: reábralo para modificar sus datos.'); END")
+
+
 class _Connection(sqlite3.Connection):
     def commit(self):
         # Existing helpers call commit; the outer unit of work owns the transaction.
@@ -110,10 +136,13 @@ def connection(path):
     try:
         conn.execute('BEGIN')
         _license_guards(conn)
+        _closed_guards(conn)
         yield conn
         sqlite3.Connection.commit(conn)
-    except BaseException:
+    except BaseException as exc:
         conn.rollback()
+        if isinstance(exc,sqlite3.IntegrityError) and str(exc).startswith("Periodo cerrado:"):
+            raise ValueError(str(exc)) from None
         raise
     finally:
         _connections.reset(token)
@@ -159,6 +188,8 @@ def migrate(conn):
     from app_security import hash_password
     from evaluacion_datos import migrate as migrate_instruments
     migrate_instruments(conn)
+    from periodos import migrate as migrate_periods
+    migrate_periods(conn)
     cols = {r[1] for r in conn.execute('PRAGMA table_info(Docente_Config)')}
     if 'requiere_cambio_clave' not in cols:
         conn.execute('ALTER TABLE Docente_Config ADD COLUMN requiere_cambio_clave INTEGER NOT NULL DEFAULT 0')

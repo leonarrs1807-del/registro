@@ -39,6 +39,8 @@ def export_matrix(destination,course,grade,section,structure,rows,path,presentat
     ws.merge_cells(start_row=1,start_column=1,end_row=1,end_column=final_col)
     with connection(path) as conn:level=conn.execute('SELECT nivel_educativo FROM Docente_Config WHERE id=1').fetchone()[0]
     _meta(wb,dict(format='registro-matriz',version=2,course=course,level=level,grade=grade,section=section,presentation=presentation,columns=columns,originals=originals))
+    from institucion import decorate
+    decorate(wb,path)
     wb.save(destination);wb.close()
 
 

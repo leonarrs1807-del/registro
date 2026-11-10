@@ -535,6 +535,8 @@ class PlanillaScrollXY(ctk.CTkFrame):
 class VentanaPrincipal(DesktopTools, ctk.CTk):
     def __init__(self, licensing=None, license_required=False, license_error="") -> None:
         super().__init__()
+        from rendimiento import preparar_graficos
+        self._graphics_loader=preparar_graficos()
         self.licensing=licensing
         self._license_required=license_required
         self._license_error=license_error
@@ -565,14 +567,15 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=1)
 
+        self.iniciar_cubierta_arranque()
         self._construir_barra_contexto()
         self._construir_pestanas()
 
-        self.cambiar_interfaz_visual(self.tema_actual_nombre)
         self.actualizar_visual_candado_y_docente()
         self.recargar_cursos_y_contexto()
         self.iniciar_herramientas()
-        self.estilizar_workspace()
+        self.iniciar_contexto_academico()
+        self._startup_cover.destroy()
 
     # ==========================================================================
     # GESTIÓN DE LAS 3 INTERFACES / TEMAS VISUALES
@@ -737,13 +740,21 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         self.tab_configuracion=self.tab_curriculo
         self.tab_curriculo=self.crear_configuracion(self.tab_configuracion)
+        self.avance_arranque("Cursos y competencias",0.1)
         self._construir_tab_curriculo()
+        self.avance_arranque("Estudiantes",0.2)
         self._construir_tab_estudiantes()
+        self.avance_arranque("Actividades y unidades",0.3)
         self._construir_tab_crear_actividad()
+        self.avance_arranque("Ingreso de calificaciones",0.4)
         self._construir_tab_calificar_actividad()
+        self.avance_arranque("Búsqueda",0.5)
         self._construir_tab_buscador_alumnos()
+        self.avance_arranque("Ponderaciones",0.6)
         self._construir_tab_pesos_y_graficos()
+        self.avance_arranque("Registro final",0.7)
         self._construir_tab_matriz_capacidades()
+        self.avance_arranque("Estadísticas",0.8)
         self._construir_tab_estadisticas()
         from puntos_ui import PointsPanel
         from instrucciones import Tutorial
@@ -1058,6 +1069,9 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.crear_combo_metodo.set('Nota global');self.crear_combo_metodo.grid(row=8,column=0,columnspan=2,sticky='ew')
         self.crear_peso_ayuda=ctk.CTkLabel(f_datos1,text='Peso 1: igual importancia dentro del rubro. El porcentaje se elige en Ponderaciones.',anchor='w',justify='left',wraplength=310,font=ctk.CTkFont(size=13))
         self.crear_peso_ayuda.grid(row=9,column=0,columnspan=2,sticky='ew',pady=4);wrap_label(self.crear_peso_ayuda)
+        ctk.CTkLabel(f_datos1,text='Unidad didáctica',font=ctk.CTkFont(size=13,weight='bold')).grid(row=10,column=0,columnspan=2,sticky='w',pady=(8,2))
+        self.crear_combo_unidad=ctk.CTkComboBox(f_datos1,values=['Sin unidad'],state='readonly')
+        self.crear_combo_unidad.set('Sin unidad');self.crear_combo_unidad.grid(row=11,column=0,columnspan=2,sticky='ew',pady=(0,6))
         self.crear_txt_proposito = TextBuffer()
 
         f_comp_c = ctk.CTkFrame(panel_form, fg_color="transparent")
@@ -1805,6 +1819,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             ent.delete(0, "end")
             ent.insert(0, f"{pesos.get(clave, 25.0):.1f}".rstrip("0").rstrip("."))
 
+        self.actualizar_contexto_academico()
         self.recargar_tabla_estudiantes()
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
@@ -2217,6 +2232,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             categoria=self.crear_combo_categoria.get(),
             fecha_str=self.crear_ent_fecha.get().strip() or None,
             tipo_actividad=self.crear_combo_tipo.get(),metodo=self.crear_combo_metodo.get(),
+            unidad_id=getattr(self,'_unit_labels',{}).get(self.crear_combo_unidad.get(),0),
         )
         self._formularios_pendientes.discard(str(self.tab_crear))
         self.id_actividad_calificando = sid
@@ -2240,8 +2256,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             return
         cat_filtro = self.filtro_cat_creacion.get()
         todas_sesiones = [s for s in obtener_sesiones_clase(curso_id,self.combo_grado_global.get(),self.combo_seccion_global.get()) if not s.get('archivada')]
+        all_sessions=todas_sesiones
+        todas_sesiones=self.sesiones_unidad(todas_sesiones)
         sesiones=[s for s in todas_sesiones if cat_filtro=='Todas' or s['categoria']==cat_filtro]
-        self.actividades_creadas_map={s['id']:s for s in todas_sesiones}
+        self.actividades_creadas_map={s['id']:s for s in all_sessions}
         names=activity_labels(todas_sesiones)
         self.combo_calif_etiqueta_a_id={names[s['id']]:s['id'] for s in todas_sesiones}
         opciones_combo_calif=list(self.combo_calif_etiqueta_a_id)
@@ -2302,6 +2320,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.id_actividad_editando = sid
         self.lbl_modo_creacion.configure(text="Editar actividad")
         self.crear_combo_categoria.set(s["categoria"])
+        self.crear_combo_unidad.set(next((label for label,identity in getattr(self,"_unit_labels",{}).items() if identity==s.get("unidad_id")),"Sin unidad"))
         self.crear_combo_tipo.set(s.get("tipo_actividad","Actividad"))
         self.crear_combo_metodo.set(s["tipo_instrumento"] if s["tipo_instrumento"] in ("Rúbrica","Lista de Cotejo") else "Nota global" if s.get("modo_ingreso")=="global" else "Nota directa")
         self.crear_combo_peso.set(f"{s['peso_clase']:.1f}")
@@ -2314,7 +2333,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
 
         for idx, (cid, cnom) in enumerate(self.competencias_curso_actual, start=1):
             if cid == s["competencia_id"]:
-                txt = f"Competencia {idx}"
+                txt = next((label for label,identity in self.crear_comp_map.items() if identity==cid),f"{idx}. {cnom}")
                 self.crear_combo_comp.set(txt)
                 self._al_cambiar_comp_en_creacion(txt)
                 break
@@ -2359,6 +2378,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
     def abrir_actividad_en_pestana_calificar(self, sesion_id: int) -> None:
         if getattr(self, "_planilla_pendiente", False) and not self.confirmar_descartar():
             return
+        if sesion_id not in getattr(self,"combo_calif_etiqueta_a_id",{}).values() and hasattr(self,"unit_filter"):
+            self.unit_filter.set("Todas las unidades");self.recargar_tabla_actividades_creadas()
         self.id_actividad_calificando = sesion_id
         self.tabview.set("Ingresar Calificativos")
         for et, sid in getattr(self, "combo_calif_etiqueta_a_id", {}).items():
@@ -3155,7 +3176,7 @@ def main() -> None:
     from db import DB_PATH
     app_storage.configure_logging()
     try:
-        app_storage.prepare_storage(DB_PATH)
+        app_storage.prepare_storage(DB_PATH,backup=False)
         inicializar_db()
     except Exception as exc:
         logging.getLogger("registro").exception("Error al preparar la base de datos")

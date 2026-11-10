@@ -77,7 +77,7 @@ def backup_database(path, reason='manual', current=True):
     return target
 
 
-def prepare_storage(path):
+def prepare_storage(path,backup=True):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Adopt the user's old database once, never overwrite a newer installation.
@@ -85,7 +85,7 @@ def prepare_storage(path):
     legacy = legacy_root / 'registro_evaluacion.db'
     if not path.exists() and legacy.exists() and legacy.resolve() != path.resolve():
         copy_database(legacy, path)
-    if path.exists():
+    if path.exists() and backup:
         backup_database(path, 'inicio', current=False)
 
 
@@ -104,11 +104,14 @@ def configure_logging():
     logging.getLogger('registro').setLevel(logging.INFO)
 
 
-def create_period(source, year, period):
+def create_period(source, year, period, scheme="Bimestres"):
     year, period = int(year), int(period)
-    if not 2000 <= year <= 2100 or not 1 <= period <= 4:
+    from periodos import SCHEMES,catalog
+    if scheme not in SCHEMES or not 2000 <= year <= 2100 or not 1 <= period <= SCHEMES[scheme]:
         raise ValueError('Indique un año entre 2000 y 2100 y un periodo entre 1 y 4.')
-    target = data_dir() / f'escolar-{year}-periodo-{period}.db'
+    if any(r['year']==year and r['number']==period and r['scheme']==scheme for r in catalog(data_dir(),source)):
+        raise ValueError('Ese periodo ya existe. Ábralo desde el selector.')
+    target = data_dir() / f'escolar-{year}-{scheme.lower()}-{period}.db'
     if target.exists():
         raise ValueError('Ese periodo ya existe. Ábralo desde el selector.')
     with tempfile.TemporaryDirectory(dir=data_dir()) as tmp:
@@ -120,11 +123,15 @@ def create_period(source, year, period):
                 conn.execute('DELETE FROM Puntos_Bloques')
                 conn.execute('DELETE FROM Puntos_Historial')
             conn.execute('DELETE FROM Sesiones_Clase')
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Unidades_Didacticas'").fetchone():conn.execute('DELETE FROM Unidades_Didacticas')
             conn.execute('DELETE FROM Notas_Manuales_Capacidad')
             conn.execute('DELETE FROM Historial_Notas')
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Cierres_Periodo'").fetchone():conn.execute('DELETE FROM Cierres_Periodo')
             if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Estado_Periodo'").fetchone():conn.execute('UPDATE Estado_Periodo SET cerrado=0')
             conn.execute('CREATE TABLE IF NOT EXISTS Periodo_Info (id INTEGER PRIMARY KEY CHECK(id=1), anio INTEGER, periodo INTEGER)')
             conn.execute('INSERT OR REPLACE INTO Periodo_Info VALUES (1, ?, ?)', (year, period))
+            conn.execute('CREATE TABLE IF NOT EXISTS Calendario_Escolar(id INTEGER PRIMARY KEY CHECK(id=1), tipo TEXT NOT NULL)')
+            conn.execute('INSERT OR REPLACE INTO Calendario_Escolar VALUES(1,?)',(scheme,))
         validate_database(staged)
         # Exclusive creation prevents overwriting an existing period on a repeated click.
         with target.open('xb') as out:

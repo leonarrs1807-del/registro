@@ -12,6 +12,7 @@ class ConfigurationTools:
         ctk.CTkLabel(page,text='Configuración',font=ctk.CTkFont(size=22,weight='bold')).grid(row=0,column=0,sticky='w',padx=16,pady=12)
         self.config_tabs=ctk.CTkTabview(page);self.config_tabs.grid(row=1,column=0,sticky='nsew',padx=10,pady=(0,10))
         general=self.config_tabs.add('General');courses=self.config_tabs.add('Cursos');data=self.config_tabs.add('Datos')
+        school=self.config_tabs.add('Institución');self.crear_identidad_institucional(school)
         body=scroll_area(general,auto_hide=True);body.pack(fill='both',expand=True);body.grid_columnconfigure(0,weight=1)
         def card(title,row):
             frame=ctk.CTkFrame(body);frame.grid(row=row,column=0,sticky='ew',padx=12,pady=8);frame.grid_columnconfigure(1,weight=1)
@@ -37,7 +38,7 @@ class ConfigurationTools:
         ctk.CTkButton(scale,text='Configurar escala de logro',height=36,command=self.configurar_escala).grid(row=2,column=0,columnspan=2,sticky='w',padx=14,pady=12)
         records=scroll_area(data,auto_hide=True);records.pack(fill='both',expand=True);records.grid_columnconfigure(0,weight=1)
         actions=[('Nuevo registro vacío (con respaldo)',self.nuevo_registro_vacio),('Guardar documento completo',self.guardar_documento),('Abrir documento',self.abrir_documento),
-            ('Crear respaldo',self.crear_respaldo),('Restaurar respaldo',self.restaurar_respaldo),('Historial de notas',self.mostrar_historial),
+            ('Crear respaldo',self.crear_respaldo),('Restaurar respaldo',self.restaurar_respaldo),('Historial de notas',self.mostrar_historial),('Abrir registro por fecha',self.abrir_historial_archivos),('Guardar instrumento Excel',self.guardar_instrumento),('Usar instrumento Excel',self.usar_instrumento),
             ('Año escolar y periodo',self.seleccionar_periodo),('Bloqueo por inactividad',self.configurar_inactividad)]
         for row,(text,command) in enumerate(actions):
             ctk.CTkButton(records,text=text,height=40,command=command).grid(row=row,column=0,sticky='ew',padx=18,pady=8)

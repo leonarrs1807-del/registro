@@ -98,7 +98,9 @@ def export_grades(path, db_path, course, grade, section, logo=None, student=None
     if student is not None:rows=[r for r in rows if r["estudiante_id"]==student]
     fields = ['estudiante_id','codigo','apellidos','nombres','grado','seccion','curso','competencia','capacidad_id','capacidad','actividad_id','actividad','fecha','categoria','peso','nota','asistencia','comentario']
     if path.suffix.lower()=='.pdf':
-        export_pdf(path,rows,db.obtener_docente_config(db_path),logo)
+        from institucion import profile
+        from periodos import info
+        export_pdf(path,rows,{**profile(db_path),'periodo':info(db_path)['label']},logo)
         return len(rows)
     if path.suffix.lower()=='.csv':
         # UTF-8 BOM and numeric columns work in Excel and Google Sheets.
@@ -125,10 +127,8 @@ def export_grades(path, db_path, course, grade, section, logo=None, student=None
     for row in matriz:summary.append([row['estudiante_id'],row['codigo_unico'],row['apellidos'],row['nombres'],row['promedio_general'],row['literal_general'],row['faltan_capacidades']])
     summary.freeze_panes='E2';summary.auto_filter.ref=summary.dimensions
     for col in 'ABCDEFG':summary.column_dimensions[col].width=26
-    if logo:
-        branding=wb.create_sheet('Institución');branding['B1']=db.obtener_docente_config(db_path).get('institucion','Institución')
-        from openpyxl.drawing.image import Image as ExcelImage
-        picture=ExcelImage(io.BytesIO(logo));factor=min(96/picture.width,96/picture.height);picture.width*=factor;picture.height*=factor;branding.add_image(picture,'B3')
+    from institucion import decorate
+    decorate(wb,db_path)
     wb.save(path)
     return len(rows)
 
@@ -178,31 +178,5 @@ def import_grades(path,db_path):
 
 
 def export_pdf(path,rows,config,logo=None):
-    from matplotlib.backends.backend_pdf import PdfPages
-    from matplotlib.figure import Figure
-    from textwrap import fill
-    columns=[('codigo',10),('apellidos',18),('nombres',18),('actividad',24),('capacidad',42),('nota',8),('asistencia',12)]
-    pages=[];page=[];used=0
-    for row in rows:
-        cells=[fill('Sin evaluar' if key=='nota' and row[key] is None else str(row[key]),width) for key,width in columns]
-        lines=max(cell.count('\n')+1 for cell in cells)
-        if page and used+lines+1>28:pages.append(page);page=[];used=0
-        page.append((cells,lines));used+=lines+1
-    if page or not pages:pages.append(page)
-    with PdfPages(path) as pdf:
-        for number,page in enumerate(pages,1):
-            fig=Figure(figsize=(11.7,8.3));ax=fig.add_axes([.035,.1,.93,.77]);ax.axis('off')
-            fig.suptitle(config.get('institucion','Institución educativa')+'\nRegistro de calificativos',fontsize=14)
-            fig.text(.04,.88,config.get('nombres_docente','Docente'),fontsize=10)
-            fig.text(.5,.035,f'Página {number} de {len(pages)}',ha='center',fontsize=9)
-            if logo:
-                import matplotlib.image as mpimg
-                image=fig.add_axes([.88,.89,.07,.08]);image.imshow(mpimg.imread(io.BytesIO(logo)));image.axis('off')
-            if page:
-                table=ax.table(cellText=[cells for cells,_ in page],colLabels=['Código','Apellidos','Nombres','Actividad','Capacidad','Nota','Asistencia'],colWidths=[.08,.14,.14,.18,.27,.07,.12],loc='upper center',cellLoc='left')
-                table.auto_set_font_size(False);table.set_fontsize(8)
-                for (i,j),cell in table.get_celld().items():
-                    cell.set_height(.05 if i==0 else (page[i-1][1]+1)*.025)
-                    if i==0:cell.set_facecolor('#1e3a8a');cell.get_text().set_color('white')
-            else:ax.text(.5,.5,'Sin calificativos para el filtro elegido.',ha='center')
-            pdf.savefig(fig)
+    from institucion import export_pdf as institutional_pdf
+    return institutional_pdf(path,rows,config,logo)

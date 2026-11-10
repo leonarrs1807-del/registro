@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 1.11.0 - FULL PERSONAL PARA LEONARDO
+REGISTRO DOCENTE 2.0.0 - FULL PERSONAL PARA LEONARDO
 
 EMPEZAR Y GUARDAR
 
@@ -299,3 +299,75 @@ Plantilla Excel también incorpora el propósito que guardó en la actividad.
 
 Las notas y los nombres usan una escala de letra coherente, sin multiplicar el
 tamaño de las notas. La lista de temas de Prácticas sigue el tamaño de las tablas.
+
+
+FULL PERSONAL 2.0: PERIODOS, UNIDADES Y DOCUMENTOS
+
+AÑO ESCOLAR Y PERIODOS
+La franja superior muestra el periodo activo y si está abierto o cerrado.
+Púlselo para abrir otro documento o crear un periodo nuevo. Escoja año,
+Bimestres (1 a 4) o Trimestres (1 a 3). Al actualizar, sus notas se conservan
+en el documento actual, inicialmente sin periodo asignado: use Asignar al
+registro actual para identificarlo. No se reparten ni duplican las notas.
+Los nuevos periodos copian alumnado, currículo, ponderaciones e identidad
+institucional; comienzan sin actividades, notas ni unidades. La apertura
+de otro periodo reinicia la aplicación con ese documento independiente.
+
+UNIDADES
+Seleccione curso, grado y sección. En la franja superior pulse Gestionar
+para crear o editar unidades con nombre, propósito y fechas opcionales.
+En Crear Actividad elija la unidad a la que pertenece. El selector Unidad
+filtra las actividades de Calificaciones y de la lista de Actividades.
+Todas las unidades vuelve a mostrar el periodo completo. La Matriz sigue
+calculando todo el periodo, incluidas las actividades sin unidad.
+
+INGRESO RÁPIDO
+Copie solo las celdas de notas de Excel, seleccione el primer estudiante
+y pulse Ctrl+V o Herramientas > Pegar bloque. Revise nombres, orden y
+columna inicial antes de aplicar. El bloque completo se valida antes de
+cambiar celdas. Se admite nota global, por capacidad, rúbrica y cotejo.
+Vacío queda pendiente; cero es una nota. En rúbrica se admiten puntos o
+C/B/A/AD; el cotejo mantiene su resultado orientador.
+Para repetir un valor, seleccione estudiantes con Ctrl o Mayús y utilice
+Herramientas > Rellenar estudiantes seleccionados. Ctrl+Z deshace todo
+el bloque. Guardar notas confirma los cambios y crea respaldo previo.
+
+BIBLIOTECA EXCEL
+Abra una actividad y guarde sus cambios. En Herramientas, Guardar
+instrumento reutilizable en Excel propone un nombre con grado,
+competencia y tema. Incluye propósito y descriptores, con planilla vacía.
+Para reutilizarlo abra una actividad del mismo grado y curso, y elija
+Importar instrumento Excel. Puede utilizarlo en otra sección: revise la
+vista previa antes de confirmar. Sus plantillas internas anteriores se
+conservan en los documentos antiguos.
+
+RECUPERAR POR FECHA
+Datos > Abrir registro de una fecha anterior muestra los respaldos del
+documento actual con fecha y hora local. Seleccione uno y pulse Abrir
+como otro documento. Se crea una copia recuperada; el registro actual y
+el respaldo original se conservan. Puede guardar la copia como .registro.
+Los respaldos se crean al iniciar, antes de confirmar notas y antes de
+operaciones sensibles. La lista solo muestra las fechas disponibles.
+
+CIERRE
+Desde el selector de periodos o Herramientas, Cerrar / reabrir periodo
+solicita su clave docente. El cierre crea un respaldo y protege notas,
+actividades, alumnos, unidades y pesos. Se puede consultar y exportar.
+Para corregir, reabra con su clave. El cierre y la reapertura se registran.
+
+INSTITUCIÓN E INSIGNIA
+Configuración > Institución permite ingresar nombre de la IE, código
+modular, UGEL/DRE, dirección, docente y director/a. Cargue una insignia
+PNG o JPEG y guarde los datos. Vista previa del informe muestra cómo
+quedará. La insignia se incluye en descargas y se conserva en documentos
+y respaldos. Excel conserva las coordenadas para reimportar: incorpora
+el encabezado institucional y una hoja de identidad de la IE.
+Los datos del colegio se configuran en el programa; importar notas no
+reemplaza su identidad institucional.
+
+ARRANQUE
+La ventana muestra la preparación de las secciones. Estas se construyen
+antes de empezar a trabajar, en lugar de construirlas cada vez que se
+abren. Los cálculos de tablas se actualizan al mostrar cada vista y se
+conservan mientras el contexto no cambia. El tiempo depende del equipo
+y del volumen de datos; no se desactivan respaldos ni protecciones.

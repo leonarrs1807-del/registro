@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from app_storage import database_path
 from app_security import hash_password, verify_password
-from db_safety import connection, atomic, valid_number, migrate, backed_up
+from db_safety import connection, atomic, valid_number, migrate, backed_up, schema_work
 
 DB_PATH = database_path()
 
@@ -232,6 +232,7 @@ def sincronizar_codigos_por_seccion(db_path: Path = DB_PATH) -> None:
         conn.commit()
 
 
+@schema_work
 @backed_up
 @atomic
 def inicializar_db(db_path: Path = DB_PATH) -> None:
@@ -923,6 +924,7 @@ def crear_o_actualizar_sesion_clase(
     db_path: Path = DB_PATH,
     tipo_actividad=None,
     metodo=None,
+    unidad_id=None,
 ) -> int:
     fecha_final = date.fromisoformat(fecha_str or date.today().isoformat()).isoformat()
     peso_clase = valid_number(peso_clase, 0.000001, 1000000, "Peso")
@@ -996,6 +998,9 @@ def crear_o_actualizar_sesion_clase(
                 """,
                 (sid, cap_id, criterio.strip()),
             )
+        if unidad_id is not None:
+            from periodos import assign_unit
+            assign_unit(conn,sid,unidad_id or None)
         if tipo_actividad is not None:
             if tipo_actividad not in ('Actividad','Prueba','Trabajo','Ficha de trabajo'):raise ValueError('Tipo de actividad no válido.')
             if tipo_actividad=='Ficha de trabajo' and categoria!='Trabajos':raise ValueError('Las fichas de trabajo pertenecen a Trabajos.')
@@ -1037,7 +1042,7 @@ def obtener_sesiones_clase(
         SELECT s.id, s.curso_id, s.competencia_id, c.nombre AS competencia_nombre,
                s.grado, s.seccion, COALESCE(s.categoria, 'Clases') AS categoria,
                s.titulo_tema, s.proposito, s.peso_clase, s.archivada,
-               COALESCE(s.tipo_instrumento, 'Normal') AS tipo_instrumento, s.modo_ingreso,s.tipo_actividad,s.fecha
+               COALESCE(s.tipo_instrumento, 'Normal') AS tipo_instrumento, s.modo_ingreso,s.tipo_actividad,s.fecha,s.unidad_id
         FROM Sesiones_Clase s
         JOIN Competencias c ON s.competencia_id = c.id
         WHERE s.curso_id = ? AND s.grado = ? AND s.seccion = ?
@@ -1064,6 +1069,7 @@ def obtener_sesiones_clase(
         return sesiones
 
 
+@backed_up
 @atomic
 def guardar_calificaciones_y_asistencia_sesion(
     sesion_id: int,
@@ -1974,6 +1980,7 @@ def actualizar_pesos_actividades(pesos, db_path: Path = DB_PATH):
         actualizar_peso_actividad(sid, value, db_path)
 
 
+@backed_up
 @atomic
 def guardar_notas_globales_sesion(sesion_id,notas,db_path: Path = DB_PATH):
     """One grade per student, copied once to each selected session capacity."""

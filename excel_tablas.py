@@ -86,9 +86,10 @@ def _table_style(ws,header_rows,start,last,limits,grade_cols=()):
     ws.print_title_rows=f'1:{start-1}';ws.print_area=f'A1:{get_column_letter(ws.max_column)}{max(start,last)}'
 
 
-def export_activity(destination,session,path,answers=None,grades=None,roster=None,include_summary=False):
+def export_activity(destination,session,path,answers=None,grades=None,roster=None,include_summary=False,library=False):
     import db
     context=activity(session,path);items=get_indicators(session,path);kind=context['tipo_instrumento'];raw=kind!='Normal' and bool(items)
+    if library:roster=[]
     if roster is None:roster=db.obtener_estudiantes_filtrados(context['grado'],context['seccion'],'',db_path=path)
     saved=get_answers(session,path)
     if answers is not None:saved.update(answers)
@@ -156,7 +157,9 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
     ws.merge_cells('A4:A5');ws.merge_cells('B4:B5')
     design.row_dimensions[1].height=26;design.row_dimensions[4].height=min(70,max(26,14*len(textwrap.wrap(context.get('proposito') or '',100))+8));design.row_dimensions[5].height=5;design.row_dimensions[6].height=32
     for row in range(7,design.max_row+1):design.row_dimensions[row].height=min(110,max(38,max(len(textwrap.wrap(str(design.cell(row,c).value or ''),28)) for c in range(1,8))*13+8))
-    _meta(wb,dict(format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion'],purpose=context.get('proposito') or '',activity_type=context.get('tipo_actividad','Actividad'),category=context['categoria'],entry_mode=context.get('modo_ingreso','capacidades')))
+    _meta(wb,dict(format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion'],purpose=context.get('proposito') or '',activity_type=context.get('tipo_actividad','Actividad'),category=context['categoria'],entry_mode=context.get('modo_ingreso','capacidades'),library=bool(library),theme=context['titulo_tema']))
+    from institucion import decorate
+    decorate(wb,path)
     wb.active=0;wb.save(destination);wb.close();return len(roster)
 
 
@@ -193,7 +196,7 @@ def import_activity(wb,formulas,session,grade,section,path):
     context=activity(session,path);meta=metadata(wb);modern=meta.get('format')=='registro-tabla';changes=[]
     with connection(path) as conn:
         course,level=conn.execute('SELECT nombre,nivel FROM Cursos WHERE id=?',(context['curso_id'],)).fetchone()
-        if modern and (normalized(meta.get('course'))!=normalized(course) or meta.get('level')!=level or meta.get('grade')!=grade or meta.get('section')!=section):raise ValueError('La tabla pertenece a otro curso, nivel o salón.')
+        if modern and (normalized(meta.get('course'))!=normalized(course) or meta.get('level')!=level or meta.get('grade')!=grade or (not meta.get('library') and meta.get('section')!=section)):raise ValueError('La tabla pertenece a otro curso, nivel o salón.')
         if (context['grado'],context['seccion'])!=(grade,section):raise ValueError('Seleccione el salón de la actividad.')
         ws=wb['Registro'] if 'Registro' in wb else wb.active;fw=formulas[ws.title]
         mode=meta.get('mode','notas')
@@ -202,6 +205,7 @@ def import_activity(wb,formulas,session,grade,section,path):
         if kind not in ('Normal','Rúbrica','Lista de Cotejo'):raise ValueError('Tipo de instrumento no válido.')
         comp_name=text(wb['Instrumento']['B3'].value) if modern and 'Instrumento' in wb else context['competencia_nombre']
         title=text(ws['A1'].value) if modern else context['titulo_tema']
+        if modern and title==text(meta.get('branded_title')):title=text(meta.get('source_title'))
         purpose=context.get('proposito','')
         if modern and 'Instrumento' in wb and normalized(wb['Instrumento']['A4'].value).startswith('proposito'):purpose=text(wb['Instrumento']['B4'].value)
         if not comp_name:raise ValueError('Escriba el nombre de la competencia en Instrumento, B3.')
@@ -256,7 +260,7 @@ def import_activity(wb,formulas,session,grade,section,path):
         if competency!=context['competencia_id'] or kind!=context['tipo_instrumento'] and context['tipo_instrumento']!='Normal' or incompatible:
             matches=conn.execute('SELECT id FROM Sesiones_Clase WHERE curso_id=? AND competencia_id=? AND grado=? AND seccion=? AND titulo_tema=? AND tipo_instrumento=? AND categoria=? AND tipo_actividad=?',(context['curso_id'],competency,grade,section,title,kind,source_category,source_type)).fetchall()
             if len(matches)>1:raise ValueError('Hay varias actividades con ese nombre. Seleccione la que desea importar.')
-            target=matches[0][0] if matches else db.crear_o_actualizar_sesion_clase(None,context['curso_id'],competency,grade,section,title or context['titulo_tema'],purpose,context['peso_clase'],list(capacity_ids.items()),categoria=source_category,db_path=path,tipo_actividad=source_type,metodo=source_method)
+            target=matches[0][0] if matches else db.crear_o_actualizar_sesion_clase(None,context['curso_id'],competency,grade,section,title or context['titulo_tema'],purpose,context['peso_clase'],list(capacity_ids.items()),categoria=source_category,db_path=path,tipo_actividad=source_type,metodo=source_method,unidad_id=context.get('unidad_id') or 0)
             if not matches:changes.append('Actividad nueva: '+title)
         conn.execute('UPDATE Sesiones_Clase SET proposito=? WHERE id=?',(purpose,target))
         for cap,criterion in capacity_ids.items():conn.execute('INSERT OR IGNORE INTO Sesion_Capacidades(sesion_id,capacidad_id,criterio_precisado) VALUES(?,?,?)',(target,cap,criterion))
