@@ -58,7 +58,7 @@ class OrganizationManager(SafeDialog):
             key=str(n);self.records[key]=row
             self.period_tree.insert('','end',iid=key,values=(row['label'],f"{row['start']} — {row['end']}" if row['start'] or row['end'] else 'Sin fechas', 'Cerrado' if row['closed'] else 'Abierto'))
         self.app._period_records=school['records']
-        selected=next((k for k,r in self.records.items() if r['path'].resolve()==self.app._db_path.resolve()),next(iter(self.records),None))
+        selected=next((k for k,r in self.records.items() if r['path'].resolve()==self.app._db_path.resolve()),next(reversed(self.records),None))
         if selected is not None:self.period_tree.selection_set(selected);self.period_tree.focus(selected)
         self.refresh_units()
 

@@ -972,3 +972,19 @@ class DesktopTests(unittest.TestCase):
         self.assertIsNone(re.search(r'[<>:"/\\|?*]',destination.call_args.kwargs['initialfile']))
         with __import__('contextlib').closing(openpyxl.load_workbook(file)) as wb:self.assertIn('Unidad 1: razones / proporciones',wb['Matriz final']['A1'].value)
         self.assertFalse(self.errors)
+
+    def test_school_manager_uses_latest_period_to_carry_forward_its_roster(self):
+        import colegios,periodos
+        self.app.edicion_desbloqueada=True
+        base=colegios.blank_copy(db.DB_PATH,app_storage.data_dir(),'Colegio del siguiente periodo')
+        latest=app_storage.create_period(base,2033,1,'Trimestres')
+        db.agregar_estudiante('Nuevo','Alumno del otro colegio','3°','A',db_path=latest)
+        identity=colegios.info(latest)['school_id']
+        self.app.seleccionar_periodo();manager=self.app._organization_manager
+        manager.refresh_schools(identity)
+        self.assertEqual(manager.selected_period()['path'],latest)
+        following=app_storage.create_period(manager.selected_period()['path'],2033,2,'Trimestres')
+        self.assertEqual(len(db.obtener_estudiantes_filtrados('3°','A',db_path=following)),1)
+        self.assertEqual(db.obtener_estudiantes_filtrados('3°','A',db_path=following)[0]['Nombres'],'Nuevo')
+        self.assertEqual(len(db.obtener_estudiantes_filtrados('3°','A')),1)
+        self.assertFalse(self.errors)
