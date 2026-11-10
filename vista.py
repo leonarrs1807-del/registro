@@ -93,7 +93,7 @@ class ViewTools:
             tkfont.nametofont(name,root=self).configure(family='Segoe UI',size=-round(14*pixel_scale(self)))
         if hasattr(self,'tutorial'):
             self.tutorial.listing.configure(font=('Segoe UI',-round(14*pixel_scale(self))))
-            self.tutorial.text.configure(font=('Segoe UI',-round(15*pixel_scale(self))))
+            self.tutorial.text.configure(font=('Segoe UI',-round(16*pixel_scale(self))))
 
     def actualizar_lista_practicas(self):
         panel=getattr(self,'puntos_panel',None)

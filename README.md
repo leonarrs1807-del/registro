@@ -1,3 +1,9 @@
+## Full personal 2.1.1
+
+- Corrige la consulta de unidades de periodos antiguos sin modificar sus archivos al seleccionarlos. La primera edición prepara su estructura con respaldo y conserva notas y vínculos.
+- Cambia de colegio, periodo, documento o respaldo dentro de la misma ventana, reutilizando las pantallas. Limpia selecciones, borradores de pantalla y deshacer entre registros.
+- Ayuda con 23 apartados paso a paso, búsqueda sin tildes, navegación y ejemplos de periodos, unidades, evaluación, Excel y recuperación. La guía instalada contiene el mismo manual.
+
 ## Full personal 2.1.0
 
 - Colegios independientes: selector de colegio, periodos propios, alumnado, notas e insignias separados.
@@ -155,7 +161,7 @@ Se crean respaldos verificados antes de iniciar/migrar, importar, eliminar y
 restaurar. También puede crear uno manualmente desde el menú. Los respaldos
 quedan en `backups`, junto a la base activa. Antes de restaurar se verifica
 integridad, tablas y relaciones; se conserva una copia del estado anterior.
-La restauración reinicia la aplicación y vuelve a bloquear la edición.
+La restauración actualiza el registro en la misma ventana y vuelve a bloquear la edición.
 Los respaldos no se borran automáticamente: revise periódicamente el espacio y
 guarde copias externas, especialmente al cerrar cada periodo.
 

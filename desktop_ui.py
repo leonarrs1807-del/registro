@@ -2,9 +2,6 @@
 import logging
 from pathlib import Path
 import shutil
-import subprocess
-import sys
-import os
 import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
@@ -47,7 +44,7 @@ class DesktopTools(AcademicTools,InstitutionTools,TeacherWorkflowTools,Configura
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 2.1.0 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
+        self.title(f'Registro Docente 2.1.1 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
@@ -149,10 +146,9 @@ class DesktopTools(AcademicTools,InstitutionTools,TeacherWorkflowTools,Configura
             self.archivo_guardado(path,'Respaldo verificado.')
 
     def _reiniciar(self, path):
-        args = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable, str(Path(__file__).with_name('main.py'))]
-        env = {**os.environ, 'REGISTRO_DB_PATH': str(path)}
-        subprocess.Popen(args, env=env)
-        self.destroy()
+        # Retain the historical entry point used by document/period dialogs.
+        from registro_activo import open_document
+        return open_document(self,path)
 
     def restaurar_respaldo(self):
         if not self.verificar_permiso_edicion() or not self.confirmar_descartar(include_points=True):

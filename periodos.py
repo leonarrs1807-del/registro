@@ -2,7 +2,7 @@
 from pathlib import Path
 from contextlib import closing
 import sqlite3
-from db_safety import connection
+from db_safety import connection,atomic,backed_up,schema_work
 
 SCHEMES = {'Bimestres': 4, 'Trimestres': 3}
 
@@ -18,7 +18,9 @@ def migrate(conn):
         general INTEGER NOT NULL DEFAULT 1,orden INTEGER NOT NULL DEFAULT 0)"""
     old={r[1] for r in conn.execute('PRAGMA table_info(Unidades_Didacticas)')}
     if not old:conn.execute(table.format(name='Unidades_Didacticas'))
-    elif 'general' not in old:
+    columns={r[1] for r in conn.execute('PRAGMA table_info(Sesiones_Clase)')}
+    if 'unidad_id' not in columns:conn.execute('ALTER TABLE Sesiones_Clase ADD COLUMN unidad_id INTEGER REFERENCES Unidades_Didacticas(id)')
+    if old and 'general' not in old:
         links=conn.execute('SELECT id,unidad_id FROM Sesiones_Clase WHERE unidad_id IS NOT NULL').fetchall()
         conn.execute('UPDATE Sesiones_Clase SET unidad_id=NULL WHERE unidad_id IS NOT NULL')
         conn.execute(table.format(name='Unidades_Nuevas'))
@@ -32,9 +34,9 @@ def migrate(conn):
         conn.execute('DROP TABLE Unidades_Didacticas')
         conn.execute('ALTER TABLE Unidades_Nuevas RENAME TO Unidades_Didacticas')
         conn.executemany('UPDATE Sesiones_Clase SET unidad_id=? WHERE id=?',[(unit,session) for session,unit in links])
+    elif old and 'orden' not in old:
+        conn.execute('ALTER TABLE Unidades_Didacticas ADD COLUMN orden INTEGER NOT NULL DEFAULT 0')
     conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS unidad_general_nombre ON Unidades_Didacticas(lower(trim(nombre))) WHERE general=1')
-    columns={r[1] for r in conn.execute('PRAGMA table_info(Sesiones_Clase)')}
-    if 'unidad_id' not in columns:conn.execute('ALTER TABLE Sesiones_Clase ADD COLUMN unidad_id INTEGER REFERENCES Unidades_Didacticas(id)')
     from colegios import migrate as migrate_schools
     migrate_schools(conn)
 
@@ -87,9 +89,38 @@ def catalog(root,current=None):
 
 
 def units(path,course=None,grade=None,section=None):
-    with connection(path) as conn:
+    # A list refresh can inspect inactive/archived periods from older versions.
+    # It must not assume that opening the active document upgraded those files.
+    with closing(sqlite3.connect(f'{Path(path).resolve().as_uri()}?mode=ro',uri=True)) as conn:
         conn.row_factory=sqlite3.Row
-        return [dict(r) for r in conn.execute("SELECT * FROM Unidades_Didacticas WHERE general=1 OR (curso_id=? AND grado=? AND seccion=?) ORDER BY orden,id",(course,grade,section))]
+        columns={r[1] for r in conn.execute('PRAGMA table_info(Unidades_Didacticas)')}
+        if not columns:return []
+        if {'general','orden'}<=columns:
+            return [dict(r) for r in conn.execute("SELECT * FROM Unidades_Didacticas WHERE general=1 OR (curso_id=? AND grado=? AND seccion=?) ORDER BY orden,id",(course,grade,section))]
+        rows=[dict(r) for r in conn.execute('SELECT * FROM Unidades_Didacticas ORDER BY id')]
+        used=set()
+        for row in rows:
+            name=row['nombre']
+            if name.strip().casefold() in used:name=f"{name} ({row.get('grado','')} {row.get('seccion','')} · {row['id']})"
+            used.add(name.strip().casefold())
+            row.update(nombre=name,general=1,orden=row['id'])
+        return rows
+
+
+def ensure_units_ready(path):
+    with closing(sqlite3.connect(f'{Path(path).resolve().as_uri()}?mode=ro',uri=True)) as conn:
+        columns={r[1] for r in conn.execute('PRAGMA table_info(Unidades_Didacticas)')}
+        session_columns={r[1] for r in conn.execute('PRAGMA table_info(Sesiones_Clase)')}
+    if not {'general','orden'}<=columns or 'unidad_id' not in session_columns:_upgrade_units(path)
+
+
+@schema_work
+@backed_up
+@atomic
+def _upgrade_units(db_path):
+    # Only an explicit edit reaches this upgrade. Migration is separate from
+    # the edit so closed-period guards remain in force for the actual changes.
+    with connection(db_path) as conn:migrate(conn)
 
 
 def save_unit(path,course,grade,section,name,purpose='',start='',end='',identity=None,general=True):
@@ -99,6 +130,7 @@ def save_unit(path,course,grade,section,name,purpose='',start='',end='',identity
     for value in (start,end):
         if value:date.fromisoformat(value)
     if start and end and start>end:raise ValueError('La fecha final debe ser posterior al inicio.')
+    ensure_units_ready(path)
     with connection(path) as conn:
         duplicates=conn.execute('SELECT id,nombre FROM Unidades_Didacticas WHERE general=1').fetchall()
         if general and any(i!=identity and n.strip().casefold()==name.casefold() for i,n in duplicates):raise ValueError('Ya existe una unidad con ese nombre.')
@@ -113,6 +145,7 @@ def save_unit(path,course,grade,section,name,purpose='',start='',end='',identity
 
 def delete_unit(path,identity):
     import app_storage
+    ensure_units_ready(path)
     saved=app_storage.backup_database(path,'eliminar-unidad')
     with connection(path) as conn:
         conn.execute('UPDATE Sesiones_Clase SET unidad_id=NULL WHERE unidad_id=?',(identity,))
@@ -121,6 +154,7 @@ def delete_unit(path,identity):
 
 
 def move_unit(path,identity,delta):
+    ensure_units_ready(path)
     with connection(path) as conn:
         rows=conn.execute('SELECT id FROM Unidades_Didacticas ORDER BY orden,id').fetchall();ids=[r[0] for r in rows]
         if identity not in ids:return

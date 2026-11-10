@@ -1,425 +1,637 @@
-REGISTRO DOCENTE 2.1.0 - FULL PERSONAL PARA LEONARDO
+REGISTRO DOCENTE 2.1.1 - GUÍA PASO A PASO
+
+Abra Ayuda o pulse F1. Puede buscar por palabras, seleccionar un apartado y usar Anterior / Siguiente.
+
+ÍNDICE
+1. Empezar y guardar
+2. Colegios separados
+3. Bimestres y trimestres
+4. Unidades del periodo
+5. Estudiantes
+6. Cursos y capacidades
+7. Actividades e instrumentos
+8. Trabajos y fichas
+9. Calificaciones y nota global
+10. Rúbrica y cotejo paso a paso
+11. Guardar y reutilizar rúbricas
+12. Prácticas y puntitos
+13. Porcentajes del promedio
+14. Matriz y plantillas del periodo
+15. Excel, Google Sheets y PDF
+16. Buscar y estadísticas
+17. Insignia y perfil docente
+18. Respaldos e historial
+19. Cerrar y reabrir periodos
+20. Dimensiones y barras
+21. Años, niveles y seguridad
+22. Solución de problemas
+23. Cuenta, demo y compras
 
 EMPEZAR Y GUARDAR
 
-1. Seleccione Primaria o Secundaria, el curso, grado y sección.
-2. Ingrese su usuario y contraseña con el candado para habilitar la edición.
-3. Registre o importe a sus estudiantes.
-4. Elija si evaluará actividades independientes o prácticas por tema.
+SU PRIMER REGISTRO, DE PRINCIPIO A FIN
 
-Hay dos formas distintas de guardar:
-• Guardar notas / Guardar puntos confirma los cambios en la base de trabajo del programa.
-• El icono Guardar (.registro), en la barra superior, abre una ventana para que usted elija la carpeta y el nombre del documento. Ese archivo contiene el periodo completo y puede abrirse otra vez en Registro Docente.
+1. Abra Organizar en la barra superior. Compruebe el colegio, el año y el bimestre o trimestre. Si aparece Registro sin periodo asignado, seleccione ese registro y pulse Editar para identificarlo.
+2. Seleccione el nivel educativo, curso, grado y sección en la cabecera. Esos selectores indican a qué grupo se aplican las pantallas siguientes.
+3. Abra el candado e ingrese sus credenciales. Complete el cambio de contraseña si el programa se lo solicita.
+4. Abra Estudiantes y registre o importe su aula real. Una instalación nueva empieza sin estudiantes de ejemplo.
+5. En Organizar, cree las unidades del periodo. En Actividades, cree su clase, examen o trabajo y asígnelo a su unidad.
+6. Abra la actividad en Calificaciones. Elija Nota global, Nota directa, Rúbrica o Lista de Cotejo y complete la tabla.
+7. Pulse Guardar notas o Guardar observaciones. Luego revise el resultado en Matriz.
+8. Pulse el icono de guardar de la cabecera o Ctrl+S. Elija una carpeta y un nombre para su documento .registro.
 
-Después de guardar un archivo se muestra su ubicación completa. Puede elegir Documentos, una memoria USB u otra carpeta. Exportar a Excel/PDF también le pide dónde guardar.
+QUÉ GUARDA CADA BOTÓN
 
-Los respaldos automáticos protegen el trabajo diario y se crean en la carpeta de datos. Crear respaldo… permite elegir una copia adicional en la ubicación que usted decida.
+Guardar actividad conserva el tema, propósito, competencia y capacidades de esa actividad. Guardar notas confirma la evaluación en el registro de trabajo. Guardar datos de la IE confirma la información del colegio.
 
-PRÁCTICAS Y PUNTITOS
+Guardar documento (.registro) crea una copia completa del periodo que usted puede localizar y abrir después: alumnado, actividades, instrumentos, notas e insignia. Si sigue trabajando, guarde otra vez para actualizar esa copia.
 
-EJEMPLO: ECUACIONES, DOS PRÁCTICAS DE 20 MINUTOS
+Exportar Excel crea una hoja de cálculo para trabajar o entregar resultados. Para conservar todo el documento y poder recuperarlo completo, guarde también el .registro.
 
-1. Abra Puntos y pulse Nuevo tema.
-2. Escriba Ecuaciones. Seleccione la competencia y marque las capacidades a las que se asignará la nota global.
-3. Pulse Agregar práctica. Cree Práctica 1, duración 20 minutos, con dos ejercicios de 5 puntos cada uno. Su máximo será 10.
-4. Cree Práctica 2, también de 20 minutos. Puede usar tres ejercicios: 3, 3 y 4 puntos. Su máximo también será 10.
-5. Haga doble clic en cada celda para ingresar los puntos por ejercicio. Pulse Guardar puntos.
+Antes de cambiar de colegio o documento se le avisa si hay cambios pendientes. Puede cancelar y guardarlos primero. El nuevo registro se carga en la misma ventana; revise siempre el colegio y periodo que muestra la cabecera.
 
-Para un estudiante que obtuvo 6/10 en la primera práctica y 8/10 en la segunda:
-  Puntos obtenidos = 6 + 8 = 14
-  Máximo total = 10 + 10 = 20
-  Nota de examen = 14 ÷ 20 × 20 = 14/20
+COLEGIOS SEPARADOS
 
-Si las prácticas valieran 10 y 15 puntos, el máximo total sería 25. Un total de 20 puntos daría 20 ÷ 25 × 20 = 16/20. El programa suma puntos; no promedia las notas de cada práctica por separado.
+CREAR UN SEGUNDO COLEGIO
 
-6. Al terminar el tema, pulse Crear nota / 20. Se genera una sola actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. No necesita tomar un examen físico.
+1. Pulse Organizar en la barra superior.
+2. Pulse + Colegio e ingrese un nombre que lo distinga, por ejemplo IE Santa Rosa.
+3. Seleccione el colegio nuevo en la lista de la ventana. Se crea con currículo y preferencias, sin alumnos ni calificaciones del colegio anterior.
+4. Identifique su primer periodo con Editar. Después cree los demás con + Periodo.
+5. Seleccione un periodo del colegio y pulse Abrir seleccionado.
+6. En Configuración → Institución, complete los datos y cargue la insignia de ese colegio. Pulse Guardar datos de la IE.
+7. Registre su alumnado y empiece a crear actividades.
 
-También puede llamar al bloque Competencia 2 · Periodo 1 y registrar allí prácticas de varios temas de esa misma competencia. Así obtiene una sola nota final que reúne todos esos temas.
+CAMBIAR ENTRE COLEGIOS
 
-Importante:
-• Un campo vacío es un ejercicio pendiente, no equivale a cero. Para consolidar deben estar completos los estudiantes activos.
-• Escriba 0 si el estudiante obtuvo cero; el programa no lo inventa.
-• La nota global se asigna a las capacidades marcadas. Si desea calificaciones diferentes por capacidad, cree bloques separados.
-• Después de consolidar, el bloque queda protegido. Reabrir tema permite corregir puntos. Al volver a consolidar se actualiza la misma actividad; no se duplica el examen.
-• Incluir / excluir práctica conserva sus puntos, pero cambia el máximo usado en el acumulado. Debe reconsolidar para actualizar la nota publicada.
-• Los porcentajes del curso no cambian al agregar prácticas ni al consolidar.
+Use el selector de colegio de la cabecera. Para escoger un periodo específico, abra Organizar, seleccione colegio, seleccione periodo y pulse Abrir seleccionado. Solo resaltar una fila en Organizar permite consultar sus unidades; todavía no cambia su registro de trabajo.
 
-PORCENTAJES DEL PROMEDIO
+Cada colegio mantiene sus propios periodos, unidades, estudiantes y notas. Incluso si ambos tienen un 3.º A, sus registros se administran por separado. El cambio conserva la ventana y vuelve a bloquear la edición; abra el candado para modificar el colegio elegido.
 
-LOS PORCENTAJES SON PESOS QUE USTED ELIGE
+RENOMBRAR O QUITAR
 
-No se calculan a partir de los archivos que sube. Los valores 40, 25, 20 y 15 que aparecen inicialmente son una configuración de partida:
-  Clases: 40 %
-  Exámenes: 25 %
-  Trabajos: 20 %
-  Prácticas / Otros: 15 %
+En Organizar seleccione el colegio y pulse Renombrar. Ese cambio identifica sus documentos del mismo colegio. Eliminar colegio mueve sus documentos completos a la papelera; revise el nombre antes de confirmar. Para recuperarlo abra Papelera / recuperar, seleccione el documento y pulse Recuperar como otro documento.
 
-Indican la importancia de cada rubro cuando se combinan calificaciones. Puede cambiarlos, pero la suma debe ser 100. Pulse Guardar porcentajes para aplicarlos.
+No elimine un colegio para cambiar de uno a otro: utilice el selector. Los datos y la insignia se comparten entre los periodos de un mismo colegio, sin copiarse a otro colegio.
 
-Dentro de un rubro, el Peso de una actividad indica si vale igual que otra (1), el doble (2), etc.
+BIMESTRES Y TRIMESTRES
 
-El programa combina solamente los rubros que tienen notas para el estudiante y capacidad. Si solo tiene una nota de Exámenes, esa nota se usa completa; no se convierte automáticamente en el 25 % de 20.
+IDENTIFICAR SU PRIMER PERIODO
 
-Ejemplo: Clases 16 con peso de rubro 40 y Exámenes 14 con peso de rubro 25; sin notas en los otros rubros:
-  (16 × 40 + 14 × 25) ÷ (40 + 25) = 15,23
+1. Pulse Organizar y compruebe el colegio seleccionado.
+2. En la lista Bimestres y trimestres, seleccione el registro actual. Si aún no tiene identificación, aparece Registro sin periodo asignado.
+3. Pulse Editar.
+4. Escriba el Año escolar. Elija Bimestres o Trimestres.
+5. Elija el número: de 1 a 4 para bimestres o de 1 a 3 para trimestres.
+6. Puede añadir un nombre, por ejemplo Inicio del año, y las fechas de inicio y fin. Use AAAA-MM-DD, por ejemplo 2027-03-01.
+7. Pulse Guardar periodo. Revise el año y número en la lista y en la cabecera.
 
-PRÁCTICAS ACUMULADAS EN LUGAR DE EXAMEN
-La nota consolidada de un tema ocupa el rubro Exámenes. Es una calificación acumulada, aunque no haya examen físico. Si ya hay otras notas de Exámenes, ambas intervienen según sus pesos. No se borran notas anteriores.
+CREAR EL SIGUIENTE PERIODO
 
-Si desea evaluar un curso únicamente con acumulados de prácticas, puede configurar Exámenes 100 y los otros rubros 0. Esto afecta a TODO el curso, no solo a una competencia. Use primero Herramientas → Vista previa de nuevas ponderaciones para revisar los cambios.
+1. En Organizar seleccione un periodo del mismo colegio que sirva de base.
+2. Pulse + Periodo.
+3. Indique año, esquema y número del nuevo periodo. No repita una combinación que ya existe en ese colegio.
+4. Pulse Guardar periodo. El nuevo documento conserva currículo y alumnado; empieza sin las notas, actividades ni prácticas del periodo anterior.
+5. Selecciónelo y pulse Abrir seleccionado para trabajar en él.
+6. Cree sus unidades para ese periodo.
 
-El gráfico Ponderaciones muestra los pesos guardados. Competencias y Capacidades muestran cantidades de actividades asignadas; esas cantidades no son porcentajes y no alteran los pesos.
+EJEMPLO: VER EL TERCER BIMESTRE
 
-DIMENSIONES Y BARRAS
+Abra Organizar → elija su colegio → seleccione 3.º bimestre del año correspondiente → Abrir seleccionado. Actividades, notas, prácticas y matriz pasarán a ese documento. Para regresar, abra el primer bimestre del mismo modo. Un filtro de unidad únicamente cambia la vista dentro del periodo abierto.
 
-La barra lateral muestra iconos. Pase el ratón sobre uno para ver su nombre. El botón de tres líneas de la cabecera (o Ctrl+B) despliega los nombres completos; otra pulsación los oculta. Se recuerda su preferencia. Al elegir una sección en una ventana estrecha, el menú vuelve a contraerse.
+EDITAR Y ELIMINAR
 
-Las divisiones entre los paneles de trabajo se pueden arrastrar con el ratón. Por ejemplo:
-• Amplíe el panel de nombres en Calificaciones.
-• Dé más espacio al formulario al crear una actividad.
-• Amplíe la lista de temas o la planilla de prácticas.
+Editar cambia los datos de identificación del documento seleccionado; no traslada sus notas a otro periodo. Eliminar quita el documento de la lista y lo deja completo en Papelera / recuperar. Si el periodo está cerrado, ábralo y reábralo con autenticación antes de editarlo.
 
-Las barras de desplazamiento tienen flechas y un control móvil. La barra inferior desplaza las columnas de notas; la barra vertical desplaza los estudiantes. También puede ampliar una columna arrastrando el borde de su encabezado.
+El programa no crea los cuatro bimestres ni sus unidades automáticamente. Usted decide qué periodos y unidades necesita cada colegio.
 
-Configuración → General permite ajustar el tamaño de letra, el zoom y la apariencia. Restablecer distribución adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
+UNIDADES DEL PERIODO
 
-En Calificaciones, Herramientas reúne el método de evaluación, las plantillas y el diseño. Criterios y Resultados y asistencia cambian la vista principal. Pulse Herramientas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
+CREAR Y ORDENAR UNIDADES
 
-Un clic derecho en una celda o encabezado permite leer el contenido completo.
+1. Pulse Organizar, elija el colegio y resalte el bimestre o trimestre correspondiente.
+2. Compruebe el título Unidades: indica el periodo al que pertenecen las filas de abajo.
+3. En la parte de unidades pulse + Unidad.
+4. Escriba un nombre claro, por ejemplo Unidad 2 · Resolvemos problemas cotidianos. Puede añadir propósito y fechas.
+5. Pulse Guardar unidad. Repita para las unidades que necesite.
+6. Para corregir una unidad, selecciónela y pulse Editar o haga doble clic. Para cambiar su posición use ↑ o ↓.
+
+Las unidades son generales para los cursos y grados de ese colegio en ese periodo. No tiene que crear otra Unidad 1 por cada curso. Cada bimestre o trimestre mantiene su propia lista de unidades.
+
+ASIGNAR UNA ACTIVIDAD
+
+1. Abra el periodo donde trabajará.
+2. Entre en Actividades y seleccione la unidad en el formulario.
+3. Complete tema, propósito, competencia y capacidades, y guarde la actividad.
+4. Para mover una actividad existente, selecciónela en la lista de Actividades, cambie su unidad y pulse Actualizar actividad.
+
+CONSULTAR UNA UNIDAD O TODO EL PERIODO
+
+Use el selector de unidad de la cabecera. Una unidad muestra sus actividades y el cálculo de la matriz para esas actividades. Todas las unidades reúne el periodo completo. Sin unidad muestra las actividades que todavía no están asignadas.
+
+Para exportar solo una unidad, selecciónela antes de abrir Matriz y exportar. En la ventana de exportación también puede optar por todo el bimestre o trimestre.
+
+QUITAR UNA UNIDAD
+
+Selecciónela en Organizar y pulse Eliminar en la parte de unidades. Sus actividades y notas se conservan como Sin unidad; luego puede asignarlas a otra unidad. No confunda este botón con Eliminar periodo, que retira el documento completo.
+
+ESTUDIANTES
+
+REGISTRAR EL AULA
+
+1. Compruebe colegio, periodo, nivel, grado y sección en la cabecera.
+2. Abra el candado y entre en Estudiantes.
+3. Escriba apellidos y nombres, revise el grado y sección, y agregue al estudiante.
+4. Repita para el resto del aula. El contador muestra cuántos aparecen con los filtros actuales.
+
+IMPORTAR DESDE EXCEL
+
+1. Descargue la plantilla de estudiantes desde esa sección.
+2. Complete sus columnas de identificación y nombres sin cambiar los encabezados.
+3. Guarde el archivo como .xlsx.
+4. Pulse Importar Excel, elija el archivo y revise la vista previa.
+5. Confirme cuando los nombres, grado y sección sean correctos. Después revise la lista.
+
+CORREGIR UN NOMBRE O CAMBIAR DE SALÓN
+
+Seleccione la fila. El formulario se completa con sus datos. Corrija los campos y pulse Actualizar. Si busca a alguien y no aparece, borre la búsqueda, compruebe el salón y active la vista de retirados si corresponde.
+
+Use el estado Retirado cuando deba conservar su historia. Eliminar estudiante quita el registro y sus datos relacionados; haga un respaldo antes de una eliminación que necesite conservar.
+
+En las tablas de calificación se muestra N° y el nombre. N° es el orden visible, no una identidad que deba escribir como nota. Al ordenar puede cambiar esa numeración. Conserve las columnas de identidad que llevan las plantillas Excel, aunque estén ocultas, para que la importación relacione correctamente los datos.
+
+Crear un colegio nuevo empieza con alumnado vacío. Crear otro periodo del mismo colegio copia su alumnado, sin copiar sus evaluaciones.
+
+CURSOS Y CAPACIDADES
+
+REVISAR EL CURRÍCULO QUE EVALÚA
+
+1. Elija Primaria o Secundaria y luego el curso en la cabecera.
+2. Abra Configuración y entre en el apartado de currículo.
+3. Seleccione una competencia para consultar sus capacidades.
+4. Use las acciones de creación o edición disponibles si necesita adaptar el catálogo. Revise los nombres antes de guardar.
+
+Cuando cree una actividad, seleccione la competencia y marque las capacidades exactas que evaluará. Si elige las capacidades segunda, tercera y cuarta, las columnas corresponden a esas capacidades; la numeración visible no reemplaza sus nombres.
+
+Un criterio describe la evidencia concreta que observará en una capacidad. Por ejemplo, dentro de Argumenta afirmaciones puede usar Justifica por qué su procedimiento produce una respuesta válida. Puede tener varios criterios para una misma capacidad.
+
+La competencia, la capacidad y el criterio cumplen funciones distintas: seleccione la competencia de la actividad, marque sus capacidades y precise los criterios en la rúbrica o lista de cotejo.
+
+Si una columna se ve corta, amplíela o consulte el texto completo con el clic derecho. En la vista de criterios, el panel de descriptores muestra la capacidad y el criterio seleccionados.
+
+Al cambiar de nivel se muestran los cursos y estudiantes de ese nivel. Antes de concluir que falta un registro, compruebe también el colegio, periodo, grado, sección y filtro de unidad.
 
 ACTIVIDADES E INSTRUMENTOS
 
-Actividades sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
+CREAR UNA CLASE, EXAMEN O EVALUACIÓN
 
-Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad. Escriba el título, elija la categoría y pulse Guardar actividad. Descripción abre el texto adicional. Diseñe la rúbrica o el cotejo y descargue sus plantillas desde Calificaciones, en la actividad correspondiente. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
+1. Elija colegio, periodo, curso, grado, sección y unidad.
+2. Abra Actividades y, si había otra seleccionada, use la acción de limpiar o nueva actividad.
+3. Escriba el título del tema y la fecha.
+4. Complete el propósito: qué espera que el estudiante aprenda o demuestre. Este texto acompaña al instrumento exportado.
+5. Seleccione el rubro, por ejemplo Clases, Exámenes o Trabajos. El rubro determina qué porcentaje del curso interviene en el promedio.
+6. Seleccione la competencia y marque únicamente las capacidades evaluadas. Criterio… permite precisar lo que observará en cada una.
+7. Elija el método: Nota global, Nota directa, Rúbrica o Lista de Cotejo.
+8. Use Peso 1 para una actividad de igual importancia dentro del rubro. Peso 2 le da el doble de importancia que una de peso 1.
+9. Pulse Guardar actividad y ábrala en Calificaciones para registrar los resultados.
 
-Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
+ELEGIR EL MÉTODO
 
-La rúbrica permite evaluar cada criterio con sus cuatro niveles y puntajes. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La rúbrica calcula notas por capacidad; el cotejo guarda cumplimiento y pendientes sin notas automáticas.
+Nota global: ingresa una nota por estudiante y se aplica a las capacidades seleccionadas. Es útil para una prueba con una sola nota final.
+Nota directa: ingresa una nota diferente en cada capacidad.
+Rúbrica: registra evidencias por criterio con niveles o puntos y obtiene resultados por capacidad.
+Lista de Cotejo: marca cumplimiento Sí/No y pendientes; la conversión a nota se realiza solo si usted la configura y confirma.
 
-La biblioteca guarda criterios reutilizables; usarla en otra actividad no modifica evaluaciones antiguas. Duplicar actividad conserva la estructura y empieza sin notas.
+MODIFICAR O REUTILIZAR
 
-Archivar oculta una actividad del trabajo diario y conserva sus notas históricas. Para corregir una calificación, use la actividad original o el historial.
+Seleccione la actividad en la lista para cargar su formulario. Corrija el propósito, fecha, unidad o peso y pulse Actualizar actividad. Compruebe los efectos antes de quitar capacidades que ya evaluó.
+
+Duplicar actividad conserva su estructura para empezar otra sin notas. Archivar oculta una actividad del trabajo diario y mantiene sus datos para recuperarla. Para reutilizar solo los criterios en otro tema consulte Guardar y reutilizar rúbricas.
+
+TRABAJOS Y FICHAS
+
+REGISTRAR UNA FICHA SIN SUBIR ARCHIVOS
+
+1. Abra Actividades en el colegio, periodo y salón correctos.
+2. Seleccione el rubro Trabajos y el tipo de trabajo que corresponda.
+3. Escriba únicamente un título identificable, por ejemplo Ficha 3 · Ecuaciones. No necesita cargar la ficha ni adjuntar un documento.
+4. Añada fecha, unidad y propósito. Seleccione la competencia y las capacidades.
+5. Escoja cómo evaluará: Nota global, Nota directa, Rúbrica o Lista de Cotejo.
+6. Guarde la actividad y ábrala en Calificaciones.
+7. Ingrese las notas o evidencias y pulse Guardar notas o Guardar observaciones.
+
+EJEMPLO CON UNA SOLA NOTA
+
+Un estudiante obtuvo 15 en una ficha y usted decide usar esa valoración en tres capacidades seleccionadas. Elija Nota global e ingrese 15 una sola vez. Se aplica 15 a cada una de esas capacidades. Si quiere distinguir sus desempeños, use Nota directa o una rúbrica.
+
+ELEGIR CUÁNTO VALE
+
+Abra Ponderaciones para definir el porcentaje del rubro Trabajos dentro del curso. Los porcentajes de todos los rubros deben sumar 100. Dentro de Trabajos, el Peso de cada ficha establece su importancia relativa.
+
+Por ejemplo, Ficha 1 con peso 1 y Proyecto con peso 2: el proyecto cuenta el doble dentro de Trabajos. No escriba 20 en el peso para indicar que la actividad se califica sobre veinte; el peso y la nota son valores diferentes.
+
+Los trabajos usan el mismo flujo de evaluación de clases y exámenes. No es necesario crear otro registro de estudiantes ni adjuntar los materiales que dejó al aula.
+
+CALIFICACIONES Y NOTA GLOBAL
+
+INGRESAR UNA NOTA ÚNICA DE PRUEBA
+
+1. Cree una actividad de Exámenes, seleccione su competencia y marque las capacidades que decidió evaluar.
+2. Elija Nota global como método y abra la actividad en Calificaciones.
+3. Ingrese una nota de 0 a 20 para cada estudiante en la columna de nota global.
+4. Pulse Guardar notas. Esa nota queda aplicada a cada capacidad seleccionada.
+5. Revise los resultados por capacidad y luego la Matriz del periodo o unidad.
+
+Ejemplo: si un estudiante obtuvo 5 y se evalúan tres capacidades, Nota global asigna 5, 5 y 5. El promedio de esas tres notas es 5. Otras actividades ya registradas también intervienen en la matriz según sus pesos.
+
+INGRESAR NOTAS DIFERENTES POR CAPACIDAD
+
+Elija Nota directa. Haga doble clic en una celda para escribir o use F2 donde la tabla lo indique. Revise el encabezado de cada capacidad, complete los valores y guarde. Resultados y asistencia reúne las notas, asistencia y comentario de la actividad.
+
+MOVERSE Y CORREGIR
+
+Use las flechas para recorrer las tablas. Enter avanza al siguiente estudiante y Tab al siguiente criterio cuando esté en edición. Esc cancela el texto que está escribiendo. En las planillas compatibles, Ctrl+Z y Ctrl+Y deshacen y rehacen antes de guardar. Después de guardar, consulte Historial de notas para revisar los cambios confirmados.
+
+Para pegar desde Excel, copie un bloque, seleccione el primer estudiante de destino y pulse Ctrl+V. Revise la columna de inicio y la vista previa antes de Aplicar bloque. Guardar notas confirma el resultado.
+
+Una celda vacía significa pendiente, no cero. Escriba 0 únicamente si esa es la nota que corresponde. Compruebe también la asistencia; no la confunda con el valor de la evaluación.
 
 RÚBRICA Y COTEJO PASO A PASO
 
-1. PREPARE LA ACTIVIDAD
+PREPARAR EL INSTRUMENTO
 
-Seleccione nivel, curso, grado y sección. Registre el alumnado real. En Actividades elija la competencia y las capacidades exactas, escriba el tema y guarde. Abra la actividad en Calificaciones. La competencia aparece sobre la tabla y las columnas llevan el nombre de cada capacidad seleccionada.
+1. Cree una actividad con tema, propósito, competencia y capacidades exactas.
+2. Ábrala en Calificaciones y pulse Herramientas.
+3. Elija Rúbrica o Lista de Cotejo.
+4. Use Diseñar/Editar para escribir los criterios aquí, o Plantilla Excel para prepararlos en una hoja de cálculo.
+5. Si descarga una plantilla nueva, elija cuántos criterios necesita por capacidad. Incluya el alumnado real solo si desea trabajar con los nombres actuales; las plantillas reutilizables pueden quedar vacías.
 
-2. PLANTILLA EXCEL SIMPLIFICADA
+USAR UNA RÚBRICA
 
-En Herramientas elija Rúbrica o Lista de Cotejo y pulse Plantilla Excel. Elija cuántos criterios necesita por capacidad. Se crean dos hojas visibles: Instrumento y Registro. Los nombres quedan vacíos por defecto; marque Incluir alumnado real si quiere exportar el salón. No se incluyen estudiantes de ejemplo ni respuestas anteriores.
+1. Redacte el criterio y sus descriptores C, B, A y AD. El descriptor explica qué evidencia corresponde a cada nivel.
+2. Revise el máximo y los puntos de los niveles si su instrumento utiliza puntajes específicos.
+3. Guarde el instrumento y vuelva a Criterios.
+4. Seleccione una celda del estudiante y criterio. Ingrese los puntos que considere apropiados, o una letra C/B/A/AD para usar el nivel del instrumento.
+5. Abra Descriptores si necesita leer la explicación completa. Los rangos muestran los límites de la escala, por ejemplo B · 10.5 a < 13.5. No representan una nota única obligatoria.
+6. Revise las capacidades pendientes y los resultados calculados. Pulse Guardar notas para confirmar respuestas y resultados.
 
-En Instrumento escriba sus criterios. En rúbrica complete los cuatro descriptores; los puntos por nivel son opcionales y, si quedan vacíos, se utiliza la escala configurada. Los bloques nuevos completamente vacíos se omiten al importar. Para cambiar la cantidad descargue otra plantilla. Conserve los encabezados y las columnas ocultas de identidad.
+Ejemplo: dos criterios de máximo 10 con respuestas 6 y 8 suman 14 de 20 para esa capacidad. Un criterio sin evaluar queda pendiente; no se inventa un cero.
 
-3. COMPLETE LAS RESPUESTAS
+USAR UNA LISTA DE COTEJO
 
-En Registro los nombres quedan fijos al desplazar las columnas. Puede escribir el nombre de un estudiante ya registrado como Apellidos, Nombres o exportar con el alumnado real.
+1. Escriba indicadores observables, por ejemplo Identifica los datos del problema.
+2. En Criterios marque Sí o No con un clic o con S/N. Supr deja pendiente. Enter avanza por estudiantes y Tab por indicadores.
+3. Revise el resumen: cumple cierta cantidad de indicadores, de cierta cantidad evaluada, con pendientes si los hay.
+4. Pulse Guardar observaciones para conservar ese seguimiento.
+5. Si necesita una nota, pulse Convertir a nota, elija su regla y revise Ver vista previa. Solo se convierten capacidades completamente evaluadas. Confirme y guarde los cambios.
 
-Rúbrica: escriba C/B/A/AD o puntos entre cero y el máximo. Sin evidencia vale cero y una celda vacía queda pendiente. La nota provisional se calcula con los criterios evaluados. Dos criterios de diez con respuestas 6 y 8 producen 14/20.
+El cotejo sirve primero para orientar el aprendizaje. No transforma automáticamente cada Sí en 20 y cada No en 0. Una regla proporcional o una tabla de cumplimiento debe ser una decisión explícita del docente.
 
-Cotejo: marque Sí, No o Sin evaluar. El resumen muestra cuántos cumple, cuántos fueron evaluados y cuántos quedan pendientes. No genera notas ni promedios automáticamente. No se asigna 20 a Sí y cero a No para promediar capacidades.
+CAMBIAR LA ESCALA
 
-4. IMPORTE Y REVISE
+Abra Configuración → General → Configurar escala de logro. Ajuste los límites de B, A y AD del nivel actual. Con límites 10.5, 13.5 y 17.5, B incluye 10.5 y llega hasta antes de 13.5; 13.5 ya es A. Cambiar los límites cambia la letra que acompaña a las notas, sin sustituir los números que ingresó.
 
-Guarde como XLSX y pulse Importar Excel. Revise Instrumento, Observaciones y Cambios de notas. Confirmar crea un respaldo; cancelar conserva los datos. Las plantillas antiguas siguen siendo compatibles, incluidos sus cálculos anteriores. El cotejo nuevo usa orientación por defecto.
+GUARDAR Y REUTILIZAR RÚBRICAS
 
-Puede importar solo el instrumento y evaluar después aquí. Las notas anteriores se conservan hasta una acción explícita; las observaciones del cotejo no las recalculan.
+CÓMO TRABAJA EL GENERADOR
 
-5. EVALÚE EN LA TABLA PRINCIPAL
+La plantilla parte de la actividad seleccionada: toma grado, competencia, capacidades, tema y propósito. Usted decide la cantidad de criterios y redacta o adapta los descriptores. Revise siempre que describan la evidencia de su clase; un texto general no reemplaza esa revisión docente.
 
-La barra lateral se contrae con el botón de menú o Ctrl+B. La tabla aprovecha el espacio y mantiene fijos código y nombre al desplazar los criterios. La capacidad y el criterio completos aparecen al seleccionar una celda.
+GUARDAR UN MODELO PARA OTRA OCASIÓN
 
-Cotejo: un clic alterna Sí/No. Las teclas S y N registran la respuesta; Supr deja pendiente, Enter pasa al siguiente estudiante y Tab al siguiente criterio. Pulse Guardar observaciones. Ctrl+Z y Ctrl+Y deshacen y rehacen antes de guardar.
+1. Abra en Calificaciones la actividad con la rúbrica o cotejo que desea conservar.
+2. Termine de editar los criterios y pulse Guardar instrumento. Guarde también los cambios pendientes de la actividad.
+3. Abra Herramientas del menú superior → Guardar instrumento reutilizable en Excel.
+4. Elija la carpeta. El nombre propuesto reúne grado, competencia y tema; puede cambiarlo.
+5. Conserve el .xlsx. Incluye propósito, capacidades, criterios y descriptores; su registro de estudiantes queda vacío para reutilizarlo.
 
-Convertir a nota es opcional. Pulse Convertir a nota, elija Proporcional o su tabla de cumplimiento y pulse Ver vista previa. Solo se convierten capacidades completamente evaluadas. Confirme en planilla y pulse Guardar cambios. Por ejemplo, usted puede definir que 50 % equivalga a 14; no se impone esa regla. Solo orientación permite retirar las notas de la actividad conservando sus observaciones, también con revisión y confirmación.
+USAR UNA RÚBRICA QUE YA TENÍA
 
-Rúbrica: doble clic para escribir puntos manuales o C/B/A/AD; Enter avanza al siguiente estudiante y Tab al siguiente criterio. El botón Descriptores abre o cierra el panel con los cuatro niveles. Guardar notas confirma respuestas y resultados. Los pendientes no cuentan como cero. La vista Individual sigue disponible.
+1. Cree o abra la actividad donde la utilizará, en el colegio, periodo y salón correctos.
+2. Abra Herramientas → Importar instrumento Excel, o el botón Importar Excel de la actividad.
+3. Seleccione el archivo .xlsx del programa.
+4. Revise la vista previa: competencia, capacidades, criterios, elementos nuevos y notas u observaciones que contenga.
+5. Confirme solo si el destino y los cambios son correctos. El programa crea un respaldo antes de aplicar la importación.
+6. Abra Criterios y compruebe el instrumento. Evalúe al nuevo grupo y guarde sus resultados.
 
-Resultados y asistencia permite revisar notas, asistencia y comentarios. Nota directa admite una nota final de cero a veinte. Las notas de cotejos antiguos se conservan y requieren una conversión explícita para actualizarlas.
+Modificar esta copia no altera la evaluación original. Para una plantilla reusable conviene exportar sin respuestas ni alumnado; Exportar tabla, en cambio, puede contener las respuestas de la evaluación actual.
 
-6. CONFIGURACIÓN Y DOCUMENTOS
+MODELOS ANTIGUOS O EXTERNOS
 
-Los límites de C, B, A y AD se ajustan únicamente desde Configuración → General → Configurar escala de logro. Las notas numéricas se conservan.
+Biblioteca interna anterior permite recuperar los modelos guardados por versiones previas. Si su rúbrica es un Word, PDF, imagen o Excel con un diseño propio, no hay lectura universal de cualquier formato: descargue la plantilla del programa y copie allí sus criterios y descriptores. Conserve encabezados y columnas de identidad.
 
-Use también el icono Guardar de la cabecera para elegir dónde guardar el documento completo .registro: incluye estudiantes, actividades, instrumentos, respuestas, notas e insignia.
+Guarde sus modelos en carpetas fáciles de localizar, por ejemplo 4.º / Matemática / Cantidad. El archivo queda en la carpeta que usted eligió; no depende solo de la biblioteca interna.
+
+PRÁCTICAS Y PUNTITOS
+
+CREAR UN TEMA Y SUS PRÁCTICAS
+
+1. Seleccione colegio, periodo, curso, grado y sección. Abra Puntos en la barra lateral.
+2. Pulse Nuevo tema y escriba Ecuaciones. Elija la competencia y las capacidades que recibirán la nota acumulada.
+3. Pulse Agregar práctica. Cree Práctica 1, duración 20 minutos, con dos ejercicios de 5 puntos. Su máximo será 10.
+4. Agregue Práctica 2. Por ejemplo, tres ejercicios de 3, 3 y 4 puntos: máximo 10.
+5. Haga doble clic en cada celda y registre los puntos obtenidos en cada ejercicio. Pulse Guardar.
+6. Cuando haya terminado el tema, revise los pendientes y pulse Crear nota / 20.
+
+EJEMPLO DEL CÁLCULO
+
+Un estudiante obtuvo 6/10 en la primera práctica y 8/10 en la segunda:
+  Puntos obtenidos: 6 + 8 = 14.
+  Máximo: 10 + 10 = 20.
+  Nota acumulada: 14 ÷ 20 × 20 = 14/20.
+
+Si los máximos fueran 10 y 15, el total máximo sería 25. Con 20 puntos obtendría 20 ÷ 25 × 20 = 16/20. Se suman los puntos y máximos; no se promedian directamente las notas de cada práctica.
+
+PUBLICAR Y CORREGIR
+
+Crear nota / 20 genera una actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. La nota global se aplica a las capacidades elegidas. No necesita tomar un examen físico ni volver a escribir esa nota.
+
+El tema consolidado queda protegido. Para corregirlo, use el menú de más opciones → Reabrir tema, cambie los puntos, guarde y vuelva a Crear nota / 20. Se actualiza la misma actividad; no se duplica el examen.
+
+Incluir o excluir práctica conserva sus puntos, pero cambia el máximo y el acumulado. Vuelva a consolidar para actualizar la nota publicada.
+
+Un campo vacío es un ejercicio pendiente. Para consolidar deben estar completos los estudiantes activos. Escriba 0 si esa fue su puntuación. Las prácticas acumuladas van al rubro Exámenes y respetan sus ponderaciones; agregarlas no cambia los porcentajes del curso.
+
+PORCENTAJES DEL PROMEDIO
+
+DEFINIR LA IMPORTANCIA DE CADA RUBRO
+
+1. Seleccione el curso correcto y abra Ponderaciones.
+2. Revise los porcentajes de Clases, Exámenes, Trabajos y Prácticas / Otros.
+3. Escriba los porcentajes que decidió usar. La suma debe ser 100.
+4. Use Herramientas → Vista previa de nuevas ponderaciones para comparar el promedio actual y el propuesto sin guardar todavía.
+5. Pulse Guardar porcentajes cuando esté conforme y revise Matriz.
+
+Los valores iniciales 40, 25, 20 y 15 son una configuración de partida que puede cambiar. No se calculan a partir de los archivos importados. La configuración de rubros corresponde al curso del documento actual.
+
+PESO DE UNA ACTIVIDAD Y PORCENTAJE DEL RUBRO
+
+El porcentaje define cuánto importa el conjunto de Trabajos, Clases o Exámenes. El Peso de actividad reparte la importancia dentro de ese rubro: 1 equivale a otra actividad de peso 1; 2 cuenta el doble.
+
+Ejemplo dentro de Trabajos: ficha 12 con peso 1 y proyecto 18 con peso 2:
+  (12 × 1 + 18 × 2) ÷ (1 + 2) = 16.
+
+CÓMO SE COMBINAN LOS RUBROS
+
+Se consideran los rubros con notas para el estudiante y capacidad. Si solo tiene una nota de Exámenes, esa nota se usa completa; no se reduce automáticamente al 25 % de veinte.
+
+Ejemplo: Clases 16 con porcentaje 40 y Exámenes 14 con porcentaje 25, sin notas en los otros rubros:
+  (16 × 40 + 14 × 25) ÷ (40 + 25) = 15,23.
+
+Las competencias reúnen sus capacidades evaluadas. Un pendiente no vale cero. Una nota manual final de capacidad sustituye el cálculo de esa capacidad; revísela si un resultado no coincide con lo esperado.
+
+Los gráficos de competencias y capacidades muestran cantidades de evaluaciones; esas cantidades no cambian los porcentajes. Consulte Herramientas → Ver pendientes y explicación de promedios para revisar lo que falta.
+
+MATRIZ Y PLANTILLAS DEL PERIODO
+
+VER EL REGISTRO GENERAL
+
+1. Seleccione colegio, año y bimestre o trimestre.
+2. Elija curso, grado y sección.
+3. Para ver el periodo completo, seleccione Todas las unidades en la cabecera.
+4. Abra Matriz. Compruebe el título: muestra colegio, periodo y alcance.
+5. Revise notas de capacidades, competencias y pendientes. Desplace las columnas manteniendo los nombres como referencia.
+
+VER SOLO UNA UNIDAD
+
+Cambie el selector superior a la unidad que desea revisar. La matriz se calcula con las actividades de esa unidad. Vuelva a Todas las unidades para revisar el resultado completo del bimestre o trimestre.
+
+Una nota manual final de capacidad se ingresa en Todas las unidades. Para corregir el resultado de una unidad, edite sus actividades; no introduzca una nota final del periodo esperando que corresponda a una única unidad.
+
+DESCARGAR LA MATRIZ EN EXCEL
+
+1. Con el contexto correcto, pulse Exportar matriz a Excel.
+2. Si tiene una unidad seleccionada, elija descargar solo esa unidad o todo el bimestre / trimestre.
+3. Elija cómo se verán las notas: Solo números, Solo letras o Número y letra. Ejemplos: 17, A o 17 (A).
+4. Elija carpeta y nombre del archivo .xlsx. Revise el mensaje con la ubicación.
+5. Abra el Excel y compruebe colegio, periodo, unidad, grado, sección y cantidad de estudiantes antes de entregarlo.
+
+Para otro periodo, ábralo primero en Organizar. La matriz general del periodo abierto puede descargarse completa o por unidad; no combina automáticamente diferentes colegios ni todos los periodos del año en una sola descarga.
+
+IMPORTAR UNA MATRIZ
+
+Use el botón específico de importar matriz. Conserve sus encabezados y las identidades de la plantilla y revise la vista previa antes de confirmar. Una matriz de notas finales no reemplaza el documento completo ni contiene necesariamente cada respuesta de rúbrica.
 
 EXCEL, GOOGLE SHEETS Y PDF
 
-Exportar notas permite elegir Excel (.xlsx), CSV para Google Sheets, PDF o JSON y la carpeta donde se guardará.
+ELEGIR EL ARCHIVO ADECUADO
 
-Para Google Sheets:
-1. Exporte el libro de notas a XLSX.
-2. En Google Sheets abra Archivo → Importar → Subir.
-3. Edite las notas y conserve las columnas de identificación.
-4. Descargue como XLSX o CSV.
-5. En el programa use Archivo → Importar notas de Google Sheets.
+Plantilla Excel de instrumento: sirve para preparar criterios y llenar respuestas. Puede descargarla vacía o con su alumnado real.
+Exportar tabla en Calificaciones: conserva la estructura y las respuestas actuales de esa actividad. Revise si todavía tiene cambios sin guardar y guárdelos también en el programa.
+Matriz Excel: entrega el resultado general del periodo o unidad, con números, letras o ambos.
+Documento .registro: conserva el periodo completo para abrirlo después en el programa.
 
-Los identificadores permanentes evitan mover notas entre estudiantes. Las plantillas de matriz o instrumentos se importan mediante sus botones específicos. Conserve los encabezados y las columnas ocultas de identificación de las plantillas.
+COMPLETAR E IMPORTAR UN INSTRUMENTO
 
-CSV y JSON contienen datos sin imágenes. Los reportes XLSX y PDF pueden incluir la insignia.
+1. Abra la actividad y descargue Plantilla Excel desde Herramientas.
+2. En Instrumento complete capacidad, criterio, descriptores y máximos según el método. Revise el propósito de clase.
+3. En Registro complete las respuestas de los estudiantes. Conserve los encabezados y columnas de identidad aunque estén ocultas.
+4. Guarde como .xlsx y vuelva a la misma actividad.
+5. Pulse Importar Excel. La vista previa muestra las notas y elementos que se agregarán si faltan competencias, capacidades o criterios.
+6. Revise destino y cambios. Confirme para aplicar con respaldo, o cancele para conservar el registro actual.
 
-Para conservar TODA la información del periodo y volver a abrirla aquí, utilice un documento .registro, no una hoja de cálculo.
+Si modifica el diseño arbitrariamente, el programa puede no reconocerlo. Para adaptar un Excel propio, copie los datos a la plantilla compatible. No renombre columnas de identificación ni mezcle alumnos de dos colegios.
+
+TRABAJAR CON GOOGLE SHEETS
+
+1. Exporte las notas o la plantilla compatible a XLSX.
+2. En Google Sheets use Archivo → Importar → Subir.
+3. Edite conservando encabezados e identidades.
+4. Descargue nuevamente como XLSX o, en el flujo de notas que lo admita, CSV.
+5. Use Archivo → Importar notas de Google Sheets para el libro de notas; use el importador de instrumentos o matriz para sus plantillas respectivas.
+
+REPORTES
+
+Archivo → Exportar notas permite elegir Excel, CSV, PDF o JSON según el informe. Reporte individual PDF crea un informe del estudiante seleccionado. Los formatos compatibles de Excel y PDF pueden incluir los datos e insignia guardados de la IE. CSV y JSON no contienen imágenes.
+
+Después de descargar se muestra la carpeta elegida. Exportar no sustituye Guardar notas ni actualiza automáticamente un archivo que usted exportó anteriormente.
+
+BUSCAR Y ESTADÍSTICAS
+
+REVISAR A UN ESTUDIANTE
+
+1. Seleccione colegio, periodo, curso, grado y sección.
+2. Abra Buscar y seleccione o busque al estudiante.
+3. Use el filtro de competencia para acotar sus actividades.
+4. Revise notas, asistencia y comentarios. Abra una actividad desde los resultados cuando necesite consultar o corregir su evaluación original.
+5. Para compartir su progreso utilice la descarga de reporte del estudiante o Archivo → Reporte individual PDF.
+
+CONSULTAR LAS ESTADÍSTICAS
+
+1. Abra Estadísticas con el salón que desea analizar.
+2. Seleccione el tipo de análisis y los filtros disponibles, por ejemplo competencia o estudiante.
+3. Genere el gráfico y revise qué representan sus ejes y etiquetas.
+4. Si cambia de salón o periodo, vuelva a comprobar los filtros y actualice el gráfico.
+
+Ponderaciones contiene los gráficos sobre pesos y frecuencia de evaluación. El porcentaje de un rubro indica su importancia en el promedio; el número de actividades indica cuántas se registraron. Son datos distintos.
+
+Si un alumno no tiene información suficiente, complete sus evidencias o consulte Ver pendientes y explicación de promedios. Un gráfico con pocas notas puede mostrar solo la parte ya evaluada.
+
+Los gráficos se calculan con el documento activo. Para comparar otro colegio o bimestre, abra ese registro primero. Las notas históricas no se trasladan al registro que esté consultando.
 
 INSIGNIA Y PERFIL DOCENTE
 
-Cargar insignia del colegio acepta PNG y JPEG. La imagen se conserva dentro de la base de datos y viaja en los respaldos y documentos internos.
+PREPARAR LA CABECERA DEL COLEGIO
 
-Al exportar un reporte compatible se le pregunta si desea incluirla. Puede obtener reportes con o sin insignia sin cambiar el archivo original.
+1. Abra el colegio correcto desde la cabecera.
+2. Entre en Configuración → Institución.
+3. Complete los campos de la IE que utilizará en sus informes.
+4. Pulse Cargar insignia PNG / JPG y seleccione la imagen de su equipo.
+5. Pulse Guardar datos de la IE.
+6. Use Vista previa del informe para revisar cómo se ven los datos, insignia y tabla.
+7. Exporte un registro o reporte compatible. Si se le pregunta, elija incluir la insignia.
 
-Configurar docente permite actualizar nombre, institución y contraseña. Dejar vacía la nueva contraseña conserva la existente. El candado protege la edición y la aplicación inicia bloqueada.
+La insignia queda dentro del documento y viaja con los respaldos y archivos .registro. No depende de que mantenga la imagen original en la misma carpeta. Los datos e insignia del mismo colegio se sincronizan entre sus periodos; el otro colegio mantiene su propia identidad.
+
+Vista previa muestra los datos que escribió. Para utilizarlos en descargas posteriores debe guardarlos. Quitar insignia retira la imagen de ese colegio; puede cargar otra cuando la necesite.
+
+PERFIL Y CANDADO
+
+En la configuración del docente revise su nombre, institución y credenciales. Dejar vacía una nueva contraseña conserva la existente cuando el formulario así lo indica. Guarde sus cambios y compruebe el acceso.
+
+El candado protege la edición de los registros. El programa inicia bloqueado y vuelve a bloquear al abrir otro documento. Consultar o exportar no exige modificar las calificaciones.
+
+La contraseña del candado es diferente de una clave privada de firma. La edición Full personal no necesita una clave privada ni activación comercial para trabajar. Guarde sus credenciales y copias del registro en una ubicación que pueda recuperar.
+
+RESPALDOS E HISTORIAL
+
+GUARDAR UN DOCUMENTO QUE PUEDA ENCONTRAR
+
+1. Confirme primero sus actividades, notas y puntos con sus botones de Guardar.
+2. Pulse Ctrl+S o el icono Guardar de la cabecera.
+3. Elija una carpeta y un nombre, por ejemplo Santa Rosa · 3A · Bimestre 2.registro.
+4. Revise la ubicación del mensaje final. Ese documento reúne el periodo completo.
+5. Para abrirlo después use Archivo → Abrir documento interno. El programa lo carga como documento de trabajo en la misma ventana.
+
+CREAR UNA COPIA DE SEGURIDAD
+
+Use Datos → Crear respaldo, elija una carpeta y guarde la copia .db. También se generan respaldos automáticos antes de operaciones importantes. Conviene conservar una copia adicional en otro dispositivo.
+
+ABRIR UN REGISTRO DE OTRA FECHA
+
+1. Abra Datos → Abrir registro de una fecha anterior.
+2. Revise fecha, motivo y nombre del respaldo.
+3. Seleccione la copia deseada y pulse Abrir como otro documento.
+4. Se crea un documento independiente: conserva tanto su registro actual como el respaldo original.
+5. Compruebe el colegio y periodo en la cabecera antes de seguir trabajando.
+
+RESTAURAR SOBRE EL REGISTRO ACTUAL
+
+Datos → Restaurar respaldo reemplaza el contenido del documento activo. Primero crea una copia de seguridad y pide confirmar. Si solo quiere consultar una fecha anterior, utilice Abrir como otro documento.
+
+DESHACER E HISTORIAL
+
+Ctrl+Z y Ctrl+Y actúan sobre cambios de la planilla antes de guardarlos. Datos → Historial de notas permite revisar cambios ya confirmados y recuperar una nota bajo sus comprobaciones de seguridad. Las fechas del historial indican su zona horaria en el título.
+
+Un borrador recuperable guarda cambios de notas todavía sin confirmar. Herramientas → Recuperar borrador de notas permite revisarlo. No sustituye Guardar notas ni una copia completa del documento. Cada registro conserva sus propios borradores.
+
+CERRAR Y REABRIR PERIODOS
+
+FINALIZAR EL BIMESTRE O TRIMESTRE
+
+1. Abra el colegio y periodo que desea finalizar.
+2. Guarde todas las notas y puntos pendientes.
+3. Revise la matriz completa, estudiantes pendientes y ponderaciones.
+4. Descargue el Excel final con el formato de notas que necesita.
+5. Guarde una copia .registro y, si lo desea, un respaldo adicional.
+6. Abra Herramientas → Cerrar / reabrir periodo.
+7. Autentíquese y confirme el cierre. La cabecera mostrará Cerrado.
+
+Un periodo cerrado permite consultar y exportar, pero bloquea modificaciones de alumnado, actividades, instrumentos y calificaciones. Abrir otro periodo no reabre el anterior ni borra sus notas.
+
+CORREGIR DESPUÉS DEL CIERRE
+
+1. En Organizar seleccione el periodo cerrado y pulse Abrir seleccionado.
+2. Use Herramientas → Cerrar / reabrir periodo.
+3. Autentíquese y confirme Reabrir.
+4. Desbloquee la edición, corrija y guarde lo necesario.
+5. Revise el registro y cierre otra vez si ya está terminado.
+
+El programa crea un respaldo y registra las acciones de cierre y reapertura. No necesita eliminar el periodo para corregirlo. Para empezar el siguiente, créelo como documento independiente con + Periodo.
+
+DIMENSIONES Y BARRAS
+
+APROVECHAR TODA LA PANTALLA
+
+1. Pulse las tres líneas de la cabecera o Ctrl+B para contraer o expandir la barra lateral. Pase el ratón sobre un icono para ver su nombre.
+2. Arrastre la separación entre nombres y notas para dar más espacio a los apellidos. Puede ajustar los bordes de los encabezados para cambiar el ancho de las columnas.
+3. Use la barra inferior para desplazar muchas columnas. N° y nombres permanecen como referencia fija en las tablas de calificación.
+4. Use la barra vertical o las flechas para recorrer estudiantes.
+5. En las rúbricas abra Descriptores para consultar el criterio y sus niveles. Puede cerrarlo cuando necesite más espacio de tabla.
+6. En Calificaciones pulse Herramientas para configurar el instrumento y Volver a las notas para recuperar el espacio de trabajo.
+
+LETRA Y ZOOM
+
+Abra Configuración → General para cambiar el tamaño de letra, zoom y apariencia. Ctrl+ y Ctrl- ajustan el zoom. Vista → Restablecer vista y paneles recupera una distribución cómoda si una división quedó demasiado estrecha.
+
+TECLADO
+
+F1 abre esta ayuda. Ctrl+S guarda el documento completo. Ctrl+B muestra u oculta la navegación. En las tablas compatibles, F2 o doble clic edita, Esc cancela, Enter pasa al siguiente estudiante y Tab al siguiente criterio. Las flechas recorren la tabla y mantienen visible la selección. Ctrl+Z / Ctrl+Y deshacen y rehacen cambios pendientes. En cotejo, S/N marca y Supr deja pendiente.
+
+Use clic derecho sobre una celda o encabezado para consultar el texto completo. Los tamaños de paneles, ventana y navegación se recuerdan. Cambiar de colegio o periodo carga sus datos en la ventana que ya está abierta.
 
 AÑOS, NIVELES Y SEGURIDAD
 
-Primaria y Secundaria conservan cursos y estudiantes separados. Primaria incluye seis grados. Los datos previos se mantienen en Secundaria hasta que usted seleccione otro nivel.
+DÓNDE ESTÁ TRABAJANDO
 
-Cada año y periodo puede tener un documento independiente. Crear periodo copia currículo y alumnado, pero no notas ni prácticas del periodo anterior.
+Revise en este orden: colegio → año y periodo → nivel → curso → grado y sección → unidad. Un estudiante o actividad puede parecer ausente porque está mirando otro contexto.
 
-Crear respaldo… guarda una copia verificada en la carpeta que elija. Restaurar reemplaza los datos activos después de guardar una copia de seguridad. La aplicación se reinicia para abrir el resultado.
+Primaria y Secundaria mantienen su alumnado y currículo separados. Primaria tiene seis grados. El selector de nivel cambia el contexto del documento, sin convertir automáticamente los datos de un nivel al otro.
 
-El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa antes de confirmar; el historial permite recuperar cambios ya guardados bajo sus condiciones de seguridad.
+Cada periodo es un documento independiente. Crear periodo copia currículo y alumnado del periodo base, sin evaluaciones anteriores. Crear colegio inicia sin el alumnado ni las notas del colegio de origen.
 
-Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
+El candado habilita o bloquea la edición. Abrir otro documento vuelve a bloquearla. Cerrar periodo añade una protección sobre los datos académicos de ese documento, incluso después de desbloquear el candado.
 
-Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.
+Configure el bloqueo por inactividad desde Herramientas si comparte el equipo. Los cambios pendientes no se convierten en notas guardadas por el simple hecho de bloquear la aplicación.
+
+Guarde las notas, el documento .registro y una copia de seguridad que pueda encontrar. El documento escolar y una licencia de uso son archivos diferentes; la Full personal no necesita activación para usar los cursos.
+
+SOLUCIÓN DE PROBLEMAS
+
+NO APARECE UN ESTUDIANTE, ACTIVIDAD O NOTA
+
+1. Compruebe colegio y periodo en la cabecera.
+2. Revise nivel, curso, grado y sección.
+3. Seleccione Todas las unidades y borre las búsquedas.
+4. Compruebe si el estudiante está retirado o la actividad archivada.
+5. Abra la actividad original y revise si guardó sus notas.
+
+EL PROMEDIO PARECE DIFERENTE
+
+Revise las capacidades seleccionadas, pendientes, peso de actividad, porcentajes del curso y notas manuales finales. Nota global se aplica a las capacidades marcadas; un cotejo de orientación no crea una nota por sí solo. Ponderaciones y Ver pendientes y explicación de promedios ayudan a revisar el cálculo.
+
+NO ME DEJA EDITAR
+
+Compruebe el candado y el estado Abierto/Cerrado del periodo. Para reabrir un periodo use Herramientas → Cerrar / reabrir periodo y autentíquese. Una celda de resultado calculado puede requerir editar los criterios de origen en lugar del total.
+
+EL EXCEL NO SE IMPORTA
+
+Use el importador adecuado: estudiantes, instrumento o matriz. Guarde como .xlsx, conserve encabezados e identidades, cierre el archivo en Excel si está bloqueado y revise la vista previa. Para un formato externo copie sus datos a la plantilla del programa.
+
+APARECE UN MENSAJE DE ERROR
+
+Anote el texto o tome una captura e identifique qué colegio, periodo y acción estaba usando. No elimine su base para intentar arreglarlo. Datos → Ubicación de datos y errores muestra dónde está registro.log para soporte. Los campos pendientes permanecen en pantalla cuando la operación falla.
+
+Las versiones anteriores podían mostrar no such column: general al consultar un periodo antiguo. La actualización 2.1.1 permite consultarlo sin modificarlo y prepara sus unidades con respaldo cuando necesita editarlo. Instale la actualización y conserve sus registros.
+
+OLVIDÉ LA CONTRASEÑA
+
+La Full personal no usa una clave privada para trabajar. Si olvidó la contraseña del candado, no hay recuperación automática por correo. Conserve sus documentos y solicite asistencia; no borre los archivos escolares ni los sustituya por una base vacía.
 
 CUENTA, DEMO Y COMPRAS
 
-Abra Configuración → Licencia. En la edición comercial encontrará Importar licencia (.licencia) y Mi cuenta y cursos. La versión Full personal para Leonardo incluye todos los cursos y módulos sin activación. No requiere clave privada.
+EDICIÓN FULL PERSONAL
 
-La edición comercial utiliza una cuenta local y una activación para una sola PC. El vendedor habilita los cursos comprados. En la edición personal no se solicita activación. El candado protege la edición de sus datos.
+La versión personal de Leonardo incluye los cursos y módulos sin activación comercial. No necesita importar una licencia ni conservar una clave privada para registrar notas. El candado sigue protegiendo la edición con sus credenciales.
 
-1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
-2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
-3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
-4. Indique qué cursos quiere comprar: uno, dos, tres o cualquier selección personalizada; también puede elegir todos. El vendedor decide qué habilitar y la vigencia. Después de verificar el pago, entregará un archivo .licencia vinculado a una sola PC y cuenta.
-5. En Configuración → Licencia pulse Importar licencia (.licencia) en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
+EDICIÓN COMERCIAL
 
-Al vencer la demo puede seguir consultando, guardando documentos y exportando a Excel, Google Sheets o PDF. Sus datos no se borran. Para agregar o corregir notas necesita una licencia vigente del curso.
+En una edición comercial, Configuración → Licencia permite crear la cuenta local, consultar los cursos habilitados, guardar una solicitud e importar la licencia que entregue el vendedor. La cuenta local no verifica el correo por Internet.
 
-Copiar una licencia a otra computadora o cuenta no permite activarla. El archivo .registro tampoco lleva activación. Respalde su cuenta con el botón correspondiente; la protección de Windows solo permite restaurarla en el mismo equipo y usuario de Windows.
+1. Cree su cuenta local con sus datos y contraseña.
+2. Si corresponde, elija el curso y nivel de demostración. La demo tiene duración y alcance indicados en esa pantalla.
+3. Para solicitar cursos, guarde el archivo .solicitud y entréguelo al vendedor.
+4. Importe el archivo .licencia en la misma cuenta y equipo para los que fue emitido.
+5. Respalde por separado sus documentos escolares y la cuenta con las opciones disponibles.
 
-No cambie la fecha para ampliar la demo: se comprueba que no retroceda. Si el reloj quedó mal, corríjalo. Al cambiar de computadora, solicite una nueva licencia y traslade sus datos escolares con un documento .registro.
-
-Sin servidor, las ventas y los cambios de equipo los gestiona el vendedor manualmente. No hay recuperación automática de contraseña, verificación de correo, revocación remota ni sincronización en Drive. Un formateo o una modificación deliberada del programa pueden eludir controles locales; ninguna protección offline es infalible.
-
-EDICIÓN DE PREPARACIÓN: si Licencia y cuenta indica que falta la clave pública, solicite al vendedor el instalador comercial definitivo antes de comprar una activación.
-
-REGISTRO VACÍO
-
-Archivo → Nuevo registro vacío crea un documento nuevo sin estudiantes, actividades ni notas; conserva docente, currículo y preferencias. El registro anterior conserva sus datos y se crea un respaldo. Una instalación nueva también comienza sin estudiantes de ejemplo.
-
-TABLAS CELESTES, TECLADO Y EXCEL COMPLETO (FULL 1.10)
-
-La tabla presenta N° y apellidos y nombres, sin códigos. Para ampliar el nombre,
-arrastre la barra entre el nombre y los criterios. También puede ajustar el ancho
-de N° desde su encabezado. Las dos columnas permanecen fijas al desplazar las notas.
-
-Las flechas permiten subir, bajar, volver al criterio anterior y avanzar al siguiente.
-La celda queda visible al recorrer muchas columnas o estudiantes. F2 o doble clic abre
-la edición. Enter y Tab guardan la celda y avanzan. Esc cancela el texto que está
-escribiendo. Deshacer/Rehacer y Ctrl+Z/Ctrl+Y recuperan respuestas anteriores antes de
-guardar. El cálculo resumido ocupa una sola franja al pie; el criterio y los
-niveles en negrita aparecen en el panel derecho, sin repetirse debajo de la tabla.
-
-EXPORTAR LA TABLA CON LAS RESPUESTAS
-Pulse Exportar tabla en Calificaciones. Se incluyen los alumnos reales y las
-respuestas que ya ingresó, incluidos los cambios de la planilla que aún no haya
-confirmado en la base. El archivo usa N°, nombres fijos, encabezados celestes y
-colores de logro. No modifica sus datos. Instrumento contiene los criterios y
-Registro contiene las respuestas por estudiante. Con Nota directa se exportan
-las notas finales de capacidad.
-
-IMPORTAR Y ADAPTAR
-Puede editar la tabla exportada y volver a importarla. Instrumento permite cambiar
-los nombres de competencias, capacidades y criterios. Puede agregar columnas de
-criterios a Registro y escribir el nombre de la capacidad y del criterio en sus
-dos encabezados. Los criterios faltantes se crean con un máximo de 20 y los
-niveles predeterminados de la escala; puede completarlos en Instrumento.
-Se conservan los criterios existentes. Al cambiar de competencia o instrumento
-se crea una actividad aparte, conservando la anterior.
-
-También se leen tablas simples de notas con una columna Estudiante o Apellidos
-y nombres, y las capacidades como encabezados de las columnas siguientes.
-Puede indicar Competencia en una fila anterior al encabezado, con su nombre en
-la celda siguiente. Si no aparece, se usa la competencia de la actividad abierta.
-Los estudiantes nuevos deben tener la forma Apellidos, Nombres. Nunca se asignan
-notas automáticamente a dos estudiantes con el mismo nombre.
-
-La vista previa enumera lo que se agregará y permite revisar notas y observaciones.
-Confirmar crea un respaldo y guarda todos los cambios; cancelar no modifica el
-registro. Un dato inválido cancela la importación completa. Seleccione el curso,
-nivel y salón del archivo antes de importar. Las plantillas antiguas conservan
-su compatibilidad y sus verificaciones de identidad.
-
-MATRIZ FINAL: NÚMEROS, LETRAS O AMBOS
-En Matriz pulse Exportar matriz Excel. Elija Solo números (17), Solo letras (A)
-o Número y letra (17 (A)); luego elija dónde guardar. La letra se calcula según
-la escala de logro que tenga configurada. El archivo muestra N° y nombre, con
-competencias y capacidades completas y sin códigos visibles.
-La exportación en letras conserva las notas numéricas originales en información
-interna para que una reimportación sin cambios no pierda precisión. Si desea
-cambiar una nota al importar, escriba su número o número (letra): una letra por
-sí sola no permite deducir una nota numérica exacta.
-
-FICHAS DENTRO DE TRABAJOS Y NOTA GLOBAL (FULL PERSONAL 1.11)
-
-En Actividades elija Tipo de actividad → Ficha de trabajo. El rubro pasa a
-Trabajos. Escriba el nombre de la ficha y, si corresponde, el propósito de la clase.
-Seleccione la competencia. No se adjuntan ni cargan archivos de las fichas.
-
-Cómo evaluar ofrece Nota global, Nota directa por capacidad, Rúbrica o Lista de
-Cotejo, tanto para pruebas como para fichas. Nota global permite escribir una sola
-nota de cero a veinte por estudiante. Esa nota se repite en las capacidades
-seleccionadas de la actividad: 5 en cuatro capacidades sigue dando promedio 5.
-Las demás competencias no reciben esa nota. Ver / cambiar capacidades permite
-revisar o ajustar la selección; por defecto se seleccionan todas al elegir una
-competencia. La selección se conserva al guardar.
-
-En Calificaciones, la nota global muestra una columna de nota, asistencia y
-comentario. Enter baja al siguiente estudiante. Esc cancela el texto en edición;
-Deshacer/Rehacer o Ctrl+Z/Ctrl+Y recuperan cambios anteriores antes de guardar.
-Guarde las notas para confirmarlas. Vacío es pendiente y cero es una nota real.
-Al pasar desde notas diferentes por capacidad, verá Diferentes hasta que escriba
-la nota que quiere aplicar; cambiar de método por sí solo conserva las notas.
-
-Las fichas utilizan el porcentaje de Trabajos de Ponderaciones. Peso relativo 1
-significa la misma importancia que los demás trabajos con peso 1; peso 2 implica
-el doble dentro del rubro. No significa 1 % ni 2 %. Los porcentajes de los rubros
-siguen sumando cien y no se crea otro rubro para fichas.
-
-La rúbrica y el cotejo conservan su funcionamiento por criterios. El cotejo sigue
-como orientación por defecto; convertirlo a nota es opcional y requiere revisión.
-
-Exportar tabla incluye el propósito de la clase en Instrumento y Registro, con
-encabezados compactos. El resumen numérico por capacidad se omite para evitar
-repeticiones. Si lo necesita, abra Herramientas → Exportar con resumen por capacidad.
-Plantilla Excel también incorpora el propósito que guardó en la actividad.
-
-Las notas y los nombres usan una escala de letra coherente, sin multiplicar el
-tamaño de las notas. La lista de temas de Prácticas sigue el tamaño de las tablas.
-
-
-FULL PERSONAL 2.0: PERIODOS, UNIDADES Y DOCUMENTOS
-
-AÑO ESCOLAR Y PERIODOS
-La franja superior muestra el periodo activo y si está abierto o cerrado.
-Púlselo para abrir otro documento o crear un periodo nuevo. Escoja año,
-Bimestres (1 a 4) o Trimestres (1 a 3). Al actualizar, sus notas se conservan
-en el documento actual, inicialmente sin periodo asignado: use Asignar al
-registro actual para identificarlo. No se reparten ni duplican las notas.
-Los nuevos periodos copian alumnado, currículo, ponderaciones e identidad
-institucional; comienzan sin actividades, notas ni unidades. La apertura
-de otro periodo reinicia la aplicación con ese documento independiente.
-
-UNIDADES
-Seleccione curso, grado y sección. En la franja superior pulse Gestionar
-para crear o editar unidades con nombre, propósito y fechas opcionales.
-En Crear Actividad elija la unidad a la que pertenece. El selector Unidad
-filtra las actividades de Calificaciones y de la lista de Actividades.
-Todas las unidades vuelve a mostrar el periodo completo. La Matriz sigue
-calculando todo el periodo, incluidas las actividades sin unidad.
-
-INGRESO RÁPIDO
-Copie solo las celdas de notas de Excel, seleccione el primer estudiante
-y pulse Ctrl+V o Herramientas > Pegar bloque. Revise nombres, orden y
-columna inicial antes de aplicar. El bloque completo se valida antes de
-cambiar celdas. Se admite nota global, por capacidad, rúbrica y cotejo.
-Vacío queda pendiente; cero es una nota. En rúbrica se admiten puntos o
-C/B/A/AD; el cotejo mantiene su resultado orientador.
-Para repetir un valor, seleccione estudiantes con Ctrl o Mayús y utilice
-Herramientas > Rellenar estudiantes seleccionados. Ctrl+Z deshace todo
-el bloque. Guardar notas confirma los cambios y crea respaldo previo.
-
-BIBLIOTECA EXCEL
-Abra una actividad y guarde sus cambios. En Herramientas, Guardar
-instrumento reutilizable en Excel propone un nombre con grado,
-competencia y tema. Incluye propósito y descriptores, con planilla vacía.
-Para reutilizarlo abra una actividad del mismo grado y curso, y elija
-Importar instrumento Excel. Puede utilizarlo en otra sección: revise la
-vista previa antes de confirmar. Sus plantillas internas anteriores se
-conservan en los documentos antiguos.
-
-RECUPERAR POR FECHA
-Datos > Abrir registro de una fecha anterior muestra los respaldos del
-documento actual con fecha y hora local. Seleccione uno y pulse Abrir
-como otro documento. Se crea una copia recuperada; el registro actual y
-el respaldo original se conservan. Puede guardar la copia como .registro.
-Los respaldos se crean al iniciar, antes de confirmar notas y antes de
-operaciones sensibles. La lista solo muestra las fechas disponibles.
-
-CIERRE
-Desde el selector de periodos o Herramientas, Cerrar / reabrir periodo
-solicita su clave docente. El cierre crea un respaldo y protege notas,
-actividades, alumnos, unidades y pesos. Se puede consultar y exportar.
-Para corregir, reabra con su clave. El cierre y la reapertura se registran.
-
-INSTITUCIÓN E INSIGNIA
-Configuración > Institución permite ingresar nombre de la IE, código
-modular, UGEL/DRE, dirección, docente y director/a. Cargue una insignia
-PNG o JPEG y guarde los datos. Vista previa del informe muestra cómo
-quedará. La insignia se incluye en descargas y se conserva en documentos
-y respaldos. Excel conserva las coordenadas para reimportar: incorpora
-el encabezado institucional y una hoja de identidad de la IE.
-Los datos del colegio se configuran en el programa; importar notas no
-reemplaza su identidad institucional.
-
-ARRANQUE
-La ventana muestra la preparación de las secciones. Estas se construyen
-antes de empezar a trabajar, en lugar de construirlas cada vez que se
-abren. Los cálculos de tablas se actualizan al mostrar cada vista y se
-conservan mientras el contexto no cambia. El tiempo depende del equipo
-y del volumen de datos; no se desactivan respaldos ni protecciones.
-
-
-FULL PERSONAL 2.1: COLEGIO > PERIODO > UNIDADES
-
-Seleccione el colegio en la franja superior. Cada colegio mantiene sus
-propios alumnos, calificaciones, periodos, datos e insignia. Organizar
-abre un gestor con tablas de periodos y unidades. Nuevo colegio parte
-sin alumnado ni notas, con su currículo y perfil docente disponibles.
-Los registros anteriores quedan asociados a su colegio actual.
-
-En Organizar, seleccione un colegio y utilice + Periodo, Editar o Eliminar.
-Puede cambiar año, tipo, número, nombre y fechas. Doble clic abre edición.
-Seleccione un periodo para ver sus unidades generales. + Unidad, Editar,
-Eliminar y las flechas permiten organizar la lista sin repetirla por curso.
-Quitar una unidad conserva las actividades y notas como Sin unidad.
-Los periodos cerrados se reabren desde Herramientas antes de modificarlos.
-Eliminar un periodo o colegio lo conserva completo en la papelera.
-Papelera / recuperar permite abrirlo de nuevo como otro documento.
-Para quitar el último colegio, cree otro primero; también puede eliminar
-sus periodos individualmente y conservar su ficha de colegio.
-
-El selector Unidad filtra ahora tanto Actividades como Matriz general.
-Todas las unidades muestra todo el bimestre o trimestre. La matriz por
-unidad es un resumen de sus actividades: no incluye la nota manual final
-del periodo. Exporte la unidad actual o todo el periodo desde Exportar
-matriz Excel y elija números, letras o ambos. El encabezado incluye el
-colegio, periodo y alcance. Las notas se ingresan o importan en las
-actividades; el resumen por unidad no reemplaza la nota final del periodo.
-
-RANGOS EN RÚBRICAS
-Las tarjetas muestran los límites de la escala: por defecto, C de 0 a
-menos de 10.5; B desde 10.5 a menos de 13.5; A desde 13.5 a menos de
-17.5; AD desde 17.5 hasta 20. Escriba su nota exacta: se resalta el nivel.
-Si el criterio tiene un máximo distinto de 20, el rango se adapta a ese
-máximo. Si cambia la escala de logro, los rangos se actualizan.
-Los atajos C/B/A/AD siguen usando los valores del instrumento guardado;
-no se cambian calificaciones anteriores. Los criterios y descriptores
-se siguen editando en el editor del instrumento.
-
-REUTILIZAR UNA RÚBRICA
-1. Cree o abra una actividad y elija Rúbrica en Cómo evaluar.
-2. Abra el editor, revise capacidades, criterios y descriptores; guarde.
-3. Herramientas > Guardar instrumento reutilizable en Excel guarda el
-   diseño por grado, competencia y tema, sin alumnos ni notas.
-4. En otra actividad use Importar instrumento Excel y revise la vista
-   previa. Un instrumento reutilizable puede compartirse entre colegios
-   o grados del mismo curso y nivel; no copia sus estudiantes ni insignia.
-5. Si usó la biblioteca interna antigua, use Biblioteca interna anterior
-   y exporte después el diseño como Excel para conservarlo por separado.
-Un Excel con notas sí pertenece a su colegio y periodo: seleccione el
-registro correspondiente antes de importarlo. Word, PDF o imágenes deben
-adaptarse al modelo Excel con sus criterios y descriptores.
+Un archivo .registro contiene datos académicos; no traslada una activación comercial a otro equipo. Si necesita cambiar de computadora, consulte al vendedor y traslade sus documentos escolares. La aplicación no proporciona sincronización automática en la nube ni recuperación de contraseña por correo.

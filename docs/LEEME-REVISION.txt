@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 2.1.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 2.1.1 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -9,7 +9,7 @@ su carpeta. No copie únicamente el ejecutable.
 
 NOVEDADES
 - Barra lateral contraíble con el botón de menú o Ctrl+B.
-- Código y nombre fijos al desplazar criterios horizontalmente.
+- N° y nombre fijos al desplazar criterios horizontalmente.
 - Competencia visible y capacidades con sus nombres reales.
 - Cotejo rápido: clic para Sí/No, teclas S/N y Supr para pendiente.
 - El cotejo orienta: muestra cumplimiento y pendientes sin generar notas.
@@ -63,3 +63,10 @@ FULL PERSONAL 2.1
 - Matriz general y Excel por periodo o unidad.
 - Rangos C/B/A/AD visibles al ingresar notas manuales.
 GUIA-USO.txt explica la reutilización de rúbricas en Excel.
+
+FULL PERSONAL 2.1.1
+- Corregido el error «no such column: general» al consultar periodos antiguos.
+- Cambiar de colegio, periodo o documento ya no cierra y abre el programa.
+- Consultar una fila de Organizar no cambia el registro activo ni sus archivos.
+- Ayuda / F1 con búsqueda y 23 apartados detallados, ejemplos y pasos de cada sección.
+- GUIA-USO.txt contiene el mismo manual que la ayuda del programa.

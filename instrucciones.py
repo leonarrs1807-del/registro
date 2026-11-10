@@ -1,222 +1,83 @@
-"""In-application tutorial written for teachers, including worked examples."""
+"""Searchable step-by-step help, shared with the installed text manual."""
 import tkinter as tk
-from tkinter import ttk
+import unicodedata
 import customtkinter as ctk
 from interfaz import split,scrollbar,pixel_scale
+from colores import button
+from ayuda_contenido import TOPICS
 
-TOPICS = {
-'Empezar y guardar': '''1. Seleccione Primaria o Secundaria, el curso, grado y sección.
-2. Ingrese su usuario y contraseña con el candado para habilitar la edición.
-3. Registre o importe a sus estudiantes.
-4. Elija si evaluará actividades independientes o prácticas por tema.
 
-Hay dos formas distintas de guardar:
-• Guardar notas / Guardar puntos confirma los cambios en la base de trabajo del programa.
-• El icono Guardar (.registro), en la barra superior, abre una ventana para que usted elija la carpeta y el nombre del documento. Ese archivo contiene el periodo completo y puede abrirse otra vez en Registro Docente.
-
-Después de guardar un archivo se muestra su ubicación completa. Puede elegir Documentos, una memoria USB u otra carpeta. Exportar a Excel/PDF también le pide dónde guardar.
-
-Los respaldos automáticos protegen el trabajo diario y se crean en la carpeta de datos. Crear respaldo… permite elegir una copia adicional en la ubicación que usted decida.''',
-'Prácticas y puntitos': '''EJEMPLO: ECUACIONES, DOS PRÁCTICAS DE 20 MINUTOS
-
-1. Abra Puntos y pulse Nuevo tema.
-2. Escriba Ecuaciones. Seleccione la competencia y marque las capacidades a las que se asignará la nota global.
-3. Pulse Agregar práctica. Cree Práctica 1, duración 20 minutos, con dos ejercicios de 5 puntos cada uno. Su máximo será 10.
-4. Cree Práctica 2, también de 20 minutos. Puede usar tres ejercicios: 3, 3 y 4 puntos. Su máximo también será 10.
-5. Haga doble clic en cada celda para ingresar los puntos por ejercicio. Pulse Guardar puntos.
-
-Para un estudiante que obtuvo 6/10 en la primera práctica y 8/10 en la segunda:
-  Puntos obtenidos = 6 + 8 = 14
-  Máximo total = 10 + 10 = 20
-  Nota de examen = 14 ÷ 20 × 20 = 14/20
-
-Si las prácticas valieran 10 y 15 puntos, el máximo total sería 25. Un total de 20 puntos daría 20 ÷ 25 × 20 = 16/20. El programa suma puntos; no promedia las notas de cada práctica por separado.
-
-6. Al terminar el tema, pulse Crear nota / 20. Se genera una sola actividad de Exámenes llamada Prácticas acumuladas · Ecuaciones. No necesita tomar un examen físico.
-
-También puede llamar al bloque Competencia 2 · Periodo 1 y registrar allí prácticas de varios temas de esa misma competencia. Así obtiene una sola nota final que reúne todos esos temas.
-
-Importante:
-• Un campo vacío es un ejercicio pendiente, no equivale a cero. Para consolidar deben estar completos los estudiantes activos.
-• Escriba 0 si el estudiante obtuvo cero; el programa no lo inventa.
-• La nota global se asigna a las capacidades marcadas. Si desea calificaciones diferentes por capacidad, cree bloques separados.
-• Después de consolidar, el bloque queda protegido. Reabrir tema permite corregir puntos. Al volver a consolidar se actualiza la misma actividad; no se duplica el examen.
-• Incluir / excluir práctica conserva sus puntos, pero cambia el máximo usado en el acumulado. Debe reconsolidar para actualizar la nota publicada.
-• Los porcentajes del curso no cambian al agregar prácticas ni al consolidar.''',
-'Porcentajes del promedio': '''LOS PORCENTAJES SON PESOS QUE USTED ELIGE
-
-No se calculan a partir de los archivos que sube. Los valores 40, 25, 20 y 15 que aparecen inicialmente son una configuración de partida:
-  Clases: 40 %
-  Exámenes: 25 %
-  Trabajos: 20 %
-  Prácticas / Otros: 15 %
-
-Indican la importancia de cada rubro cuando se combinan calificaciones. Puede cambiarlos, pero la suma debe ser 100. Pulse Guardar porcentajes para aplicarlos.
-
-Dentro de un rubro, el Peso de una actividad indica si vale igual que otra (1), el doble (2), etc.
-
-El programa combina solamente los rubros que tienen notas para el estudiante y capacidad. Si solo tiene una nota de Exámenes, esa nota se usa completa; no se convierte automáticamente en el 25 % de 20.
-
-Ejemplo: Clases 16 con peso de rubro 40 y Exámenes 14 con peso de rubro 25; sin notas en los otros rubros:
-  (16 × 40 + 14 × 25) ÷ (40 + 25) = 15,23
-
-PRÁCTICAS ACUMULADAS EN LUGAR DE EXAMEN
-La nota consolidada de un tema ocupa el rubro Exámenes. Es una calificación acumulada, aunque no haya examen físico. Si ya hay otras notas de Exámenes, ambas intervienen según sus pesos. No se borran notas anteriores.
-
-Si desea evaluar un curso únicamente con acumulados de prácticas, puede configurar Exámenes 100 y los otros rubros 0. Esto afecta a TODO el curso, no solo a una competencia. Use primero Herramientas → Vista previa de nuevas ponderaciones para revisar los cambios.
-
-El gráfico Ponderaciones muestra los pesos guardados. Competencias y Capacidades muestran cantidades de actividades asignadas; esas cantidades no son porcentajes y no alteran los pesos.''',
-'Dimensiones y barras': '''La barra lateral muestra iconos. Pase el ratón sobre uno para ver su nombre. El botón de tres líneas de la cabecera (o Ctrl+B) despliega los nombres completos; otra pulsación los oculta. Se recuerda su preferencia. Al elegir una sección en una ventana estrecha, el menú vuelve a contraerse.
-
-Las divisiones entre los paneles de trabajo se pueden arrastrar con el ratón. Por ejemplo:
-• Amplíe el panel de nombres en Calificaciones.
-• Dé más espacio al formulario al crear una actividad.
-• Amplíe la lista de temas o la planilla de prácticas.
-
-Las barras de desplazamiento tienen flechas y un control móvil. La barra inferior desplaza las columnas de notas; la barra vertical desplaza los estudiantes. También puede ampliar una columna arrastrando el borde de su encabezado.
-
-Configuración → General permite ajustar el tamaño de letra, el zoom y la apariencia. Restablecer distribución adapta la ventana a la pantalla y recupera una distribución cómoda. Los tamaños de los paneles y la ventana se recuerdan.
-
-En Calificaciones, Herramientas reúne el método de evaluación, las plantillas y el diseño. Criterios y Resultados y asistencia cambian la vista principal. Pulse Herramientas para abrirlo y Volver a las notas para cerrarlo. Sus cambios permanecen al cambiar entre Nota directa, Rúbrica y Lista de Cotejo.
-
-Un clic derecho en una celda o encabezado permite leer el contenido completo.''',
-'Actividades e instrumentos': '''Actividades sirve para evaluaciones independientes: una clase, trabajo, examen o práctica.
-
-Seleccione una competencia y marque las capacidades. El botón Criterio… abre el editor opcional de cada capacidad. Escriba el título, elija la categoría y pulse Guardar actividad. Descripción abre el texto adicional. Diseñe la rúbrica o el cotejo y descargue sus plantillas desde Calificaciones, en la actividad correspondiente. El Peso vale 1 para actividades de igual importancia. Un peso de 2 hace que esa actividad tenga el doble de importancia dentro de su rubro.
-
-Calificaciones permite escribir notas entre 0 y 20, registrar asistencia y comentarios. Una celda vacía sigue sin evaluar. Guardar notas confirma todo en la base de trabajo.
-
-La rúbrica permite evaluar cada criterio con sus cuatro niveles y puntajes. La lista de cotejo registra Sí/No por indicador. Consulte Rúbrica y cotejo paso a paso para preparar el modelo y calcular las notas. La vista Criterios registra todas las respuestas y calcula las notas por capacidad. Pulse Guardar notas para confirmarlas.
-
-La biblioteca guarda criterios reutilizables; usarla en otra actividad no modifica evaluaciones antiguas. Duplicar actividad conserva la estructura y empieza sin notas.
-
-Archivar oculta una actividad del trabajo diario y conserva sus notas históricas. Para corregir una calificación, use la actividad original o el historial.''',
-'Rúbrica y cotejo paso a paso': '''1. PREPARE LA ACTIVIDAD
-
-Seleccione nivel, curso, grado y sección. Registre los estudiantes. En Actividades elija la competencia, marque las capacidades, escriba el tema y guarde. Abra esa actividad en Calificaciones.
-
-2. EMPIECE DIRECTAMENTE CON EXCEL
-
-En Herramientas elija Rúbrica o Lista de Cotejo y pulse Plantilla Excel. Puede descargarla desde el principio, sin diseñar antes un instrumento en el programa.
-
-Elija cuántos criterios o indicadores necesita por capacidad: uno, dos, tres o más. Si ya tiene un instrumento, puede descargarlo tal como está o crear una plantilla nueva para completar en Excel. La plantilla lleva el tema y las capacidades de la actividad elegida.
-
-En la hoja 1 escriba sus criterios y descriptores de la sesión. La plantilla nueva deja los descriptores en blanco para que los adapte a su propósito; conserva el criterio precisado que haya escrito en la actividad. En rúbrica cada criterio ocupa un bloque de dos filas: arriba los descriptores C/B/A/AD y abajo sus puntos. AD debe valer el máximo; C < B < A < AD. En cotejo cada fila describe una evidencia observable con su máximo.
-
-Para cambiar la cantidad de criterios, descargue otra plantilla eligiendo la cantidad que necesita. Conserve las columnas ocultas, los encabezados y las identidades del alumnado.
-
-3. UNA RESPUESTA POR CRITERIO
-
-En 2_Evaluar_Criterios cada estudiante tiene una columna por criterio. Si una capacidad tiene dos criterios, complete sus dos columnas.
-
-Rúbrica: seleccione C, B, A o AD según la evidencia. También puede escribir puntos entre cero y el máximo de ese criterio. Sin evidencia vale cero; una celda vacía sigue pendiente.
-
-Cotejo: seleccione Sí o No para cada evidencia. Sí aporta el máximo del criterio y No aporta cero.
-
-La hoja 3_Notas_Capacidades muestra el resultado calculado. Allí no se escribe una nota única para reemplazar las respuestas de los criterios.
-
-Ejemplo: una capacidad tiene dos criterios de 10 puntos. Un estudiante obtiene 6 en el primero y 8 en el segundo. Su nota es (6 + 8) ÷ (10 + 10) × 20 = 14/20. Si los máximos son 6 y 4 y en cotejo responde Sí y No, la nota es 6 ÷ 10 × 20 = 12/20.
-
-Todos los criterios de una capacidad deben estar completos para importar su nota. Una capacidad completamente vacía conserva su nota anterior; un cero es una nota real.
-
-4. IMPORTE EL ARCHIVO
-
-Guarde como XLSX y pulse Importar Excel en Calificaciones. Revise las casillas del instrumento y la pestaña Cambios de notas. Al confirmar se crea un respaldo y se guardan los criterios, las respuestas y las notas calculadas. Cancelar conserva los datos actuales.
-
-La aplicación calcula las notas desde las respuestas de cada criterio, aunque Excel todavía no haya guardado los resultados de las fórmulas del resumen. Las fórmulas que usted escriba en las respuestas sí deben tener un resultado calculado.
-
-Puede importar solo el instrumento dejando las respuestas vacías y evaluar después aquí. Las asistencias y los comentarios vacíos se conservan. Las plantillas de versiones anteriores siguen siendo compatibles.
-
-5. TAMBIÉN PUEDE DISEÑAR Y EVALUAR AQUÍ
-
-Diseñar/Editar abre el editor por capacidades. Añada los criterios que necesite, redacte los cuatro descriptores y ajuste los puntos. Guardar instrumento conserva las notas anteriores hasta que vuelva a evaluar.
-
-En la pantalla principal, Criterios muestra cada criterio de la capacidad. Seleccione el estudiante y la capacidad; marque un nivel o Sí/No en cada fila. Use el selector de estudiantes o Anterior/Siguiente para avanzar.
-
-Resultados y asistencia muestra las notas calculadas por capacidad y permite registrar asistencia y comentarios. Con rúbrica o cotejo, pulsar una nota abre sus criterios para evaluarlos. Con Nota directa puede ingresar una nota final de cero a veinte.
-
-Pulse Guardar notas para confirmar tanto las respuestas como las notas calculadas. Hasta entonces puede deshacer y recuperar borradores. Recalcular resultados aplica el instrumento actual a las respuestas registradas, útil si cambió sus puntajes.
-
-Si deja una capacidad incompleta, se muestra pendiente de completar; su nota anterior publicada se conserva hasta una evaluación completa. Una evaluación nueva no toma vacíos como ceros.
-
-6. CONFIGURACIÓN Y DOCUMENTOS
-
-Los límites de C, B, A y AD se ajustan únicamente desde Configuración → General → Configurar escala de logro. Las notas numéricas se conservan.
-
-Use también el icono Guardar de la cabecera para elegir dónde guardar el documento completo .registro: incluye estudiantes, actividades, instrumentos, respuestas, notas e insignia.''',
-'Excel, Google Sheets y PDF': '''Exportar notas permite elegir Excel (.xlsx), CSV para Google Sheets, PDF o JSON y la carpeta donde se guardará.
-
-Para Google Sheets:
-1. Exporte el libro de notas a XLSX.
-2. En Google Sheets abra Archivo → Importar → Subir.
-3. Edite las notas y conserve las columnas de identificación.
-4. Descargue como XLSX o CSV.
-5. En el programa use Archivo → Importar notas de Google Sheets.
-
-Los identificadores permanentes evitan mover notas entre estudiantes. Las plantillas de matriz o instrumentos se importan mediante sus botones específicos. Conserve los encabezados y las columnas ocultas de identificación de las plantillas.
-
-CSV y JSON contienen datos sin imágenes. Los reportes XLSX y PDF pueden incluir la insignia.
-
-Para conservar TODA la información del periodo y volver a abrirla aquí, utilice un documento .registro, no una hoja de cálculo.''',
-'Insignia y perfil docente': '''Cargar insignia del colegio acepta PNG y JPEG. La imagen se conserva dentro de la base de datos y viaja en los respaldos y documentos internos.
-
-Al exportar un reporte compatible se le pregunta si desea incluirla. Puede obtener reportes con o sin insignia sin cambiar el archivo original.
-
-Configurar docente permite actualizar nombre, institución y contraseña. Dejar vacía la nueva contraseña conserva la existente. El candado protege la edición y la aplicación inicia bloqueada.''',
-'Años, niveles y seguridad': '''Primaria y Secundaria conservan cursos y estudiantes separados. Primaria incluye seis grados. Los datos previos se mantienen en Secundaria hasta que usted seleccione otro nivel.
-
-Cada año y periodo puede tener un documento independiente. Crear periodo copia currículo y alumnado, pero no notas ni prácticas del periodo anterior.
-
-Crear respaldo… guarda una copia verificada en la carpeta que elija. Restaurar reemplaza los datos activos después de guardar una copia de seguridad. La aplicación se reinicia para abrir el resultado.
-
-El historial registra cambios de notas. Deshacer/Rehacer en la planilla actúa antes de confirmar; el historial permite recuperar cambios ya guardados bajo sus condiciones de seguridad.
-
-Cerrar periodo bloquea modificaciones. Reabrirlo requiere autenticación. Los borradores recuperables ayudan ante cierres imprevistos, pero no sustituyen Guardar archivo.
-
-Un documento de notas no es una licencia de uso. La cuenta y activación se guardan aparte de los datos escolares.''',
-'Cuenta, demo y compras': '''Abra Configuración → Licencia. En la edición comercial encontrará Importar licencia (.licencia) y Mi cuenta y cursos. En la revisión personal para Leonardo se explica por qué la activación aún está deshabilitada: falta incorporar la clave pública del vendedor al instalador comercial.
-
-La edición comercial utiliza una cuenta local y una activación para una sola PC. El vendedor habilita los cursos comprados. En la edición personal no se solicita activación. El candado protege la edición de sus datos.
-
-1. La primera vez cree su nombre, correo, usuario y contraseña. Son datos de una cuenta local; no se verifica el correo por Internet.
-2. Elija un único curso y nivel para probar durante 30 días. La elección de la demo es fija; incluye sus grados y secciones. Puede consultar documentos de otros cursos, pero no modificarlos sin comprarlos.
-3. Para comprar abra Licencia y cuenta → Guardar solicitud. Elija dónde guardarla y envíe el archivo .solicitud al vendedor. No contiene contraseñas ni datos de estudiantes.
-4. Indique qué cursos quiere comprar: uno, dos, tres o cualquier selección personalizada; también puede elegir todos. El vendedor decide qué habilitar y la vigencia. Después de verificar el pago, entregará un archivo .licencia vinculado a una sola PC y cuenta.
-5. En Configuración → Licencia pulse Importar licencia (.licencia) en la misma computadora en la que creó la solicitud. La firma habilita esos cursos para su cuenta y equipo.
-
-Al vencer la demo puede seguir consultando, guardando documentos y exportando a Excel, Google Sheets o PDF. Sus datos no se borran. Para agregar o corregir notas necesita una licencia vigente del curso.
-
-Copiar una licencia a otra computadora o cuenta no permite activarla. El archivo .registro tampoco lleva activación. Respalde su cuenta con el botón correspondiente; la protección de Windows solo permite restaurarla en el mismo equipo y usuario de Windows.
-
-No cambie la fecha para ampliar la demo: se comprueba que no retroceda. Si el reloj quedó mal, corríjalo. Al cambiar de computadora, solicite una nueva licencia y traslade sus datos escolares con un documento .registro.
-
-Sin servidor, las ventas y los cambios de equipo los gestiona el vendedor manualmente. No hay recuperación automática de contraseña, verificación de correo, revocación remota ni sincronización en Drive. Un formateo o una modificación deliberada del programa pueden eludir controles locales; ninguna protección offline es infalible.
-
-EDICIÓN DE PREPARACIÓN: si Licencia y cuenta indica que falta la clave pública, solicite al vendedor el instalador comercial definitivo antes de comprar una activación.'''
-}
+def searchable(text):
+    return ''.join(c for c in unicodedata.normalize('NFD',text.casefold()) if not unicodedata.combining(c))
 
 
 class Tutorial(ctk.CTkFrame):
     def __init__(self,master):
         super().__init__(master,fg_color='transparent')
-        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(1,weight=1)
-        ctk.CTkLabel(self,text='Instrucciones · Guía paso a paso',font=ctk.CTkFont(size=20,weight='bold')).grid(row=0,column=0,sticky='w',padx=12,pady=10)
-        pane=split(self,'tutorial');pane.grid(row=1,column=0,sticky='nsew',padx=8,pady=6)
-        left=ctk.CTkFrame(pane);left.grid_rowconfigure(0,weight=1);left.grid_columnconfigure(0,weight=1)
-        listing=tk.Listbox(left,font=('Segoe UI',-round(14*pixel_scale(self))),exportselection=False,width=23)
-        listing.grid(row=0,column=0,sticky='nsew',padx=4,pady=4)
-        side=scrollbar(left,'vertical',listing.yview);side.grid(row=0,column=1,sticky='ns');listing.configure(yscrollcommand=side.set)
+        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(2,weight=1)
+        ctk.CTkLabel(self,text='Ayuda · Guía paso a paso',font=ctk.CTkFont(size=22,weight='bold')).grid(row=0,column=0,sticky='w',padx=16,pady=(12,4))
+        tools=ctk.CTkFrame(self,fg_color='transparent');tools.grid(row=1,column=0,sticky='ew',padx=12,pady=6);tools.grid_columnconfigure(1,weight=1)
+        ctk.CTkLabel(tools,text='Buscar ayuda',font=ctk.CTkFont(size=14,weight='bold')).grid(row=0,column=0,padx=(0,8))
+        self.query=ctk.StringVar()
+        self.search=ctk.CTkEntry(tools,textvariable=self.query,placeholder_text='Buscar: bimestres, unidades, rúbricas, Excel…',height=36)
+        self.search.grid(row=0,column=1,sticky='ew',padx=(0,8))
+        ctk.CTkButton(tools,text='Ver todo',width=85,**button(),command=lambda:self.query.set('')).grid(row=0,column=2,padx=3)
+        self.previous=ctk.CTkButton(tools,text='Anterior',width=90,**button(),command=lambda:self.move(-1));self.previous.grid(row=0,column=3,padx=3)
+        self.next=ctk.CTkButton(tools,text='Siguiente',width=90,**button(),command=lambda:self.move(1));self.next.grid(row=0,column=4,padx=3)
+        pane=split(self,'tutorial');pane.grid(row=2,column=0,sticky='nsew',padx=8,pady=6)
+        left=ctk.CTkFrame(pane);left.grid_rowconfigure(1,weight=1);left.grid_columnconfigure(0,weight=1)
+        self.count=ctk.CTkLabel(left,text='',anchor='w',font=ctk.CTkFont(size=13,weight='bold'));self.count.grid(row=0,column=0,columnspan=2,sticky='ew',padx=10,pady=7)
+        self.listing=tk.Listbox(left,font=('Segoe UI',-round(14*pixel_scale(self))),exportselection=False,width=29,borderwidth=0,highlightthickness=0,background='#f0f9ff',foreground='#075985',selectbackground='#bae6fd',selectforeground='#0c4a6e')
+        self.listing.grid(row=1,column=0,sticky='nsew',padx=4,pady=4)
+        side=scrollbar(left,'vertical',self.listing.yview);side.grid(row=1,column=1,sticky='ns');self.listing.configure(yscrollcommand=side.set)
         right=ctk.CTkFrame(pane);right.grid_columnconfigure(0,weight=1);right.grid_rowconfigure(0,weight=1)
-        self.text=tk.Text(right,wrap='word',font=('Segoe UI',-round(15*pixel_scale(self))),padx=18,pady=14,relief='flat',background='#ffffff',foreground='#0f172a')
+        self.text=tk.Text(right,wrap='word',font=('Segoe UI',-round(16*pixel_scale(self))),padx=22,pady=18,relief='flat',background='#ffffff',foreground='#0f172a',spacing3=5)
         self.text.grid(row=0,column=0,sticky='nsew')
+        self.text.tag_configure('title',foreground='#075985',font=('Segoe UI',-round(21*pixel_scale(self)),'bold'),spacing3=10)
+        self.text.tag_configure('heading',foreground='#075985',font=('Segoe UI',-round(16*pixel_scale(self)),'bold'),spacing1=10,spacing3=8)
         bar=scrollbar(right,'vertical',self.text.yview);bar.grid(row=0,column=1,sticky='ns');self.text.configure(yscrollcommand=bar.set)
-        pane.add(left,width=round(250*pixel_scale(self)),minsize=round(150*pixel_scale(self)),stretch='never');pane.add(right,minsize=round(230*pixel_scale(self)),stretch='always')
-        self.listing=listing;self.names=list(TOPICS)
-        for name in self.names:listing.insert('end',name)
-        listing.bind('<<ListboxSelect>>',lambda e:self.open(self.names[listing.curselection()[0]]) if listing.curselection() else None)
-        self.open(self.names[0])
+        pane.add(left,width=round(290*pixel_scale(self)),minsize=round(160*pixel_scale(self)),stretch='never');pane.add(right,minsize=round(230*pixel_scale(self)),stretch='always')
+        self.current=None;self.names=list(TOPICS)
+        self.listing.bind('<<ListboxSelect>>',self.select)
+        self.search.bind('<Return>',lambda e:self.open(self.names[0]) if self.names else None)
+        self.text.bind('<Control-f>',self.focus_search);self.listing.bind('<Control-f>',self.focus_search)
+        self.query.trace_add('write',lambda *args:self.filter())
+        self.filter()
+
+    def focus_search(self,event=None):
+        self.search.focus_set();self.search.select_range(0,'end');return 'break'
+
+    def filter(self):
+        words=searchable(self.query.get()).split()
+        self.names=[name for name,body in TOPICS.items() if all(word in searchable(name+' '+body) for word in words)]
+        self.listing.delete(0,'end')
+        for name in self.names:self.listing.insert('end',name)
+        self.count.configure(text=f'{len(self.names)} apartados'+(' encontrados' if words else ' · elija una tarea'))
+        if self.names:self.open(self.current if self.current in self.names else self.names[0])
+        else:
+            self.current=None
+            self.text.configure(state='normal');self.text.delete('1.0','end')
+            self.text.insert('1.0','No se encontraron instrucciones.\n\nPruebe con una palabra como colegio, periodo, unidad, nota, Excel o respaldo.')
+            self.text.configure(state='disabled');self.previous.configure(state='disabled');self.next.configure(state='disabled')
+
+    def select(self,event=None):
+        selected=self.listing.curselection()
+        if selected:self.open(self.names[selected[0]])
+
+    def move(self,delta):
+        if not self.names:return
+        index=self.names.index(self.current) if self.current in self.names else 0
+        self.open(self.names[max(0,min(len(self.names)-1,index+delta))])
 
     def open(self,topic):
-        if topic not in TOPICS:topic=self.names[0]
-        index=self.names.index(topic);self.listing.selection_clear(0,'end');self.listing.selection_set(index);self.listing.see(index)
-        self.text.configure(state='normal');self.text.delete('1.0','end');self.text.insert('1.0',topic.upper()+'\n\n'+TOPICS[topic]);self.text.configure(state='disabled');self.text.yview_moveto(0)
+        if topic not in TOPICS:topic=next(iter(TOPICS))
+        if topic not in self.names:self.query.set('')
+        index=self.names.index(topic);self.current=topic
+        self.listing.selection_clear(0,'end');self.listing.selection_set(index);self.listing.see(index)
+        self.text.configure(state='normal');self.text.delete('1.0','end')
+        self.text.insert('end',topic+'\n','title');self.text.insert('end','\n','body')
+        for line in TOPICS[topic].splitlines():
+            self.text.insert('end',line+'\n','heading' if line.isupper() else '')
+        self.text.configure(state='disabled');self.text.yview_moveto(0)
+        self.previous.configure(state='normal' if index>0 else 'disabled')
+        self.next.configure(state='normal' if index<len(self.names)-1 else 'disabled')

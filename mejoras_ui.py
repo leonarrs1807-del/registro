@@ -53,7 +53,7 @@ class ClassroomTools:
         self.cambiar_zoom(prefs.get('zoom',1),save=False)
         self.tabview.set_expanded(prefs.get('nav_expanded',False),save=False)
         self.after(15000,self.autoguardar_borrador)
-        self.after(500,self._ofrecer_borrador)
+        self._draft_offer_job=self.after(500,self._ofrecer_borrador)
         self.after(300,lambda:self._fuentes_legibles(self))
 
     def _fuentes_legibles(self,widget):
@@ -153,7 +153,7 @@ class ClassroomTools:
         path=filedialog.askopenfilename(filetypes=[('Documento de Registro Docente','*.registro')])
         if path:
             target=storage.data_dir()/f'documento-{time.time_ns()}.db'
-            documento.open_document(path,target);storage.activate_period(target);self._reiniciar(target)
+            documento.open_document(path,target);self._reiniciar(target)
 
     def nuevo_registro_vacio(self):
         if not self.verificar_permiso_edicion() or not self.confirmar_descartar(include_points=True):return
@@ -161,7 +161,7 @@ class ClassroomTools:
         if not path:return
         target=storage.data_dir()/f'registro-vacio-{time.time_ns()}.db'
         saved=documento.new_empty_record(self._db_path,target)
-        documento.save_document(path,target);storage.activate_period(target)
+        documento.save_document(path,target)
         self.archivo_guardado(path,f'Registro vacío creado. Copia del anterior: {saved}')
         self._reiniciar(target)
 
@@ -302,6 +302,7 @@ class ClassroomTools:
         self.after(15000,self.autoguardar_borrador)
 
     def _ofrecer_borrador(self):
+        self._draft_offer_job=None
         if self._borrador_path().exists() and messagebox.askyesno('Borrador disponible','Hay un borrador sin confirmar de una sesión anterior. ¿Desea recuperarlo?'):self.recuperar_borrador()
 
     def recuperar_borrador(self):

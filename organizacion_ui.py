@@ -109,7 +109,7 @@ class OrganizationManager(SafeDialog):
         try:
             colegios.archive_school(school['records'],self.app._db_path)
             if self.app._school_id==school['id']:
-                target=others[0]['records'][-1]['path'];storage.activate_period(target);self.app._reiniciar(target)
+                target=others[0]['records'][-1]['path'];self.app._reiniciar(target)
             else:self.refresh_schools()
         except Exception as exc:messagebox.showerror('Colegio',str(exc),parent=self)
 
@@ -208,7 +208,7 @@ class OrganizationManager(SafeDialog):
         if not messagebox.askyesno('Eliminar periodo',f"¿Quitar {row['label']} de {row['school_name']}?\nEl registro completo quedará recuperable en la carpeta papelera.",parent=self):return
         try:
             replacement,saved=colegios.remove_period(row['path'],storage.data_dir())
-            if row['path'].resolve()==self.app._db_path.resolve():storage.activate_period(replacement);self.app._reiniciar(replacement)
+            if row['path'].resolve()==self.app._db_path.resolve():self.app._reiniciar(replacement)
             else:self.refresh_schools(row['school_id'])
         except Exception as exc:messagebox.showerror('Periodo',str(exc),parent=self)
 
@@ -216,7 +216,7 @@ class OrganizationManager(SafeDialog):
         row=self.selected_period()
         if not row or not self.app.confirmar_descartar(include_points=True):return
         if row['path'].resolve()==self.app._db_path.resolve():self.finish();return
-        storage.activate_period(row['path']);self.app._reiniciar(row['path'])
+        self.app._reiniciar(row['path'])
 
     def finish(self):
         self.app.actualizar_contexto_academico();self.destroy()

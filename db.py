@@ -1992,3 +1992,31 @@ def guardar_notas_globales_sesion(sesion_id,notas,db_path: Path = DB_PATH):
         if not caps:raise ValueError('Seleccione las capacidades de la actividad.')
         rows=[dict(estudiante_id=student,preservar_asistencia=True,notas_por_capacidad={c:(None if note is None else valid_number(note)) for c in caps}) for student,note in notas.items()]
         guardar_calificaciones_y_asistencia_sesion(sesion_id,rows,db_path,nuevo_instrumento='Nota global')
+
+
+def _active_database(function):
+    """Resolve omitted paths at call time, including previously imported helpers.
+
+    Explicit paths still address their own document. The outer wrapper passes
+    the resolved path to transaction and backup decorators before they run.
+    """
+    from functools import wraps
+    from inspect import signature
+    parameters=signature(function)
+    @wraps(function)
+    def routed(*args,**kwargs):
+        bound=parameters.bind(*args,**kwargs)
+        if 'db_path' not in bound.arguments:
+            kwargs['db_path']=DB_PATH
+        return function(*args,**kwargs)
+    return routed
+
+
+# Existing screens import helpers directly; those references must follow the
+# selected document without reloading modules or rebuilding the main window.
+for _name,_function in list(globals().items()):
+    if callable(_function) and getattr(_function,'__module__',None)==__name__:
+        from inspect import signature as _signature
+        if 'db_path' in _signature(_function).parameters:
+            globals()[_name]=_active_database(_function)
+del _name,_function

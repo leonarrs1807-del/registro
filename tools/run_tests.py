@@ -57,7 +57,7 @@ if '--child' not in sys.argv:
         # Each GUI launch gets the same isolation as starting the actual app;
         # no test is omitted and native failures still fail the whole suite.
         ids=list(case_ids(load_suite(names)))
-        graphical=[name for name in ids if name.startswith(('tests.test_gui.','tests.test_vendedor.'))]
+        graphical=[name for name in ids if name.startswith(('tests.test_gui.','tests.test_vendedor.','tests.test_cambio_registro.DocumentSwitchTests.'))]
         backend=[name for name in ids if name not in graphical]
         batches=([backend] if backend else [])+[[name] for name in graphical]
         success=True;executed=0

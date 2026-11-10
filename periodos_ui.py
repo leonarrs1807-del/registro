@@ -73,7 +73,7 @@ class AcademicTools:
         row=getattr(self,'_school_choices',{}).get(value)
         if row is None or row['id']==self._school_id:return
         if not self.confirmar_descartar(include_points=True):self.actualizar_contexto_academico();return
-        path=row['records'][-1]['path'];storage.activate_period(path);self._reiniciar(path)
+        path=row['records'][-1]['path'];self._reiniciar(path)
 
     def alcance_unidad(self):
         choice=self.unit_filter.get() if hasattr(self,'unit_filter') else 'Todas las unidades'
@@ -96,7 +96,7 @@ class AcademicTools:
         def open_copy():
             if not tree.selection() or not self.confirmar_descartar(include_points=True):return
             try:
-                target=periodos.open_snapshot(items[int(tree.selection()[0])]['path'],storage.data_dir());storage.activate_period(target);self._reiniciar(target)
+                target=periodos.open_snapshot(items[int(tree.selection()[0])]['path'],storage.data_dir());self._reiniciar(target)
             except Exception as exc:messagebox.showerror('Recuperación',str(exc),parent=window)
         ctk.CTkButton(window,text='Abrir como otro documento',**button(),command=open_copy).grid(row=3,column=0,sticky='e',padx=18,pady=14)
         polish_dialog(window,self,850,560)

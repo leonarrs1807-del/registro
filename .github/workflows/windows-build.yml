@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: |
           $info = (Get-Item dist/RegistroDocente/RegistroDocente.exe).VersionInfo
-          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '2.1.0') { throw 'Propietario o versión incorrectos.' }
+          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '2.1.1') { throw 'Propietario o versión incorrectos.' }
           Copy-Item docs/GUIA-USO.txt dist/RegistroDocente/GUIA-USO.txt
       - name: Identify owner review package
         if: inputs.review
@@ -63,7 +63,7 @@ jobs:
         run: python tools/smoke_windows.py --seller dist/RegistroLicencias/RegistroLicencias.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.review && 'RegistroDocente-Full-2.1-Windows' || inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
+          name: ${{ inputs.review && 'RegistroDocente-Full-2.1.1-Windows' || inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
           path: |
             dist/installer/*.exe
             dist/RegistroDocente/**
