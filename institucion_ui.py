@@ -59,7 +59,8 @@ class InstitutionTools:
         data={k:e.get() for k,e in self._institution_entries.items()};data['periodo']=periodos.info(self._db_path)['label']
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'vista.png';institucion.export_pdf(path,rows,data,reportes.logo_bytes(self._db_path))
-            image=Image.open(path);image.load();image=image.copy()
+            with Image.open(path) as opened:
+                opened.load();image=opened.copy()
         window=SafeDialog(self);window.title('Vista previa del informe institucional');window.geometry('1100x790')
         body=scroll_area(window,horizontal=True,auto_hide=True,min_width=850);body.pack(fill='both',expand=True,padx=10,pady=10)
         width=min(1000,max(720,self.winfo_screenwidth()-100));height=round(width*image.height/image.width)

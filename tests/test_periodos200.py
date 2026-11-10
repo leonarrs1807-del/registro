@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import closing
 import sqlite3,unittest
 from unittest.mock import patch
 import openpyxl
@@ -34,7 +35,7 @@ class AcademicTests(unittest.TestCase):
         self.assertEqual(self.read_note(sid),17)
 
     def read_note(self,sid):
-        with sqlite3.connect(self.path) as conn:return conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchone()[0]
+        with closing(sqlite3.connect(self.path)) as conn:return conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchone()[0]
 
     def test_unit_scope_validation_rolls_back_whole_activity(self):
         unit=periodos.save_unit(self.path,self.course,'3°','B','Otra sección')
@@ -61,7 +62,7 @@ class AcademicTests(unittest.TestCase):
         db.guardar_notas_globales_sesion(sid,{self.student:18},self.path)
         opened=periodos.open_snapshot(saved,Path(self.temp.name))
         self.assertEqual(self.read_note(sid),18);self.assertEqual(saved.read_bytes(),original)
-        with sqlite3.connect(opened) as conn:self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchone()[0],12)
+        with closing(sqlite3.connect(opened)) as conn:self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchone()[0],12)
         self.assertIn(saved,[r['path'] for r in periodos.snapshots(self.path)])
 
     def test_excel_library_has_no_names_or_notes_and_imports_into_another_section(self):
