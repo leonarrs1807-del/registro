@@ -1,4 +1,4 @@
-name: Registro Docente 2.0.0 - Full personal Windows
+name: Registro Docente 2.1.0 - Full personal Windows
 on:
   workflow_dispatch:
   push:

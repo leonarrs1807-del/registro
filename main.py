@@ -1482,16 +1482,18 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         f_tree_m = ctk.CTkFrame(self.tab_matriz, corner_radius=8)
         f_tree_m.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         f_tree_m.grid_columnconfigure(0, weight=1)
-        f_tree_m.grid_rowconfigure(0, weight=1)
+        f_tree_m.grid_rowconfigure(1, weight=1)
+        self.matriz_scope_title=ctk.CTkLabel(f_tree_m,text="Periodo completo",anchor="w",font=ctk.CTkFont(size=14,weight="bold"))
+        self.matriz_scope_title.grid(row=0,column=0,columnspan=2,sticky="ew",padx=8,pady=5);wrap_label(self.matriz_scope_title)
 
         self.tree_matriz = GradeTreeview(f_tree_m, show="headings", selectmode="browse")
         scroll_x = scrollbar(f_tree_m, orient="horizontal", command=self.tree_matriz.xview)
         scroll_y = scrollbar(f_tree_m, orient="vertical", command=self.tree_matriz.yview)
         self.tree_matriz.configure(xscrollcommand=scroll_x.set, yscrollcommand=scroll_y.set)
 
-        self.tree_matriz.grid(row=0, column=0, sticky="nsew")
-        scroll_y.grid(row=0, column=1, sticky="ns")
-        scroll_x.grid(row=1, column=0, sticky="ew")
+        self.tree_matriz.grid(row=1, column=0, sticky="nsew")
+        scroll_y.grid(row=1, column=1, sticky="ns")
+        scroll_x.grid(row=2, column=0, sticky="ew")
         flow_toolbar(barra_m)
 
     def _construir_tab_estadisticas(self) -> None:
@@ -2972,9 +2974,12 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         orden = self.matriz_combo_orden.get() if hasattr(self, "matriz_combo_orden") else "Apellidos (A-Z)"
 
         estructura_comp, filas_matriz = calcular_matriz_competencias_y_capacidades(
-            curso_id, grado, seccion, orden_por=orden
+            curso_id, grado, seccion, orden_por=orden,unidad_id=self.alcance_unidad()
         )
         self.datos_matriz_actual = (estructura_comp, filas_matriz)
+        import periodos
+        context=periodos.info(self._db_path)
+        self.matriz_scope_title.configure(text=f"{context['school_name']} · {context['label']} · {self.nombre_alcance()}")
 
         cols = ["ID", "Codigo", "Estado", "Estudiante"]
         encabezados_cfg: List[Tuple[str, str, int]] = [
@@ -3061,6 +3066,8 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             self.tree_matriz.insert("", "end", values=row_vals, tags=tags)
 
     def accion_colocar_nota_manual_capacidad(self) -> None:
+        if self.alcance_unidad()!="all":
+            messagebox.showinfo("Vista por unidad","Modifique las notas en las actividades de esta unidad. Las notas manuales finales se ingresan en Todas las unidades.");return
         if not self.verificar_permiso_edicion():
             return
         sel = self.tree_matriz.selection()
@@ -3129,16 +3136,19 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         from excel_dialogs import GradeDisplayOptions
         options=GradeDisplayOptions(self);self.wait_window(options)
         if options.result is None:return
+        scope_id="all" if options.scope_choice.get()=="all" else self.alcance_unidad()
+        scope_name="Periodo completo" if scope_id=="all" else self.nombre_alcance()
+        estructura_comp,filas_matriz=calcular_matriz_competencias_y_capacidades(self.obtener_curso_activo_id(),grado,seccion,unidad_id=scope_id)
         ruta = self.elegir_destino(
             title="Exportar matriz final a Excel",
             defaultextension=".xlsx",
-            initialfile=f"Registro_Detallado_{curso}_{grado}_{seccion}.xlsx",
+            initialfile=f"Registro_{curso}_{grado}_{seccion}_{scope_name}.xlsx",
             filetypes=[("Archivo Excel", "*.xlsx")],
         )
         if not ruta:
             return
 
-        exportar_matriz_completa_excel(ruta, curso, grado, seccion, estructura_comp, filas_matriz,presentacion=options.result,db_path=self._db_path)
+        exportar_matriz_completa_excel(ruta, curso, grado, seccion, estructura_comp, filas_matriz,presentacion=options.result,db_path=self._db_path,unidad_id=scope_id,alcance=scope_name)
         import reportes
         reportes.decorate_workbook(ruta, self.insignia_exportacion())
         messagebox.showinfo(

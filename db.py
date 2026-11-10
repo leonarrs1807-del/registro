@@ -1424,6 +1424,7 @@ def calcular_matriz_competencias_y_capacidades(
     db_path: Path = DB_PATH,
     orden_por: str = "Apellidos (A-Z)",
     incluir_retirados: bool = True,
+    unidad_id="all",
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     pesos_rubros = obtener_pesos_rubros_curso(curso_id, db_path)
     competencias_raw = obtener_competencias_por_curso(curso_id, db_path)
@@ -1452,9 +1453,9 @@ def calcular_matriz_competencias_y_capacidades(
             SELECT nsc.estudiante_id, nsc.capacidad_id, nsc.nota, s.peso_clase, COALESCE(s.categoria, 'Clases') AS categoria
             FROM Notas_Sesion_Capacidad nsc
             JOIN Sesiones_Clase s ON nsc.sesion_id = s.id
-            WHERE s.curso_id = ? AND s.grado = ? AND s.seccion = ? AND nsc.nota IS NOT NULL
+            WHERE s.curso_id = ? AND s.grado = ? AND s.seccion = ? AND nsc.nota IS NOT NULL AND (?='all' OR s.unidad_id IS ?)
             """,
-            (curso_id, grado, seccion),
+            (curso_id, grado, seccion,unidad_id,unidad_id),
         ).fetchall()
 
         notas_por_cat_cap: Dict[Tuple[int, int, str], List[Tuple[float, float]]] = {}
@@ -1466,7 +1467,7 @@ def calcular_matriz_competencias_y_capacidades(
         manuales_rows = conn.execute(
             "SELECT estudiante_id, capacidad_id, nota_manual FROM Notas_Manuales_Capacidad WHERE nota_manual IS NOT NULL"
         ).fetchall()
-        manuales_map: Dict[Tuple[int, int], float] = {(r[0], r[1]): float(r[2]) for r in manuales_rows}
+        manuales_map: Dict[Tuple[int, int], float] = {(r[0], r[1]): float(r[2]) for r in (manuales_rows if unidad_id=="all" else [])}
 
     def _prom_lista(pares: List[Tuple[float, float]]) -> Optional[float]:
         from calculos import weighted_average
@@ -1557,10 +1558,12 @@ def exportar_matriz_completa_excel(
     filas_matriz: List[Dict[str, Any]],
     presentacion=None,
     db_path: Path = DB_PATH,
+    unidad_id="all",
+    alcance="Periodo completo",
 ) -> None:
     if presentacion is not None:
         from matriz_excel import export_matrix
-        return export_matrix(ruta_destino,nombre_curso,grado,seccion,estructura_comp,filas_matriz,db_path,presentacion)
+        return export_matrix(ruta_destino,nombre_curso,grado,seccion,estructura_comp,filas_matriz,db_path,presentacion,unidad_id=unidad_id,alcance=alcance)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"Registro_{grado}_{seccion}"

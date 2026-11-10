@@ -5,7 +5,7 @@ import customtkinter as ctk
 from instrumentos import LEVELS,LEVEL_NAMES,answer_points,entered_answer,criterion_caption
 from instrument_widgets import label,number
 from grade_cells import PALETTE,achievement,CriterionTreeview
-from escala import thresholds
+from escala import range_caption,thresholds
 from interfaz import pixel_scale,scrollbar
 from widgets import prepare_destroy,scroll_area,wrap_label,Tooltip
 from evaluacion_datos import grade_answers
@@ -93,7 +93,7 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.level_boxes=[]
         for col in range(4):
             box=ctk.CTkFrame(self.descriptors,corner_radius=4);box.pack(fill='x',padx=2,pady=4)
-            button=ctk.CTkButton(box,text='',height=29,command=lambda n=col:self.choose_level(n));button.pack(fill='x',padx=5,pady=(5,2))
+            button=ctk.CTkButton(box,text='',height=31,font=ctk.CTkFont(size=14,weight='bold'),command=lambda n=col:self.choose_level(n));button.pack(fill='x',padx=5,pady=(5,2))
             text=label(box,'');text.configure(font=ctk.CTkFont(size=13,weight='bold'));text.pack(fill='x',padx=7,pady=(0,6))
             self.level_boxes.append((box,button,text))
         if self.items and panel.by_student:self.select(next(iter(panel.by_student)),self.items[0]['id'])
@@ -251,11 +251,12 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.value.delete(0,'end');raw=self.answers.get(self.selected)
         if raw is not None:self.value.insert(0,str(raw))
         rubric=item['tipo']=='Rúbrica'
+        selected_level=achievement(20*answer_points(item['tipo'],raw,item['puntaje_maximo'],item['puntajes'])/item['puntaje_maximo'],thresholds(self.panel.app._db_path)) if raw is not None else None
         for n,(box,button,text) in enumerate(self.level_boxes):
             token=LEVELS[n]
             bg,fg=PALETTE[token] if rubric else ('#dcfce7','#166534') if n==0 else ('#fee2e2','#991b1b')
             points=item['puntajes'][token] if rubric else item['puntaje_maximo'] if n==0 else 0
-            box.configure(fg_color=bg);button.configure(text=f'{token} · {number(points)} pt',fg_color=bg,text_color=fg,hover_color=bg)
+            box.configure(fg_color=bg,border_color=fg,border_width=2 if token==selected_level else 0);button.configure(text=range_caption(token,thresholds(self.panel.app._db_path),item['puntaje_maximo']) if rubric else token,fg_color=bg,text_color=fg,hover_color=bg)
             text.configure(text=item['descriptores'][token] if rubric else 'Cumple el criterio' if n==0 else 'No cumple el criterio',text_color=fg)
 
     def choose_level(self,index):

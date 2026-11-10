@@ -7,7 +7,7 @@ from interfaz import pixel_scale,scrollbar
 from instrumentos import LEVELS,LEVEL_NAMES,criterion_caption,normalized,answer_points,entered_answer
 from cotejo import capacity_label
 from grade_cells import PALETTE,achievement
-from escala import thresholds,DEFAULT
+from escala import thresholds,DEFAULT,range_caption
 from calculos import normalized_total
 
 
@@ -81,7 +81,7 @@ class InstrumentGrid(ctk.CTkFrame):
             if self.on_choice:
                 actions=ctk.CTkFrame(criterion,fg_color='transparent');actions.pack(fill='x',padx=10,pady=(3,8));self.actions[identity]=actions
                 if rubric:
-                    label(actions,'Puntaje manual',text_color='#475569').pack(anchor='w')
+                    label(actions,'Nota manual',text_color='#475569').pack(anchor='w')
                     field=ctk.CTkFrame(actions,fg_color='transparent');field.pack(fill='x',pady=(2,6))
                     entry=ctk.CTkEntry(field,width=85,height=30);entry.pack(side='left',padx=(0,5));self.numeric_entries[identity]=entry
                     entry.bind('<Return>',lambda e,i=identity:(self._manual(i),'break')[1])
@@ -95,7 +95,7 @@ class InstrumentGrid(ctk.CTkFrame):
                 cell=ctk.CTkFrame(table,fg_color=bg,corner_radius=0,border_width=1,border_color=bg)
                 cell.grid(row=row,column=col,sticky='nsew',padx=1,pady=1);self.cells[(identity,token)]=cell
                 points=item['puntajes'][token] if rubric else item['puntaje_maximo'] if token=='Sí' else 0
-                text=f'{token} · {number(points)} pt' if rubric else 'Cumple' if token=='Sí' else 'No cumple'
+                text=range_caption(token,thresholds(getattr(self.winfo_toplevel(),'app',self.winfo_toplevel())._db_path) if hasattr(getattr(self.winfo_toplevel(),'app',self.winfo_toplevel()),'_db_path') else DEFAULT,item['puntaje_maximo']) if rubric else 'Cumple' if token=='Sí' else 'No cumple'
                 if self.on_choice:
                     ctk.CTkRadioButton(cell,text=text,variable=variable,value=token,
                         command=lambda i=identity,t=token:self._choose(i,t),font=ctk.CTkFont(size=14,weight='bold'),text_color=fg).pack(anchor='w',padx=10,pady=10)
@@ -133,7 +133,7 @@ class InstrumentGrid(ctk.CTkFrame):
                 root=self.winfo_toplevel();app=getattr(root,'app',root)
                 path=getattr(app,'_db_path',None)
                 level=achievement(normalized_total(points,item['puntaje_maximo']),thresholds(path) if path else DEFAULT)
-                caption=f'Puntaje: {number(points)} · Nivel {level}'
+                caption=f"Nota: {number(points)} · Nivel {range_caption(level,thresholds(path) if path else DEFAULT,item['puntaje_maximo'])}"
             if identity in self.numeric_entries:
                 entry=self.numeric_entries[identity];entry.delete(0,'end')
                 if value is not None:entry.insert(0,number(answer_points(item['tipo'],value,item['puntaje_maximo'],item['puntajes'])))

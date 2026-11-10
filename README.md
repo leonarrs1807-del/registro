@@ -1,3 +1,12 @@
+## Full personal 2.1.0
+
+- Colegios independientes: selector de colegio, periodos propios, alumnado, notas e insignias separados.
+- Gestor único con tablas y acciones para crear, editar, ordenar y eliminar periodos y unidades.
+- Unidades generales para todos los cursos y grados del periodo. Quitar una unidad conserva las notas.
+- Papelera de documentos con recuperación independiente de colegios y periodos eliminados.
+- Matriz general por bimestre/trimestre o por unidad, con alcance visible en Excel.
+- Tarjetas de rúbrica con rangos de logro y resaltado del nivel al ingresar una nota exacta.
+
 ## Full personal 2.0.0
 
 - Selector visible de bimestres o trimestres y unidades didácticas por curso y aula.

@@ -118,6 +118,8 @@ class ClassroomTools:
         source=filedialog.askopenfilename(title='Insignia del colegio',filetypes=[('Imagen PNG o JPEG','*.png *.jpg *.jpeg')])
         if source:
             reportes.save_logo(source,self._db_path)
+            import colegios
+            colegios.sync_identity(self._db_path,storage.data_dir())
             self.actualizar_insignia()
             messagebox.showinfo('Insignia guardada','La insignia quedará incluida en los respaldos y documentos internos. Al exportar podrá elegir si desea mostrarla.')
 

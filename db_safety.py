@@ -61,7 +61,7 @@ def _license_guards(conn):
     conn.create_function('registro_area', 2, area)
     conn.create_function('registro_permiso', 2, scope)
     guards = {
-        'Unidades_Didacticas': "registro_permiso('curso',{r}.curso_id)",
+        'Unidades_Didacticas': "({r}.general=1 OR registro_permiso('curso',{r}.curso_id))",
         'Cursos': "registro_area({r}.nombre,{r}.nivel)",
         'Competencias': "registro_permiso('curso',{r}.curso_id)",
         'Capacidades': "registro_permiso('competencia',{r}.competencia_id)",

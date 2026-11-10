@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 2.0.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 2.1.0 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -55,3 +55,11 @@ FULL PERSONAL 2.0
 - Perfil de IE e insignia en informes PDF y registros Excel.
 - Preparación visible de todas las secciones y carga anticipada de gráficos.
 Sus registros anteriores se conservan; no se asignan notas a otros periodos.
+
+FULL PERSONAL 2.1
+- Colegio > bimestre/trimestre > unidades, con edición y eliminación visibles.
+- Colegios independientes y unidades generales del periodo.
+- Papelera para recuperar documentos eliminados y notas conservadas al quitar unidades.
+- Matriz general y Excel por periodo o unidad.
+- Rangos C/B/A/AD visibles al ingresar notas manuales.
+GUIA-USO.txt explica la reutilización de rúbricas en Excel.

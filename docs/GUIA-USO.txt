@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 2.0.0 - FULL PERSONAL PARA LEONARDO
+REGISTRO DOCENTE 2.1.0 - FULL PERSONAL PARA LEONARDO
 
 EMPEZAR Y GUARDAR
 
@@ -371,3 +371,55 @@ antes de empezar a trabajar, en lugar de construirlas cada vez que se
 abren. Los cálculos de tablas se actualizan al mostrar cada vista y se
 conservan mientras el contexto no cambia. El tiempo depende del equipo
 y del volumen de datos; no se desactivan respaldos ni protecciones.
+
+
+FULL PERSONAL 2.1: COLEGIO > PERIODO > UNIDADES
+
+Seleccione el colegio en la franja superior. Cada colegio mantiene sus
+propios alumnos, calificaciones, periodos, datos e insignia. Organizar
+abre un gestor con tablas de periodos y unidades. Nuevo colegio parte
+sin alumnado ni notas, con su currículo y perfil docente disponibles.
+Los registros anteriores quedan asociados a su colegio actual.
+
+En Organizar, seleccione un colegio y utilice + Periodo, Editar o Eliminar.
+Puede cambiar año, tipo, número, nombre y fechas. Doble clic abre edición.
+Seleccione un periodo para ver sus unidades generales. + Unidad, Editar,
+Eliminar y las flechas permiten organizar la lista sin repetirla por curso.
+Quitar una unidad conserva las actividades y notas como Sin unidad.
+Los periodos cerrados se reabren desde Herramientas antes de modificarlos.
+Eliminar un periodo o colegio lo conserva completo en la papelera.
+Papelera / recuperar permite abrirlo de nuevo como otro documento.
+Para quitar el último colegio, cree otro primero; también puede eliminar
+sus periodos individualmente y conservar su ficha de colegio.
+
+El selector Unidad filtra ahora tanto Actividades como Matriz general.
+Todas las unidades muestra todo el bimestre o trimestre. La matriz por
+unidad es un resumen de sus actividades: no incluye la nota manual final
+del periodo. Exporte la unidad actual o todo el periodo desde Exportar
+matriz Excel y elija números, letras o ambos. El encabezado incluye el
+colegio, periodo y alcance. Las notas se ingresan o importan en las
+actividades; el resumen por unidad no reemplaza la nota final del periodo.
+
+RANGOS EN RÚBRICAS
+Las tarjetas muestran los límites de la escala: por defecto, C de 0 a
+menos de 10.5; B desde 10.5 a menos de 13.5; A desde 13.5 a menos de
+17.5; AD desde 17.5 hasta 20. Escriba su nota exacta: se resalta el nivel.
+Si el criterio tiene un máximo distinto de 20, el rango se adapta a ese
+máximo. Si cambia la escala de logro, los rangos se actualizan.
+Los atajos C/B/A/AD siguen usando los valores del instrumento guardado;
+no se cambian calificaciones anteriores. Los criterios y descriptores
+se siguen editando en el editor del instrumento.
+
+REUTILIZAR UNA RÚBRICA
+1. Cree o abra una actividad y elija Rúbrica en Cómo evaluar.
+2. Abra el editor, revise capacidades, criterios y descriptores; guarde.
+3. Herramientas > Guardar instrumento reutilizable en Excel guarda el
+   diseño por grado, competencia y tema, sin alumnos ni notas.
+4. En otra actividad use Importar instrumento Excel y revise la vista
+   previa. Un instrumento reutilizable puede compartirse entre colegios
+   o grados del mismo curso y nivel; no copia sus estudiantes ni insignia.
+5. Si usó la biblioteca interna antigua, use Biblioteca interna anterior
+   y exporte después el diseño como Excel para conservarlo por separado.
+Un Excel con notas sí pertenece a su colegio y periodo: seleccione el
+registro correspondiente antes de importarlo. Word, PDF o imágenes deben
+adaptarse al modelo Excel con sus criterios y descriptores.

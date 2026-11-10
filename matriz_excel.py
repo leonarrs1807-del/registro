@@ -13,9 +13,11 @@ class MatrixImportResult(tuple):
         result=super().__new__(cls,(students,notes));result.changes=changes;return result
 
 
-def export_matrix(destination,course,grade,section,structure,rows,path,presentation):
+def export_matrix(destination,course,grade,section,structure,rows,path,presentation,unidad_id="all",alcance="Periodo completo"):
     limits=thresholds(path);wb=openpyxl.Workbook();ws=wb.active;ws.title='Matriz final';columns=[];col=3
-    put(ws,1,1,f'Registro final · {course} · {grade} {section}')
+    import periodos
+    context=periodos.info(path)
+    put(ws,1,1,f"{context['school_name']} · {context['label']} · {alcance}\nRegistro general · {course} · {grade} {section}")
     put(ws,2,1,'N°');put(ws,2,2,'Apellidos y nombres');ws.merge_cells('A2:A3');ws.merge_cells('B2:B3')
     for comp in structure:
         first=col
@@ -38,7 +40,7 @@ def export_matrix(destination,course,grade,section,structure,rows,path,presentat
     ws.row_dimensions[2].height=58;ws.row_dimensions[3].height=90;ws.auto_filter.ref=f'A3:{openpyxl.utils.get_column_letter(final_col)}{max(4,ws.max_row)}'
     ws.merge_cells(start_row=1,start_column=1,end_row=1,end_column=final_col)
     with connection(path) as conn:level=conn.execute('SELECT nivel_educativo FROM Docente_Config WHERE id=1').fetchone()[0]
-    _meta(wb,dict(format='registro-matriz',version=2,course=course,level=level,grade=grade,section=section,presentation=presentation,columns=columns,originals=originals))
+    _meta(wb,dict(format='registro-matriz',version=2,course=course,level=level,grade=grade,section=section,presentation=presentation,columns=columns,originals=originals,school_id=context['school_id'],year=context['year'],period=context['number'],scheme=context['scheme'],unit_scope=unidad_id,scope_name=alcance))
     from institucion import decorate
     decorate(wb,path)
     wb.save(destination);wb.close()
@@ -47,6 +49,11 @@ def export_matrix(destination,course,grade,section,structure,rows,path,presentat
 def import_matrix(wb,path,default_grade,default_section):
     import db
     meta=metadata(wb);changes=[];ws=wb['Matriz final'] if 'Matriz final' in wb else wb.active
+    import periodos
+    context=periodos.info(path)
+    if meta.get('school_id') and meta['school_id']!=context['school_id']:raise ValueError('La matriz pertenece a otro colegio. Seleccione ese colegio antes de importar sus notas.')
+    if meta.get('year') and (meta['year'],meta.get('period'),meta.get('scheme'))!=(context['year'],context['number'],context['scheme']):raise ValueError('La matriz pertenece a otro periodo. Seleccione su bimestre o trimestre.')
+    if 'unit_scope' in meta and meta['unit_scope']!='all':raise ValueError('Esta plantilla resume una unidad. Importe las notas en las plantillas de sus actividades para conservar el cálculo del periodo.')
     grade=meta.get('grade') or default_grade;section=meta.get('section') or default_section
     if (default_grade not in ('Todos',grade) or default_section not in ('Todas',section)):raise ValueError('La matriz pertenece a otro salón.')
     with connection(path) as conn:

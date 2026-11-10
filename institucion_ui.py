@@ -42,12 +42,18 @@ class InstitutionTools:
         import db
         with db.obtener_conexion() as conn:
             if conn.execute("SELECT 1 FROM sqlite_master WHERE name='Colegio_Insignia'").fetchone():conn.execute('DELETE FROM Colegio_Insignia')
+        import colegios,app_storage
+        colegios.sync_identity(self._db_path,app_storage.data_dir())
         self.actualizar_insignia()
 
     def guardar_identidad(self):
         if not self.verificar_permiso_edicion():return False
         try:
             institucion.save(self._db_path,{k:e.get() for k,e in self._institution_entries.items()})
+            import colegios,app_storage
+            school=colegios.info(self._db_path)
+            colegios.sync_identity(self._db_path,app_storage.data_dir())
+            self.actualizar_contexto_academico()
             self.actualizar_configuracion();self.actualizar_visual_candado_y_docente()
             self._formularios_pendientes.discard(str(self.config_tabs.tab('Institución')))
             self.lbl_estado.configure(text='Datos de la institución guardados');return True

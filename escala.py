@@ -36,3 +36,9 @@ def save_thresholds(path,values):
         conn.execute('INSERT OR REPLACE INTO Escala_Logro VALUES(?,?,?,?)',(level,*values))
         conn.execute('INSERT INTO Historial_Reglas(nivel,usuario,anterior,nueva) VALUES(?,?,?,?)',(level,user,json.dumps(previous),json.dumps(values)))
     _read.cache_clear()
+
+
+def range_caption(level,limits=DEFAULT,maximum=20):
+    levels=('C','B','A','AD');index=levels.index(level)
+    edges=(0,*limits,20);low=edges[index]*float(maximum)/20;high=edges[index+1]*float(maximum)/20
+    return f'{level} · {low:g} a {"" if level=="AD" else "< "}{high:g}'

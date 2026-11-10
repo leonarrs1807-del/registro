@@ -38,7 +38,7 @@ class AcademicTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as conn:return conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(sid,)).fetchone()[0]
 
     def test_unit_scope_validation_rolls_back_whole_activity(self):
-        unit=periodos.save_unit(self.path,self.course,'3°','B','Otra sección')
+        unit=periodos.save_unit(self.path,self.course,'3°','B','Otra sección',general=False)
         with self.assertRaises(ValueError):self.make_session(unit=unit)
         self.assertEqual(db.obtener_sesiones_clase(self.course,'3°','A',db_path=self.path),[s for s in db.obtener_sesiones_clase(self.course,'3°','A',db_path=self.path) if s['titulo_tema']!='Fracciones'])
         with self.assertRaises(ValueError):periodos.save_unit(self.path,self.course,'3°','A','Unidad',start='2028-04-01',end='2028-03-01')

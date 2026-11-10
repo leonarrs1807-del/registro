@@ -8,15 +8,35 @@ SCHEMES = {'Bimestres': 4, 'Trimestres': 3}
 
 
 def migrate(conn):
-    conn.execute('CREATE TABLE IF NOT EXISTS Calendario_Escolar(id INTEGER PRIMARY KEY CHECK(id=1), tipo TEXT NOT NULL)')
-    conn.execute('''CREATE TABLE IF NOT EXISTS Unidades_Didacticas(
-        id INTEGER PRIMARY KEY, curso_id INTEGER NOT NULL REFERENCES Cursos(id),
-        grado TEXT NOT NULL, seccion TEXT NOT NULL, nombre TEXT NOT NULL,
-        proposito TEXT NOT NULL DEFAULT '', inicio TEXT NOT NULL DEFAULT '', fin TEXT NOT NULL DEFAULT '',
-        UNIQUE(curso_id,grado,seccion,nombre))''')
+    conn.execute("CREATE TABLE IF NOT EXISTS Calendario_Escolar(id INTEGER PRIMARY KEY CHECK(id=1), tipo TEXT NOT NULL)")
+    cols={r[1] for r in conn.execute('PRAGMA table_info(Calendario_Escolar)')}
+    for name in ('nombre','inicio','fin'):
+        if name not in cols:conn.execute(f"ALTER TABLE Calendario_Escolar ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
+    table="""CREATE TABLE {name}(id INTEGER PRIMARY KEY,curso_id INTEGER REFERENCES Cursos(id) ON DELETE SET NULL,
+        grado TEXT NOT NULL DEFAULT '*',seccion TEXT NOT NULL DEFAULT '*',nombre TEXT NOT NULL,
+        proposito TEXT NOT NULL DEFAULT '',inicio TEXT NOT NULL DEFAULT '',fin TEXT NOT NULL DEFAULT '',
+        general INTEGER NOT NULL DEFAULT 1,orden INTEGER NOT NULL DEFAULT 0)"""
+    old={r[1] for r in conn.execute('PRAGMA table_info(Unidades_Didacticas)')}
+    if not old:conn.execute(table.format(name='Unidades_Didacticas'))
+    elif 'general' not in old:
+        links=conn.execute('SELECT id,unidad_id FROM Sesiones_Clase WHERE unidad_id IS NOT NULL').fetchall()
+        conn.execute('UPDATE Sesiones_Clase SET unidad_id=NULL WHERE unidad_id IS NOT NULL')
+        conn.execute(table.format(name='Unidades_Nuevas'))
+        used=set()
+        for row in conn.execute('SELECT id,nombre,proposito,inicio,fin,grado,seccion FROM Unidades_Didacticas ORDER BY id').fetchall():
+            identity,name,purpose,start,end,grade,section=row
+            candidate=name
+            if candidate.strip().casefold() in used:candidate=f'{name} ({grade} {section} · {identity})'
+            used.add(candidate.strip().casefold())
+            conn.execute('INSERT INTO Unidades_Nuevas(id,nombre,proposito,inicio,fin,orden) VALUES(?,?,?,?,?,?)',(identity,candidate,purpose,start,end,identity))
+        conn.execute('DROP TABLE Unidades_Didacticas')
+        conn.execute('ALTER TABLE Unidades_Nuevas RENAME TO Unidades_Didacticas')
+        conn.executemany('UPDATE Sesiones_Clase SET unidad_id=? WHERE id=?',[(unit,session) for session,unit in links])
+    conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS unidad_general_nombre ON Unidades_Didacticas(lower(trim(nombre))) WHERE general=1')
     columns={r[1] for r in conn.execute('PRAGMA table_info(Sesiones_Clase)')}
-    if 'unidad_id' not in columns:
-        conn.execute('ALTER TABLE Sesiones_Clase ADD COLUMN unidad_id INTEGER REFERENCES Unidades_Didacticas(id)')
+    if 'unidad_id' not in columns:conn.execute('ALTER TABLE Sesiones_Clase ADD COLUMN unidad_id INTEGER REFERENCES Unidades_Didacticas(id)')
+    from colegios import migrate as migrate_schools
+    migrate_schools(conn)
 
 
 def info(path):
@@ -25,21 +45,35 @@ def info(path):
         tables={r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         row=conn.execute('SELECT anio,periodo FROM Periodo_Info WHERE id=1').fetchone() if 'Periodo_Info' in tables else None
         scheme=conn.execute('SELECT tipo FROM Calendario_Escolar WHERE id=1').fetchone() if 'Calendario_Escolar' in tables else None
+        cols={r[1] for r in conn.execute('PRAGMA table_info(Calendario_Escolar)')}
+        details=conn.execute('SELECT nombre,inicio,fin FROM Calendario_Escolar WHERE id=1').fetchone() if {'nombre','inicio','fin'}<=cols else None
         closed=conn.execute('SELECT cerrado FROM Estado_Periodo WHERE id=1').fetchone() if 'Estado_Periodo' in tables else None
     kind=scheme[0] if scheme else 'Bimestres'
     label=f'{row[0]} · {row[1]}.º {"bimestre" if kind=="Bimestres" else "trimestre"}' if row else 'Registro sin periodo asignado'
-    return dict(year=row[0] if row else None,number=row[1] if row else None,scheme=kind,closed=bool(closed and closed[0]),label=label)
+    from colegios import info as school_info
+    return dict(year=row[0] if row else None,number=row[1] if row else None,scheme=kind,closed=bool(closed and closed[0]),label=label+((' · '+details[0]) if details and details[0] else ''),name=details[0] if details else '',start=details[1] if details else '',end=details[2] if details else '',**school_info(path))
 
 
-def identify(path,year,number,scheme='Bimestres'):
+def identify(path,year,number,scheme='Bimestres',name='',start='',end='',root=None):
     year,number=int(year),int(number)
     if scheme not in SCHEMES or not 2000<=year<=2100 or not 1<=number<=SCHEMES[scheme]:
         raise ValueError('Revise el año, el tipo de periodo y su número.')
+    from datetime import date
+    for value in (start,end):
+        if value:date.fromisoformat(value)
+    if start and end and start>end:raise ValueError('Revise las fechas del periodo.')
+    current=info(path)
+    if current['closed']:raise ValueError('Reabra el periodo antes de editarlo.')
+    if root and any(r['path'].resolve()!=Path(path).resolve() and r['school_id']==current['school_id'] and (r['year'],r['number'],r['scheme'])==(year,number,scheme) for r in catalog(root,path)):
+        raise ValueError('Ese periodo ya existe en este colegio.')
     with connection(path) as conn:
         conn.execute('CREATE TABLE IF NOT EXISTS Periodo_Info(id INTEGER PRIMARY KEY CHECK(id=1), anio INTEGER, periodo INTEGER)')
         conn.execute('CREATE TABLE IF NOT EXISTS Calendario_Escolar(id INTEGER PRIMARY KEY CHECK(id=1), tipo TEXT NOT NULL)')
         conn.execute('INSERT OR REPLACE INTO Periodo_Info VALUES(1,?,?)',(year,number))
-        conn.execute('INSERT OR REPLACE INTO Calendario_Escolar VALUES(1,?)',(scheme,))
+        cols={r[1] for r in conn.execute('PRAGMA table_info(Calendario_Escolar)')}
+        for column in ('nombre','inicio','fin'):
+            if column not in cols:conn.execute(f"ALTER TABLE Calendario_Escolar ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        conn.execute('INSERT OR REPLACE INTO Calendario_Escolar(id,tipo,nombre,inicio,fin) VALUES(1,?,?,?,?)',(scheme,name.strip(),start,end))
 
 
 def catalog(root,current=None):
@@ -52,37 +86,54 @@ def catalog(root,current=None):
     return sorted(result,key=lambda p:(p['year'] or 0,p['scheme'],p['number'] or 0,p['path'].stem))
 
 
-def units(path,course,grade,section):
+def units(path,course=None,grade=None,section=None):
     with connection(path) as conn:
         conn.row_factory=sqlite3.Row
-        return [dict(r) for r in conn.execute('''SELECT * FROM Unidades_Didacticas
-            WHERE curso_id=? AND grado=? AND seccion=? ORDER BY inicio,id''',(course,grade,section))]
+        return [dict(r) for r in conn.execute("SELECT * FROM Unidades_Didacticas WHERE general=1 OR (curso_id=? AND grado=? AND seccion=?) ORDER BY orden,id",(course,grade,section))]
 
 
-def save_unit(path,course,grade,section,name,purpose='',start='',end='',identity=None):
+def save_unit(path,course,grade,section,name,purpose='',start='',end='',identity=None,general=True):
     from datetime import date
     name=str(name).strip()
-    if not name or not grade or not section or grade=='Todos' or section=='Todas':
-        raise ValueError('Seleccione curso, grado y sección, y escriba el nombre de la unidad.')
+    if not name:raise ValueError('Escriba el nombre de la unidad.')
     for value in (start,end):
         if value:date.fromisoformat(value)
     if start and end and start>end:raise ValueError('La fecha final debe ser posterior al inicio.')
     with connection(path) as conn:
+        duplicates=conn.execute('SELECT id,nombre FROM Unidades_Didacticas WHERE general=1').fetchall()
+        if general and any(i!=identity and n.strip().casefold()==name.casefold() for i,n in duplicates):raise ValueError('Ya existe una unidad con ese nombre.')
         if identity is None:
-            return conn.execute('INSERT INTO Unidades_Didacticas(curso_id,grado,seccion,nombre,proposito,inicio,fin) VALUES(?,?,?,?,?,?,?)',
-                (course,grade,section,name,purpose,start,end)).lastrowid
-        current=conn.execute('SELECT curso_id,grado,seccion FROM Unidades_Didacticas WHERE id=?',(identity,)).fetchone()
-        if not current or tuple(current)!=(course,grade,section):raise ValueError('La unidad no pertenece a este salón.')
+            order=conn.execute('SELECT COALESCE(MAX(orden),0)+1 FROM Unidades_Didacticas').fetchone()[0]
+            return conn.execute('INSERT INTO Unidades_Didacticas(curso_id,grado,seccion,nombre,proposito,inicio,fin,general,orden) VALUES(?,?,?,?,?,?,?,?,?)',
+                (None if general else course,'*' if general else grade,'*' if general else section,name,purpose,start,end,int(general),order)).lastrowid
+        if not conn.execute('SELECT 1 FROM Unidades_Didacticas WHERE id=?',(identity,)).fetchone():raise ValueError('La unidad ya no existe.')
         conn.execute('UPDATE Unidades_Didacticas SET nombre=?,proposito=?,inicio=?,fin=? WHERE id=?',(name,purpose,start,end,identity))
         return identity
 
 
+def delete_unit(path,identity):
+    import app_storage
+    saved=app_storage.backup_database(path,'eliminar-unidad')
+    with connection(path) as conn:
+        conn.execute('UPDATE Sesiones_Clase SET unidad_id=NULL WHERE unidad_id=?',(identity,))
+        conn.execute('DELETE FROM Unidades_Didacticas WHERE id=?',(identity,))
+    return saved
+
+
+def move_unit(path,identity,delta):
+    with connection(path) as conn:
+        rows=conn.execute('SELECT id FROM Unidades_Didacticas ORDER BY orden,id').fetchall();ids=[r[0] for r in rows]
+        if identity not in ids:return
+        old=ids.index(identity);new=max(0,min(old+delta,len(ids)-1));ids.insert(new,ids.pop(old))
+        conn.executemany('UPDATE Unidades_Didacticas SET orden=? WHERE id=?',[(n,i) for n,i in enumerate(ids,1)])
+
+
 def assign_unit(conn,session,unit):
     if unit is not None:
-        row=conn.execute('''SELECT 1 FROM Sesiones_Clase s JOIN Unidades_Didacticas u
-            ON u.curso_id=s.curso_id AND u.grado=s.grado AND u.seccion=s.seccion
-            WHERE s.id=? AND u.id=?''',(session,unit)).fetchone()
-        if not row:raise ValueError('La unidad no pertenece al curso, grado y sección de la actividad.')
+        row=conn.execute("""SELECT 1 FROM Sesiones_Clase s JOIN Unidades_Didacticas u
+            ON (u.general=1 OR (u.curso_id=s.curso_id AND u.grado=s.grado AND u.seccion=s.seccion))
+            WHERE s.id=? AND u.id=?""",(session,unit)).fetchone()
+        if not row:raise ValueError('La unidad no pertenece a este periodo o salón.')
     conn.execute('UPDATE Sesiones_Clase SET unidad_id=? WHERE id=?',(unit,session))
 
 

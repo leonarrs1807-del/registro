@@ -88,6 +88,8 @@ def _table_style(ws,header_rows,start,last,limits,grade_cols=()):
 
 def export_activity(destination,session,path,answers=None,grades=None,roster=None,include_summary=False,library=False):
     import db
+    from periodos import info
+    period_info=info(path)
     context=activity(session,path);items=get_indicators(session,path);kind=context['tipo_instrumento'];raw=kind!='Normal' and bool(items)
     if library:roster=[]
     if roster is None:roster=db.obtener_estudiantes_filtrados(context['grado'],context['seccion'],'',db_path=path)
@@ -97,10 +99,12 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
         course,level=conn.execute('SELECT nombre,nivel FROM Cursos WHERE id=?',(context['curso_id'],)).fetchone()
         notes={(s,c):n for s,c,n in conn.execute('SELECT estudiante_id,capacidad_id,nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(session,))}
         comments=dict(conn.execute('SELECT estudiante_id,comentario FROM Asistencia_Y_Comentarios_Clase WHERE sesion_id=?',(session,)))
+        unit_row=conn.execute('SELECT nombre FROM Unidades_Didacticas WHERE id=?',(context.get('unidad_id'),)).fetchone()
+        unit_name=unit_row[0] if unit_row else 'Sin unidad'
     if grades is not None:notes.update(grades)
     wb=openpyxl.Workbook();ws=wb.active;ws.title='Registro';design=wb.create_sheet('Instrumento');limits=thresholds(path)
     if not raw:items=[definition(dict(capacidad_id=c['capacidad_id'],capacidad_nombre=c['capacidad_nombre'],criterio=c['criterio_precisado'] or GLOBAL,tipo='Rúbrica',puntaje_maximo=20),limits) for c in context['capacidades']]
-    put(design,1,1,('Rúbrica' if kind=='Rúbrica' else 'Lista de cotejo' if kind=='Lista de Cotejo' else 'Notas de la actividad')+' · '+context['titulo_tema']);put(design,2,1,'Curso / aula / fecha');put(design,2,2,f"{course} · {context['grado']} {context['seccion']} · {context['fecha']}")
+    put(design,1,1,('Rúbrica' if kind=='Rúbrica' else 'Lista de cotejo' if kind=='Lista de Cotejo' else 'Notas de la actividad')+' · '+context['titulo_tema']);put(design,2,1,'Curso / aula / fecha');put(design,2,2,f"{course} · {context['grado']} {context['seccion']} · {context['fecha']} · {period_info['label']} · {unit_name}")
     put(design,3,1,'Competencia');put(design,3,2,context['competencia_nombre']);put(design,4,1,'Propósito de la clase');put(design,4,2,context.get('proposito') or '')
     headers=['Capacidad','Criterio','Máximo','C · Descriptor','B · Descriptor','A · Descriptor','AD · Descriptor','C · Puntos','B · Puntos','A · Puntos','AD · Puntos']
     design.append([])
@@ -111,7 +115,7 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
         put(design,n,12,'i'+str(n-7))
     _table_style(design,{1,6},7,design.max_row,limits)
     design.merge_cells('A1:K1');design.merge_cells('B2:K2');design.merge_cells('B3:K3');design.merge_cells('B4:K4')
-    design.row_dimensions[2].height=27;design.row_dimensions[3].height=36
+    design.row_dimensions[2].height=min(55,max(27,14*((len(str(design['B2'].value))+109)//110)+8));design.row_dimensions[3].height=36
     design.column_dimensions['C'].width=10
     for col in 'HIJK':design.column_dimensions[col].hidden=True
     design.column_dimensions['L'].hidden=True
@@ -119,7 +123,7 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
     if kind!='Rúbrica':
         for col in range(3,12):design.column_dimensions[get_column_letter(col)].hidden=True
     put(ws,1,1,context['titulo_tema']);put(ws,2,1,'Competencia: '+context['competencia_nombre'])
-    put(ws,3,1,'Propósito: '+(context.get('proposito') or ''))
+    put(ws,3,1,period_info['label']+' · '+unit_name+'\nPropósito: '+(context.get('proposito') or ''))
     put(ws,4,1,'N°');put(ws,4,2,'Apellidos y nombres');keys=[]
     for n,item in enumerate(items):
         col=3+n;key='i'+str(n);keys.append(key)
@@ -152,12 +156,14 @@ def export_activity(destination,session,path,answers=None,grades=None,roster=Non
         for col in range(3,3+len(items)):dv.add(f'{get_column_letter(col)}7:{get_column_letter(col)}2000')
     for row in (1,2,3):ws.cell(row,1).alignment=Alignment(horizontal='left',vertical='center',wrap_text=True)
     ws.row_dimensions[1].height=26;ws.row_dimensions[2].height=32
-    ws.row_dimensions[3].height=min(60,max(24,14*len(textwrap.wrap(context.get('proposito') or '',110))+8))
+    ws.row_dimensions[3].height=min(60,max(24,14*len(textwrap.wrap(str(ws['A3'].value),110))+8))
     for row in (4,5):ws.row_dimensions[row].height=min(64,max(28,max(len(textwrap.wrap(str(ws.cell(row,c).value or ''),26)) for c in range(3,ws.max_column+1))*13+8))
     ws.merge_cells('A4:A5');ws.merge_cells('B4:B5')
     design.row_dimensions[1].height=26;design.row_dimensions[4].height=min(70,max(26,14*len(textwrap.wrap(context.get('proposito') or '',100))+8));design.row_dimensions[5].height=5;design.row_dimensions[6].height=32
     for row in range(7,design.max_row+1):design.row_dimensions[row].height=min(110,max(38,max(len(textwrap.wrap(str(design.cell(row,c).value or ''),28)) for c in range(1,8))*13+8))
-    _meta(wb,dict(format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion'],purpose=context.get('proposito') or '',activity_type=context.get('tipo_actividad','Actividad'),category=context['categoria'],entry_mode=context.get('modo_ingreso','capacidades'),library=bool(library),theme=context['titulo_tema']))
+    from periodos import info
+    period_info=info(path)
+    _meta(wb,dict(school_id=period_info['school_id'],year=period_info['year'],period=period_info['number'],scheme=period_info['scheme'],format='registro-tabla',version=6,mode='criterios' if raw else 'notas',kind=kind,course=course,level=level,grade=context['grado'],section=context['seccion'],purpose=context.get('proposito') or '',activity_type=context.get('tipo_actividad','Actividad'),category=context['categoria'],entry_mode=context.get('modo_ingreso','capacidades'),library=bool(library),theme=context['titulo_tema']))
     from institucion import decorate
     decorate(wb,path)
     wb.active=0;wb.save(destination);wb.close();return len(roster)
@@ -194,9 +200,14 @@ def _value(ws,formulas,row,col):
 def import_activity(wb,formulas,session,grade,section,path):
     import db
     context=activity(session,path);meta=metadata(wb);modern=meta.get('format')=='registro-tabla';changes=[]
+    from periodos import info
+    scope=info(path)
+    if not meta.get('library'):
+        if meta.get('school_id') and meta['school_id']!=scope['school_id']:raise ValueError('El registro pertenece a otro colegio. Utilice un instrumento reutilizable sin alumnado para compartir criterios.')
+        if meta.get('year') and (meta['year'],meta.get('period'),meta.get('scheme'))!=(scope['year'],scope['number'],scope['scheme']):raise ValueError('El registro pertenece a otro periodo.')
     with connection(path) as conn:
         course,level=conn.execute('SELECT nombre,nivel FROM Cursos WHERE id=?',(context['curso_id'],)).fetchone()
-        if modern and (normalized(meta.get('course'))!=normalized(course) or meta.get('level')!=level or meta.get('grade')!=grade or (not meta.get('library') and meta.get('section')!=section)):raise ValueError('La tabla pertenece a otro curso, nivel o salón.')
+        if modern and (normalized(meta.get('course'))!=normalized(course) or meta.get('level')!=level or (not meta.get('library') and (meta.get('grade')!=grade or meta.get('section')!=section))):raise ValueError('La tabla pertenece a otro curso, nivel o salón.')
         if (context['grado'],context['seccion'])!=(grade,section):raise ValueError('Seleccione el salón de la actividad.')
         ws=wb['Registro'] if 'Registro' in wb else wb.active;fw=formulas[ws.title]
         mode=meta.get('mode','notas')

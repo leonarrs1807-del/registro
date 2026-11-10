@@ -2,7 +2,7 @@
 from tkinter import ttk
 import customtkinter as ctk
 from colores import button as sky_button,tabs as sky_tabs
-from widgets import SafeDialog,wrap_label
+from widgets import SafeDialog,wrap_label,scroll_area
 from instrument_design import fit
 from interfaz import scrollbar
 from evaluacion_datos import activity,get_indicators,get_answers
@@ -11,12 +11,19 @@ from db_safety import connection
 
 class GradeDisplayOptions(SafeDialog):
     def __init__(self,app):
-        super().__init__(app);self.title('Cómo mostrar las notas en Excel');fit(self,app,570,330)
+        super().__init__(app);self.title('Cómo mostrar las notas en Excel');fit(self,app,650,470)
         self.result=None;self.ready=False
-        ctk.CTkLabel(self,text='Elija el formato de la matriz final',font=ctk.CTkFont(size=18,weight='bold')).pack(padx=20,pady=(20,12))
+        body=scroll_area(self,auto_hide=True);body.pack(fill='both',expand=True,padx=8,pady=8)
+        ctk.CTkLabel(body,text='Elija el formato de la matriz final',font=ctk.CTkFont(size=18,weight='bold')).pack(padx=20,pady=(20,12))
+        self.scope_choice=ctk.StringVar(value='actual')
+        if hasattr(app,'nombre_alcance'):
+            ctk.CTkLabel(body,text='Selección actual: '+app.nombre_alcance(),wraplength=560).pack(padx=20,pady=4)
+            if app.alcance_unidad()!='all':
+                ctk.CTkRadioButton(body,text='Descargar solo la unidad seleccionada',variable=self.scope_choice,value='actual').pack(anchor='w',padx=35,pady=5)
+                ctk.CTkRadioButton(body,text='Descargar todo el bimestre / trimestre',variable=self.scope_choice,value='all').pack(anchor='w',padx=35,pady=5)
         self.choice=ctk.StringVar(value='numero')
         for value,title in [('numero','Solo números · 17'),('letra','Solo letras · A'),('ambos','Número y letra · 17 (A)')]:
-            ctk.CTkRadioButton(self,text=title,variable=self.choice,value=value).pack(anchor='w',padx=35,pady=10)
+            ctk.CTkRadioButton(body,text=title,variable=self.choice,value=value).pack(anchor='w',padx=35,pady=10)
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=20,pady=15)
         ctk.CTkButton(bar,**sky_button(),text='Cancelar',width=100,command=self.destroy).pack(side='left')
         ctk.CTkButton(bar,**sky_button(),text='Continuar',command=self.confirm).pack(side='right');self.grab_set();self.ready=True

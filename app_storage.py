@@ -107,11 +107,15 @@ def configure_logging():
 def create_period(source, year, period, scheme="Bimestres"):
     year, period = int(year), int(period)
     from periodos import SCHEMES,catalog
+    from colegios import info as school_info
+    school=school_info(source)
     if scheme not in SCHEMES or not 2000 <= year <= 2100 or not 1 <= period <= SCHEMES[scheme]:
         raise ValueError('Indique un año entre 2000 y 2100 y un periodo entre 1 y 4.')
-    if any(r['year']==year and r['number']==period and r['scheme']==scheme for r in catalog(data_dir(),source)):
+    if any(r['school_id']==school['school_id'] and r['year']==year and r['number']==period and r['scheme']==scheme for r in catalog(data_dir(),source)):
         raise ValueError('Ese periodo ya existe. Ábralo desde el selector.')
-    target = data_dir() / f'escolar-{year}-{scheme.lower()}-{period}.db'
+    import hashlib
+    school_key=hashlib.sha256(school['school_id'].encode()).hexdigest()[:16]
+    target = data_dir() / f"escolar-{school_key}-{year}-{scheme.lower()}-{period}.db"
     if target.exists():
         raise ValueError('Ese periodo ya existe. Ábralo desde el selector.')
     with tempfile.TemporaryDirectory(dir=data_dir()) as tmp:
@@ -131,7 +135,9 @@ def create_period(source, year, period, scheme="Bimestres"):
             conn.execute('CREATE TABLE IF NOT EXISTS Periodo_Info (id INTEGER PRIMARY KEY CHECK(id=1), anio INTEGER, periodo INTEGER)')
             conn.execute('INSERT OR REPLACE INTO Periodo_Info VALUES (1, ?, ?)', (year, period))
             conn.execute('CREATE TABLE IF NOT EXISTS Calendario_Escolar(id INTEGER PRIMARY KEY CHECK(id=1), tipo TEXT NOT NULL)')
-            conn.execute('INSERT OR REPLACE INTO Calendario_Escolar VALUES(1,?)',(scheme,))
+            conn.execute('INSERT OR REPLACE INTO Calendario_Escolar(id,tipo) VALUES(1,?)',(scheme,))
+            conn.execute('CREATE TABLE IF NOT EXISTS Colegio_Info(id INTEGER PRIMARY KEY CHECK(id=1),identificador TEXT NOT NULL)')
+            conn.execute('INSERT OR REPLACE INTO Colegio_Info VALUES(1,?)',(school['school_id'],))
         validate_database(staged)
         # Exclusive creation prevents overwriting an existing period on a repeated click.
         with target.open('xb') as out:

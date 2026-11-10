@@ -884,3 +884,73 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(float(self.app._filas_planilla()[0][4]),16)
         self.app.deshacer_planilla();self.assertEqual(self.app._filas_planilla(),before)
         self.assertFalse(self.errors)
+
+    def test_school_manager_edits_general_units_and_removes_without_losing_notes(self):
+        import periodos
+        periodos.identify(db.DB_PATH,2031,2,'Trimestres')
+        self.app.edicion_desbloqueada=True;self.app.seleccionar_periodo();self.app.update()
+        manager=self.app._organization_manager;manager.edit_unit(True);self.app.update()
+        manager._unit_fields['nombre'].insert(0,'Unidad general de ejemplo');manager._unit_save();self.app.update()
+        unit=next(iter(manager.units.values()));self.assertEqual(unit['general'],1)
+        with db.obtener_conexion() as conn:periodos.assign_unit(conn,self.session,unit['id'])
+        db.guardar_notas_globales_sesion(self.session,{self.student:17})
+        manager.unit_tree.selection_set(str(unit['id']));manager.edit_unit();manager._unit_fields['nombre'].delete(0,'end');manager._unit_fields['nombre'].insert(0,'Unidad editada');manager._unit_save()
+        manager.unit_tree.selection_set(str(unit['id']))
+        with patch('tkinter.messagebox.askyesno',return_value=True):manager.delete_unit()
+        self.assertEqual(periodos.units(db.DB_PATH),[])
+        with db.obtener_conexion() as conn:
+            self.assertIsNone(conn.execute('SELECT unidad_id FROM Sesiones_Clase WHERE id=?',(self.session,)).fetchone()[0])
+            self.assertEqual(conn.execute('SELECT nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(self.session,)).fetchone()[0],17)
+        self.assertFalse(self.errors)
+
+    def test_period_manager_edits_year_scheme_and_name_in_place(self):
+        import periodos
+        self.app.edicion_desbloqueada=True;self.app.seleccionar_periodo();self.app.update()
+        manager=self.app._organization_manager;manager.edit_period();self.app.update()
+        for key,value in [('year','2032'),('name','Periodo editado')]:
+            field=manager._period_fields[key];field.delete(0,'end');field.insert(0,value)
+        manager._period_fields['scheme'].set('Trimestres');manager._period_fields['number'].set('3');manager._period_save();self.app.update()
+        current=periodos.info(db.DB_PATH);self.assertEqual((current['year'],current['number'],current['scheme'],current['name']),(2032,3,'Trimestres','Periodo editado'))
+        self.assertFalse(self.errors)
+
+    def test_school_picker_keeps_students_separate(self):
+        import colegios
+        self.app.edicion_desbloqueada=True;self.app.seleccionar_periodo();manager=self.app._organization_manager
+        with patch('tkinter.simpledialog.askstring',return_value='Segundo colegio de prueba'):manager.add_school()
+        row=manager.schools[manager.school.get()];self.assertNotEqual(row['id'],self.app._school_id)
+        with db.obtener_conexion(row['records'][0]['path']) as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Estudiantes').fetchone()[0],0)
+        manager.finish();self.app.actualizar_contexto_academico()
+        choice=next(k for k,r in self.app._school_choices.items() if r['id']==row['id'])
+        with patch.object(self.app,'_reiniciar') as restart:self.app.cambiar_colegio(choice)
+        restart.assert_called_once_with(row['records'][-1]['path'])
+        with db.obtener_conexion() as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM Estudiantes').fetchone()[0],1)
+        self.assertFalse(self.errors)
+
+    def test_rubric_cards_show_ranges_and_classify_exact_numeric_values(self):
+        self.app.edicion_desbloqueada=True
+        db.guardar_indicadores_instrumento_sesion(self.session,'Rúbrica',[(self.cap,'Argumenta',20)])
+        self.app.recargar_tabla_actividades_creadas();self.app.abrir_actividad_en_pestana_calificar(self.session)
+        self.app.calif_combo_modo_inst.set('Rúbrica');self.app.actualizar_herramientas_evaluacion();self.app.cambiar_vista_evaluacion('Criterios');self.app.update()
+        matrix=self.app._embedded_evaluation.matrix
+        self.assertEqual(matrix.level_boxes[1][1].cget('text'),'B · 10.5 a < 13.5')
+        matrix.apply_value('12.7');self.app.update()
+        self.assertEqual(matrix.level_boxes[1][0].cget('border_width'),2)
+        matrix.apply_value('13.5');self.app.update();self.assertEqual(matrix.level_boxes[2][0].cget('border_width'),2)
+        self.assertFalse(self.errors)
+
+    def test_general_matrix_changes_with_unit_filter(self):
+        import periodos
+        self.app.edicion_desbloqueada=True
+        first=periodos.save_unit(db.DB_PATH,None,None,None,'Primera unidad')
+        second=periodos.save_unit(db.DB_PATH,None,None,None,'Segunda unidad')
+        with db.obtener_conexion() as conn:periodos.assign_unit(conn,self.session,first)
+        db.guardar_notas_globales_sesion(self.session,{self.student:20})
+        other=db.crear_o_actualizar_sesion_clase(None,self.course,self.comp,'3°','A','Otra unidad','',1,[(self.cap,'Criterio')],unidad_id=second)
+        db.guardar_notas_globales_sesion(other,{self.student:4})
+        self.app.actualizar_contexto_academico();self.app.tabview.set('Matriz General')
+        caption=next(k for k,v in self.app._unit_labels.items() if v==first)
+        self.app.unit_filter.set(caption);self.app.filtrar_unidad();self.app.update()
+        self.assertEqual(self.app.datos_matriz_actual[1][0]['promedio_general'],20)
+        self.app.unit_filter.set('Todas las unidades');self.app.filtrar_unidad();self.app.update()
+        self.assertEqual(self.app.datos_matriz_actual[1][0]['promedio_general'],12)
+        self.assertFalse(self.errors)
