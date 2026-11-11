@@ -91,6 +91,15 @@ class LibraryTests(unittest.TestCase):
         with self.assertRaises(ValueError):biblioteca.save_models([model,bad],self.library)
         self.assertEqual(biblioteca.list_models(self.library),[])
 
+    def test_old_models_without_explicit_points_keep_the_source_achievement_scale(self):
+        from escala import save_thresholds
+        from instrumentos import default_scores
+        self.model();limits=(9.5,12.5,16.5);save_thresholds(self.path,limits)
+        with closing(sqlite3.connect(self.path)) as conn,conn:conn.execute("UPDATE Instrumento_Indicadores SET puntos_niveles=''")
+        before=self.path.read_bytes();models,warnings=biblioteca.read_source(self.path)
+        self.assertFalse(warnings);self.assertEqual(models[0]['criterios'][0]['puntajes'],default_scores(20,limits))
+        self.assertEqual(self.path.read_bytes(),before)
+
     def test_archiving_can_be_reversed_and_search_handles_accents(self):
         model=self.model();model['nombre']='Rúbrica de ecuaciones'
         identity=biblioteca.save_models([model],self.library)[0]

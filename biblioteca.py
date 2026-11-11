@@ -6,7 +6,8 @@ from pathlib import Path
 
 import app_storage
 from db_safety import atomic,backed_up,connection
-from instrumentos import normalized,validate_definition,instrument_kind
+from instrumentos import normalized,validate_definition,instrument_kind,definition
+from escala import DEFAULT
 
 
 def database_path():
@@ -132,6 +133,8 @@ def _source_models(source):
         caps={r['id']:dict(r) for r in conn.execute('''SELECT a.id,a.nombre AS capacidad_nombre,p.nombre AS competencia,
             c.nombre AS curso,'''+('c.nivel' if 'nivel' in course_columns else "'Secundaria'")+''' AS nivel
             FROM Capacidades a JOIN Competencias p ON p.id=a.competencia_id JOIN Cursos c ON c.id=p.curso_id''')}
+        scale_columns={r[1] for r in conn.execute('PRAGMA table_info(Escala_Logro)')}
+        scales={r[0]:tuple(r[1:]) for r in conn.execute('SELECT nivel,b,a,ad FROM Escala_Logro')} if {'nivel','b','a','ad'}<=scale_columns else {}
         models=[];warnings=[]
         def add(name,items,context=None):
             context=context or {};items=[dict(i) for i in items if i.get('activo',1)]
@@ -141,6 +144,7 @@ def _source_models(source):
                 item['capacidad_nombre']=item.get('capacidad_nombre') or metadata.get('capacidad_nombre','')
             metadata=caps.get(items[0].get('capacidad_id'),{})
             try:
+                items=[definition(item,scales.get(caps.get(item.get('capacidad_id'),{}).get('nivel','Secundaria'),DEFAULT)) for item in items]
                 models.append(clean_model(dict(nombre=name,nivel=metadata.get('nivel','Secundaria'),curso=metadata.get('curso',''),
                     grado=context.get('grado',''),tema=context.get('titulo_tema',name),competencia=metadata.get('competencia',''),
                     proposito=context.get('proposito',''),tipo=items[0].get('tipo','Rúbrica'),criterios=items)))
