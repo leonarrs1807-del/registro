@@ -37,11 +37,6 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\RegistroDocente.exe"; Tasks: 
 Filename: "{app}\RegistroDocente.exe"; Description: "Abrir Registro Docente"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\RegistroDocente.exe"; Flags: nowait; Check: ShouldRestartRegistro
 
-[Code]
-function ShouldRestartRegistro(): Boolean;
-begin
-  Result := WizardSilent and (ExpandConstant('{param:REINICIAR|0}') = '1');
-end;
 ; User data in LOCALAPPDATA\RegistroDocente is deliberately retained on uninstall.
 
 [Registry]
@@ -49,3 +44,9 @@ Root: HKCU; Subkey: "Software\Classes\.registro"; ValueType: string; ValueName: 
 Root: HKCU; Subkey: "Software\Classes\RegistroDocente.Documento"; ValueType: string; ValueName: ""; ValueData: "Documento de Registro Docente"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\RegistroDocente.Documento\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\RegistroDocente.exe,0"
 Root: HKCU; Subkey: "Software\Classes\RegistroDocente.Documento\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\RegistroDocente.exe"" ""%1"""
+
+[Code]
+function ShouldRestartRegistro(): Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:REINICIAR|0}') = '1');
+end;

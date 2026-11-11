@@ -1,0 +1,20 @@
+name: Verificar script del instalador
+on:
+  push:
+    branches: ['mejoras-escritorio']
+    paths: ['installer/**', 'tools/build_installer.py', '.github/workflows/installer-check.yml']
+  pull_request:
+    paths: ['installer/**', 'tools/build_installer.py', '.github/workflows/installer-check.yml']
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare compile fixture without running an application
+        run: python -c "from pathlib import Path; p=Path('dist/RegistroDocente/RegistroDocente.exe'); p.parent.mkdir(parents=True); p.write_bytes(b'compiler fixture')"
+      - run: python tools/build_installer.py

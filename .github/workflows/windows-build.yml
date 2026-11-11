@@ -54,8 +54,7 @@ jobs:
         shell: pwsh
         run: Copy-Item docs/LEEME-REVISION.txt dist/RegistroDocente/LEEME-REVISION.txt
       - name: Build installer
-        shell: pwsh
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\windows.iss'
+        run: python tools/build_installer.py
       - name: Verify installation update preserves user data
         run: python tools/smoke_windows_update.py dist/installer/RegistroDocente-Setup.exe ${{ inputs.edition == 'comercial' && '--commercial' || '' }}
       - name: Package headless license API
