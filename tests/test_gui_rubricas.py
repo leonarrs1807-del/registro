@@ -72,6 +72,10 @@ class RubricWorkflowTests(unittest.TestCase):
         from biblioteca_ui import ApplyModelDialog
         dialog=ApplyModelDialog(self.app,model);dialog.topic.set('Clase con tema nuevo');dialog.preview()
         self.assertEqual(dialog.topic.get(),'Clase con tema nuevo')
+        dialog.topic.set(' ')
+        with patch('tkinter.messagebox.showwarning'),patch.object(self.app,'confirmar_descartar') as discard:
+            dialog.apply();discard.assert_not_called()
+        dialog.topic.set('Clase con tema nuevo')
         table=dialog.detail;self.assertEqual(len(table.headers),7);self.assertEqual(len(table.cells),14)
         self.assertEqual(table.cells[1,1].cget('text'),'Explica');self.assertEqual(table.cells[2,1].cget('text'),'Comprueba')
         self.assertEqual(table.cells[1,3].cget('text'),model['criterios'][0]['descriptores']['C'])

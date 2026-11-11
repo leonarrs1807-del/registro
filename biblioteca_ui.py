@@ -190,9 +190,12 @@ class ApplyModelDialog(SafeDialog):
         self.apply_button.configure(state='normal' if self.plan else 'disabled')
 
     def apply(self):
-        if not self.plan or not self.app.verificar_permiso_edicion() or not self.app.confirmar_descartar(include_points=True):return
+        if not self.plan or not self.app.verificar_permiso_edicion():return
+        try:title=self.topic.value()
+        except ValueError as exc:messagebox.showwarning('Tema de la actividad',str(exc),parent=self);return
+        if not self.app.confirmar_descartar(include_points=True):return
         try:
-            target=biblioteca.apply_model(self.model,self.labels[self.target.get()],self.app._db_path,topic=self.topic.value())
+            target=biblioteca.apply_model(self.model,self.labels[self.target.get()],self.app._db_path,topic=title)
             self.app.refrescar_curriculo_importado();self.app.recargar_tabla_actividades_creadas()
             self.destroy();self.app.abrir_actividad_en_pestana_calificar(target)
             self.app.lbl_estado.configure(text='Modelo aplicado · Listo para evaluar al grupo')
