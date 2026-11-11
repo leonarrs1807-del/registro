@@ -91,7 +91,7 @@ def safe_text(value):
     return value
 
 
-def export_grades(path, db_path, course, grade, section, logo=None, student=None):
+def export_grades(path, db_path, course, grade, section, logo=None, student=None,presentation='numero'):
     import db
     path = Path(path)
     rows = grade_rows(db_path,course,grade,section)
@@ -100,7 +100,8 @@ def export_grades(path, db_path, course, grade, section, logo=None, student=None
     if path.suffix.lower()=='.pdf':
         from institucion import profile
         from periodos import info
-        export_pdf(path,rows,{**profile(db_path),'periodo':info(db_path)['label']},logo)
+        from escala import thresholds
+        export_pdf(path,rows,{**profile(db_path),'periodo':info(db_path)['label'],'presentacion':presentation,'limites':thresholds(db_path)},logo)
         return len(rows)
     if path.suffix.lower()=='.csv':
         # UTF-8 BOM and numeric columns work in Excel and Google Sheets.
@@ -114,8 +115,17 @@ def export_grades(path, db_path, course, grade, section, logo=None, student=None
     if path.suffix.lower()!='.xlsx':
         raise ValueError('Seleccione XLSX, CSV, PDF o JSON.')
     wb=openpyxl.Workbook();ws=wb.active;ws.title='Calificativos'
+    if presentation!='numero':fields=fields+['calificativo']
     ws.append(fields)
-    for row in rows:ws.append([safe_text(row[f]) for f in fields])
+    from presentacion import format_grade
+    originals=wb.create_sheet('_notas_originales') if presentation!='numero' else None
+    if originals:
+        originals.sheet_state='veryHidden';originals.append(['actividad_id','estudiante_id','capacidad_id','nota','calificativo'])
+    for row in rows:
+        shown=format_grade(row['nota'],presentation,db_path)
+        ws.append([safe_text(shown if f=='calificativo' else row[f]) for f in fields])
+        if originals:originals.append([row['actividad_id'],row['estudiante_id'],row['capacidad_id'],row['nota'],shown])
+    if presentation!='numero':ws.column_dimensions[openpyxl.utils.get_column_letter(fields.index('nota')+1)].hidden=True
     ws.freeze_panes='G2';ws.auto_filter.ref=ws.dimensions
     for cell in ws[1]:
         cell.font=Font(bold=True,color='FFFFFF');cell.fill=PatternFill('solid',fgColor='1E3A8A')
@@ -126,6 +136,8 @@ def export_grades(path, db_path, course, grade, section, logo=None, student=None
     summary.append(['ID permanente','Código','Apellidos','Nombres','Promedio','Nivel','Capacidades pendientes'])
     for row in matriz:summary.append([row['estudiante_id'],row['codigo_unico'],row['apellidos'],row['nombres'],row['promedio_general'],row['literal_general'],row['faltan_capacidades']])
     summary.freeze_panes='E2';summary.auto_filter.ref=summary.dimensions
+    if presentation=='letra':summary.column_dimensions['E'].hidden=True
+    elif presentation=='numero':summary.column_dimensions['F'].hidden=True
     for col in 'ABCDEFG':summary.column_dimensions[col].width=26
     from institucion import decorate
     decorate(wb,db_path)
@@ -147,7 +159,7 @@ def import_grades(path,db_path):
     """Reimport the long-format export by permanent IDs, atomically."""
     import db
     from db_safety import connection,valid_number
-    path=Path(path)
+    path=Path(path);originals={}
     if path.suffix.lower()=='.csv':
         with path.open(encoding='utf-8-sig',newline='') as stream:rows=list(csv.DictReader(stream))
     else:
@@ -156,6 +168,8 @@ def import_grades(path,db_path):
             sheet=wb['Calificativos'] if 'Calificativos' in wb.sheetnames else wb.active
             raw=sheet.iter_rows(values_only=True);headers=next(raw)
             rows=[dict(zip(headers,row)) for row in raw if any(v is not None for v in row)]
+            if '_notas_originales' in wb:
+                originals={tuple(row[:3]):row[3:5] for row in wb['_notas_originales'].iter_rows(min_row=2,values_only=True)}
         finally:wb.close()
     grouped={};seen=set()
     with connection(db_path) as conn:
@@ -169,7 +183,12 @@ def import_grades(path,db_path):
                 active=db.obtener_docente_config(db_path).get('nivel_educativo','Secundaria')
                 if not student or student[0]!=row.get('nombres') or student[1]!=row.get('apellidos') or student[2]!=active:
                     raise ValueError('El ID no coincide con el estudiante o nivel activo.')
-                raw=row.get('nota');note=None if raw in (None,'') else valid_number(str(raw).replace(',','.'))
+                raw=row.get('nota')
+                if key in originals and 'calificativo' in row:
+                    from excel_tablas import read_grade
+                    original,display=originals[key]
+                    if raw==original:raw=read_grade(row.get('calificativo'),original,display)
+                note=None if raw in (None,'') else valid_number(str(raw).replace(',','.'))
                 entry=grouped.setdefault((sid,eid),dict(estudiante_id=eid,notas_por_capacidad={},asistio=row.get('asistencia')!='Ausente',preservar_asistencia=row.get('asistencia') not in ('Presente','Ausente'),comentario=row.get('comentario') or ''))
                 entry['notas_por_capacidad'][cid]=note
             except (ValueError,TypeError,KeyError) as exc:raise ValueError(f'Fila {number}: {exc}') from exc

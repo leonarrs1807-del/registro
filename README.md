@@ -1,3 +1,14 @@
+## Full personal 2.2.0
+
+- Organizador visual de colegio → periodo → unidad, edición con F2 y traslado de actividades conservando sus notas.
+- Evaluación ampliada con Esc para volver, filas cómodas/compactas y controles de guardado siempre disponibles.
+- Ficha individual con progreso por unidad, notas, asistencia, comentarios y descarga Excel.
+- Biblioteca global SQLite separada de las notas, búsqueda, versiones, archivado y respaldo independiente.
+- Recuperación de rúbricas y cotejos desde bases antiguas, biblioteca interna, documentos .registro y modelos Excel compatibles. La lectura de bases anteriores no las modifica.
+- Los modelos se copian a cada actividad; aplicar sobre una actividad evaluada crea otra. La biblioteca excluye alumnado y respuestas.
+- Números de 0 a 20, letras o ambos en pantalla e informes, con escala configurable y precisión conservada al reimportar Excel.
+- Guía con 26 apartados paso a paso.
+
 ## Full personal 2.1.1
 
 - Corrige la consulta de unidades de periodos antiguos sin modificar sus archivos al seleccionarlos. La primera edición prepara su estructura con respaldo y conserva notas y vínculos.

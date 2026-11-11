@@ -36,6 +36,14 @@ class ConfigurationTools:
         scale=card('Evaluación y niveles de logro',2)
         label(scale,'Defina los límites de C, B, A y AD por nivel educativo. Las notas numéricas se conservan.').grid(row=1,column=0,columnspan=2,sticky='ew',padx=14,pady=6)
         ctk.CTkButton(scale,text='Configurar escala de logro',height=36,command=self.configurar_escala).grid(row=2,column=0,columnspan=2,sticky='w',padx=14,pady=12)
+        from presentacion import MODES
+        ctk.CTkLabel(scale,text='Mostrar notas como').grid(row=3,column=0,sticky='w',padx=14,pady=8)
+        self.config_grade_display=ctk.CTkComboBox(scale,values=list(MODES),state='readonly',command=self.cambiar_presentacion_notas)
+        self.config_grade_display.set(next(k for k,v in MODES.items() if v==getattr(self,'_grade_display','ambos')))
+        self.config_grade_display.grid(row=3,column=1,sticky='ew',padx=14,pady=8)
+        ctk.CTkLabel(scale,text='Espacio entre filas').grid(row=4,column=0,sticky='w',padx=14,pady=8)
+        self.config_density=ctk.CTkComboBox(scale,values=['Cómoda','Compacta'],state='readonly',command=self.cambiar_densidad_tablas)
+        self.config_density.set(getattr(self,'_table_density','Cómoda'));self.config_density.grid(row=4,column=1,sticky='ew',padx=14,pady=8)
         records=scroll_area(data,auto_hide=True);records.pack(fill='both',expand=True);records.grid_columnconfigure(0,weight=1)
         actions=[('Nuevo registro vacío (con respaldo)',self.nuevo_registro_vacio),('Guardar documento completo',self.guardar_documento),('Abrir documento',self.abrir_documento),
             ('Crear respaldo',self.crear_respaldo),('Restaurar respaldo',self.restaurar_respaldo),('Historial de notas',self.mostrar_historial),('Abrir registro por fecha',self.abrir_historial_archivos),('Guardar instrumento Excel',self.guardar_instrumento),('Usar instrumento Excel',self.usar_instrumento),

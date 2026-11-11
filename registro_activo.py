@@ -7,11 +7,13 @@ import app_storage as storage
 import db
 import institucion
 import periodos
+from app_version import VERSION
 
 
 def _clear_document(app):
     # Numeric identities can be identical in two schools. Never reuse a model
     # merely because its student, session or course ID happens to match.
+    if getattr(app,'_evaluation_expanded',False):app.set_evaluation_expanded(False)
     for name in ('_page_refresh_job','_stats_resize_job','_plot_resize_job','_tools_resize_job','_draft_offer_job'):
         timer=getattr(app,name,None)
         if timer:
@@ -81,7 +83,7 @@ def _reload_document(app):
     for key,entry in app._institution_entries.items():
         entry.delete(0,'end');entry.insert(0,data[key])
     app.actualizar_insignia();app.actualizar_configuracion()
-    app.title(f'Registro Docente 2.1.1 · {"Comercial" if app._license_required else "Full personal"} — {app._db_path.stem}')
+    app.title(f'Registro Docente {VERSION} · {"Comercial" if app._license_required else "Full personal"} — {app._db_path.stem}')
     current=periodos.info(app._db_path)
     app.lbl_estado.configure(text=f"{current['school_name']} · {current['label']} · Edición bloqueada")
 

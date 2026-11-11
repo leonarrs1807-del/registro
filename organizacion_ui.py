@@ -7,9 +7,10 @@ import customtkinter as ctk
 import colegios,periodos,app_storage as storage
 from widgets import SafeDialog,scroll_area,wrap_label,polish_dialog
 from colores import button
+from organizacion_visual import VisualOrganization
 
 
-class OrganizationManager(SafeDialog):
+class OrganizationManager(VisualOrganization,SafeDialog):
     def __init__(self,app,units_only=False):
         super().__init__(app);self.app=app;self.title('Colegios, periodos y unidades')
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(2,weight=1)
@@ -20,7 +21,7 @@ class OrganizationManager(SafeDialog):
         ctk.CTkButton(top,text='+ Colegio',width=100,**button(),command=self.add_school).grid(row=0,column=1,padx=4)
         ctk.CTkButton(top,text='Renombrar',width=100,**button(),command=self.rename_school).grid(row=0,column=2,padx=4)
         ctk.CTkButton(top,text='Eliminar colegio',width=120,**button(),command=self.delete_school).grid(row=0,column=3,padx=4)
-        area=scroll_area(self,auto_hide=True);area.grid(row=2,column=0,sticky='nsew',padx=14,pady=8);area.grid_columnconfigure(0,weight=1)
+        area=self.create_navigation()
         ctk.CTkLabel(area,text='Bimestres y trimestres',font=ctk.CTkFont(size=18,weight='bold')).grid(row=0,column=0,sticky='w',pady=5)
         self.period_tree=self.listing(area,('periodo','fechas','estado'),('Periodo','Fechas','Estado'),5);self.period_tree.master.grid(row=1,column=0,sticky='ew')
         self.period_tree.bind('<<TreeviewSelect>>',lambda e:self.refresh_units());self.period_tree.bind('<Double-1>',lambda e:self.edit_period())
@@ -29,11 +30,13 @@ class OrganizationManager(SafeDialog):
         self.unit_heading=ctk.CTkLabel(area,text='',font=ctk.CTkFont(size=18,weight='bold'),anchor='w');self.unit_heading.grid(row=3,column=0,sticky='ew',pady=(12,4));wrap_label(self.unit_heading)
         hint=ctk.CTkLabel(area,text='Las unidades del periodo se comparten entre todos los cursos y grados del colegio.',anchor='w');hint.grid(row=4,column=0,sticky='ew',pady=4);wrap_label(hint)
         self.unit_tree=self.listing(area,('numero','nombre','fechas'),('N°','Unidad','Fechas'),6);self.unit_tree.master.grid(row=5,column=0,sticky='ew');self.unit_tree.bind('<Double-1>',lambda e:self.edit_unit())
+        self.unit_tree.bind('<<TreeviewSelect>>',self.sync_hierarchy,add='+')
         actions=ctk.CTkFrame(area,fg_color='transparent');actions.grid(row=6,column=0,sticky='ew',pady=8)
         for title,fn in [('+ Unidad',lambda:self.edit_unit(True)),('Editar',self.edit_unit),('Eliminar',self.delete_unit),('↑',lambda:self.move_unit(-1)),('↓',lambda:self.move_unit(1))]:ctk.CTkButton(actions,text=title,width=50 if title in ('↑','↓') else 120,**button(),command=fn).pack(side='left',padx=3)
+        ctk.CTkButton(area,text='Mover actividades entre unidades',**button(),command=self.manage_activities).grid(row=7,column=0,sticky='ew',pady=8)
         ctk.CTkButton(self,text='Papelera / recuperar',**button(),command=self.open_trash).grid(row=3,column=0,sticky='w',padx=18,pady=12)
         ctk.CTkButton(self,text='Listo',**button(),command=self.finish).grid(row=3,column=0,sticky='e',padx=18,pady=12)
-        self.records={};self.units={};self.refresh_schools();polish_dialog(self,app,1040,790)
+        self.records={};self.units={};self.refresh_schools();polish_dialog(self,app,1360,830)
         app._organization_manager=self
 
     def listing(self,parent,columns,headings,height):
@@ -71,13 +74,18 @@ class OrganizationManager(SafeDialog):
         return self.app.verificar_permiso_edicion()
 
     def refresh_units(self,selected=None):
-        self.unit_tree.delete(*self.unit_tree.get_children());self.units={};row=self.selected_period()
+        row=self.selected_period()
+        previous=self.unit_tree.selection()
+        if selected is None and previous and row and self._units_path==row['path'].resolve():selected=int(previous[0])
+        self.unit_tree.delete(*self.unit_tree.get_children());self.units={}
+        self._units_path=row['path'].resolve() if row else None
         self.unit_heading.configure(text='Unidades · '+(row['label'] if row else 'Seleccione un periodo'))
         if row:
             for n,unit in enumerate(periodos.units(row['path']),1):
                 key=str(unit['id']);self.units[key]=unit
                 self.unit_tree.insert('','end',iid=key,values=(f'{n:02}',unit['nombre'],f"{unit['inicio']} — {unit['fin']}" if unit['inicio'] or unit['fin'] else 'Sin fechas'))
         if selected and str(selected) in self.units:self.unit_tree.selection_set(str(selected))
+        self.refresh_hierarchy()
 
     def add_school(self):
         name=simpledialog.askstring('Nuevo colegio','Nombre del colegio:',parent=self)
@@ -215,8 +223,12 @@ class OrganizationManager(SafeDialog):
     def open_period(self):
         row=self.selected_period()
         if not row or not self.app.confirmar_descartar(include_points=True):return
-        if row['path'].resolve()==self.app._db_path.resolve():self.finish();return
-        self.app._reiniciar(row['path'])
+        selection=self.unit_tree.selection();unit=int(selection[0]) if selection else None
+        if row['path'].resolve()==self.app._db_path.resolve():self.finish()
+        else:
+            if not self.app._reiniciar(row['path']):return
+        label=next((name for name,identity in self.app._unit_labels.items() if identity==unit),'Todas las unidades')
+        self.app.unit_filter.set(label);self.app.filtrar_unidad(label)
 
     def finish(self):
         self.app.actualizar_contexto_academico();self.destroy()

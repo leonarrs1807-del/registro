@@ -545,6 +545,10 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.title("Sistema Docente de Evaluación por Competencias, Capacidades y Rúbricas (Secundaria)")
         self.ajustar_pantalla(reset=True)
         self.dev_mode = False
+        prefs=self._preferencias()
+        self._grade_display=prefs.get('grade_display','ambos')
+        if self._grade_display not in ('numero','letra','ambos'):self._grade_display='ambos'
+        self._table_density=prefs.get('table_density','Cómoda')
 
         self.edicion_desbloqueada: bool = False
         cfg_ini = obtener_docente_config()
@@ -643,6 +647,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         )
         # Configure alternating row colors for subtle grid
         stripe_color = "#334155" if "Oscuro" in nombre_tema else "#f3f4f6"
+        r_height=max(28,table_font.metrics("linespace")+round((6 if getattr(self,'_table_density','Cómoda')=='Compacta' else 13)*self._get_window_scaling()))
         estilo.configure("Treeview", rowheight=r_height, font=("Segoe UI", native_size))
         estilo.map("Treeview", background=[("selected", cfg_t["tree_sel"])])
         self.stripe_color = stripe_color
@@ -761,6 +766,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self.tab_puntos=self.tabview.add("Prácticas y puntos")
         self.puntos_panel=PointsPanel(self.tab_puntos,self)
         self.puntos_panel.pack(fill="both",expand=True)
+        self.crear_biblioteca_docente()
         self.tab_instrucciones=self.tabview.add("Instrucciones")
         self.tutorial=Tutorial(self.tab_instrucciones);self.tutorial.pack(fill="both",expand=True)
 
@@ -925,6 +931,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
             command=self.accion_eliminar_estudiante,
         )
         self.btn_est_eliminar.pack(padx=14, pady=(0, 6), fill="x")
+        ctk.CTkButton(panel_izq,text="Ficha del estudiante",command=self.abrir_ficha_estudiante).pack(padx=14,pady=5,fill="x")
 
         panel_der = ctk.CTkFrame(pane, corner_radius=10)
         pane.add(panel_der,minsize=round(260*pixel_scale(self)),stretch="always")
@@ -2641,6 +2648,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         self._planilla_pendiente = False
         self._borrador_path().unlink(missing_ok=True)
         self.lbl_estado.configure(text="Observaciones del cotejo guardadas" if kind=='Lista de Cotejo' else "Notas, comentarios y asistencia guardados correctamente")
+        self.indicar_hora_guardado()
         self.recargar_tabla_actividades_creadas()
         self.recargar_buscador_alumnos()
         self.cargar_lista_pesos_por_categoria_en_graficos()

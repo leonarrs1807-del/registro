@@ -26,6 +26,8 @@ class EvaluationTools:
         Tooltip(self._tools_toggle,'Evaluación y plantillas Excel')
         self._table_export=ctk.CTkButton(bar,**sky_button(),text='Exportar tabla',height=34,width=125,command=self.exportar_tabla_actual)
         self._table_export.grid(row=0,column=4,padx=(8,0))
+        self._focus_button=ctk.CTkButton(bar,**sky_button(),text='Ampliar vista',height=36,width=105,command=self.alternar_evaluacion_ampliada)
+        self._focus_button.grid(row=0,column=5,padx=(8,0))
         self._grade_bar=bar
         self._competency_label=ctk.CTkLabel(bar,text='Competencia: seleccione una actividad',anchor='w',justify='left',font=ctk.CTkFont(size=16,weight='bold'))
         self._competency_label.grid(row=2,column=0,columnspan=5,sticky='ew',padx=2,pady=(7,0));wrap_label(self._competency_label)
@@ -82,6 +84,9 @@ class EvaluationTools:
         for col,(letter,(bg,fg)) in enumerate(PALETTE.items()):
             ctk.CTkLabel(legend,text=letter,fg_color=bg,text_color=fg,corner_radius=5,width=40,font=ctk.CTkFont(size=14,weight='bold')).grid(row=0,column=col,padx=2,sticky='ew')
         button('Guía paso a paso',15,lambda:self.abrir_instrucciones('Rúbrica y cotejo paso a paso'))
+        button('Ficha del estudiante',16,self.abrir_ficha_estudiante)
+        button('Biblioteca de rúbricas',17,self.abrir_biblioteca)
+        button('Guardar en biblioteca',18,self.guardar_modelo_biblioteca)
         self.lbl_detalle_actividad_calificar=ctk.CTkLabel(page,text='')
         self.caja_ref_rubrica=TextBuffer()
         self.planilla_nativa=None

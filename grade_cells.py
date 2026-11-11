@@ -135,7 +135,8 @@ class GradeTreeview(ttk.Treeview):
         level=achievement(value,limits)
         if level is None:return None
         background,foreground=PALETTE[level]
-        return background,foreground,str(value).split('(')[0].strip()+f' ({level})'
+        from presentacion import format_grade
+        return background,foreground,format_grade(value,getattr(self.winfo_toplevel(),'_grade_display','ambos'),limits=limits)
 
 
 class CriterionTreeview(GradeTreeview):
@@ -155,6 +156,8 @@ class CriterionTreeview(GradeTreeview):
                     'Sin evaluar':('#f1f5f9','#64748b','—'),'Pendiente':('#f1f5f9','#64748b','Pendiente')}[value]
         match=re.search(r'\((C|B|A|AD)\)$',str(value))
         if match:
-            bg,fg=PALETTE[match[1]];return bg,fg,str(value)
+            from presentacion import format_grade
+            bg,fg=PALETTE[match[1]]
+            return bg,fg,format_grade(value,getattr(self.winfo_toplevel(),'_grade_display','ambos'),limits=limits,letter=match[1])
         return None
 

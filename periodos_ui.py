@@ -38,14 +38,17 @@ class AcademicTools:
         self.period_button.configure(text=current['label']+' ▾')
         self.period_state.configure(text='Cerrado' if current['closed'] else 'Abierto',text_color=('#9a3412','#fdba74') if current['closed'] else ('#047857','#6ee7b7'))
         units=periodos.units(self._db_path)
+        previous_labels=getattr(self,'_unit_labels',{})
+        selected_id=previous_labels.get(self.unit_filter.get())
+        creation_id=previous_labels.get(self.crear_combo_unidad.get()) if hasattr(self,'crear_combo_unidad') else None
         self._unit_labels={f"{n+1:02} · {u['nombre']}":u['id'] for n,u in enumerate(units)}
         values=['Todas las unidades','Sin unidad']+list(self._unit_labels)
         self.unit_filter.configure(values=values)
-        if self.unit_filter.get() not in values:self.unit_filter.set(values[0])
+        if self.unit_filter.get() not in values:self.unit_filter.set(next((label for label,identity in self._unit_labels.items() if identity==selected_id),values[0]))
         if hasattr(self,'crear_combo_unidad'):
             values=['Sin unidad']+list(self._unit_labels);old=self.crear_combo_unidad.get()
             self.crear_combo_unidad.configure(values=values)
-            if old not in values:self.crear_combo_unidad.set('Sin unidad')
+            if old not in values:self.crear_combo_unidad.set(next((label for label,identity in self._unit_labels.items() if identity==creation_id),'Sin unidad'))
 
     def filtrar_unidad(self,value=None):
         if not self.confirmar_descartar():

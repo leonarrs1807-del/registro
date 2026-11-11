@@ -22,9 +22,11 @@ from licencias_ui import LicenseTools
 from periodos_ui import AcademicTools
 from institucion_ui import InstitutionTools
 from flujo_docente_ui import TeacherWorkflowTools
+from docente_ui import TeacherViewTools
+from app_version import VERSION
 
 
-class DesktopTools(AcademicTools,InstitutionTools,TeacherWorkflowTools,ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
+class DesktopTools(TeacherViewTools,AcademicTools,InstitutionTools,TeacherWorkflowTools,ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -38,18 +40,20 @@ class DesktopTools(AcademicTools,InstitutionTools,TeacherWorkflowTools,Configura
         datos.add_separator()
         datos.add_command(label='Año escolar y periodo…', command=self.seleccionar_periodo)
         datos.add_command(label='Ubicación de datos y errores', command=lambda: messagebox.showinfo(
-            'Archivos de la aplicación', f'Datos: {self._db_path}\nRespaldos: {self._db_path.parent / "backups"}\nRegistro de errores: {storage.data_dir() / "registro.log"}'))
+            'Archivos de la aplicación', f'Datos: {self._db_path}\nRespaldos: {self._db_path.parent / "backups"}\nBiblioteca: {storage.data_dir() / "biblioteca" / "instrumentos.db"}\nRegistro de errores: {storage.data_dir() / "registro.log"}'))
         menu.add_cascade(label='Datos', menu=datos)
         self.configure(menu=menu)
         self._planilla_pendiente = False
         self._formularios_pendientes = set()
         self._contexto_guardado = (self.combo_curso_global.get(), self.combo_grado_global.get(), self.combo_seccion_global.get())
-        self.title(f'Registro Docente 2.1.1 · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
+        self.title(f'Registro Docente {VERSION} · {"Comercial" if self._license_required else "Full personal"} — {self._db_path.stem}')
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
         self.fuentes_menu(menu)
         self.actualizar_configuracion()
+        self.instalar_accesos_docentes()
+        self.cambiar_densidad_tablas(getattr(self,'_table_density','Cómoda'))
 
     def destroy(self):
         if getattr(self,'_closing_ui',False):return

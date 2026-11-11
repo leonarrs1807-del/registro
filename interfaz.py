@@ -14,14 +14,15 @@ def pixel_scale(widget):
 
 def scrollbar(master,orient,command):
     return tk.Scrollbar(master,orient=orient,command=command,width=max(22,round(22*pixel_scale(master))),
-                        relief='flat',borderwidth=1,elementborderwidth=1)
+                        relief='flat',borderwidth=0,elementborderwidth=0,background='#e0f2fe',activebackground='#7dd3fc',
+                        troughcolor='#f3f9fc',highlightthickness=0)
 
 
 def split(master,key,orient='horizontal'):
     root=master.winfo_toplevel()
     pane=tk.PanedWindow(master,orient=orient,sashwidth=max(6,round(6*pixel_scale(master))),
                         sashrelief='flat',showhandle=False,
-                        borderwidth=0,relief='flat',bg='#94a3b8')
+                        borderwidth=0,relief='flat',bg='#dceaf3')
     if not hasattr(root,'_split_panes'):root._split_panes={}
     root._split_panes[key]=pane
     return pane
@@ -91,7 +92,7 @@ class PageBook(ctk.CTkFrame):
         'Crear Actividad':('Actividades','activity'), 'Ingresar Calificativos':('Calificaciones','grades'),
         'Buscador':('Buscar','search'), 'Porcentajes de Actividades':('Ponderaciones','weights'),
         'Matriz General':('Matriz','matrix'), 'Estadísticas':('Estadísticas','stats'),
-        'Prácticas y puntos':('Puntos','points'), 'Instrucciones':('Ayuda','help')}
+        'Prácticas y puntos':('Puntos','points'), 'Biblioteca':('Biblioteca','courses'), 'Instrucciones':('Ayuda','help')}
     def __init__(self,master,**kwargs):
         super().__init__(master,fg_color='transparent',**kwargs)
         self.grid_rowconfigure(0,weight=1);self.grid_columnconfigure(1,weight=1)

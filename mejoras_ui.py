@@ -16,6 +16,10 @@ class ClassroomTools:
             archive.add_command(label=title,command=callback)
         menu.add_cascade(label='Archivo',menu=archive)
         work=tk.Menu(menu,tearoff=False)
+        work.add_command(label='Biblioteca de rúbricas y cotejos',command=self.abrir_biblioteca)
+        work.add_command(label='Guardar modelo en biblioteca',command=self.guardar_modelo_biblioteca)
+        work.add_command(label='Ficha del estudiante',command=self.abrir_ficha_estudiante)
+        work.add_separator()
         for title,callback in [('Recuperar borrador de notas',self.recuperar_borrador),('Duplicar actividad seleccionada',self.duplicar_actividad),('Guardar instrumento reutilizable en Excel',self.guardar_instrumento),('Importar instrumento Excel',self.usar_instrumento),('Biblioteca interna anterior',self.usar_biblioteca_anterior),('Unidades del periodo',self.gestionar_unidades),('Pegar bloque de notas · Ctrl+V',self.pegar_planilla),('Rellenar estudiantes seleccionados',self.rellenar_seleccion),('Abrir registro por fecha',self.abrir_historial_archivos),('Ver pendientes y explicación de promedios',self.ver_pendientes),('Archivar / recuperar actividades',self.archivar_actividad),('Bloqueo por inactividad',self.configurar_inactividad),('Cerrar / reabrir periodo',self.alternar_periodo),('Escala de logro por nivel',self.configurar_escala),('Vista previa de nuevas ponderaciones',self.previsualizar_pesos)]:
             work.add_command(label=title,command=callback)
         menu.add_cascade(label='Herramientas',menu=work)
@@ -94,6 +98,7 @@ class ClassroomTools:
         if not hasattr(self,'_zoom'):return
         data=self._preferencias()
         data.update({'view_version':2,'nav_expanded':self.tabview.expanded,'zoom':self._zoom,'geometry':self.geometry(),'lock_minutes':self._lock_minutes,'save_dir':getattr(self,'_save_dir',data.get('save_dir',''))})
+        data.update(grade_display=getattr(self,'_grade_display','ambos'),table_density=getattr(self,'_table_density','Cómoda'))
         data['criteria_name_width']=getattr(self,'_criteria_name_width',data.get('criteria_name_width',300))
         data['criteria_number_width']=getattr(self,'_criteria_number_width',data.get('criteria_number_width',38))
         panes={}
@@ -219,7 +224,7 @@ class ClassroomTools:
         path=self.elegir_destino(defaultextension='.xlsx',filetypes=[('Excel y Google Sheets','*.xlsx'),('CSV para Google Sheets','*.csv'),('Reporte PDF','*.pdf'),('Datos JSON','*.json')])
         if path:
             logo=self.insignia_exportacion() if Path(path).suffix.lower() in ('.xlsx','.pdf') else None
-            count=reportes.export_grades(path,self._db_path,course,self.combo_grado_global.get(),self.combo_seccion_global.get(),logo)
+            count=reportes.export_grades(path,self._db_path,course,self.combo_grado_global.get(),self.combo_seccion_global.get(),logo,presentation=getattr(self,'_grade_display','ambos'))
             self.archivo_guardado(path,f'Se exportaron {count} registros. En Google Sheets use Archivo → Importar → Subir.')
 
     def respaldo_externo(self):
@@ -483,5 +488,5 @@ class ClassroomTools:
         if choice:
             path=self.elegir_destino(defaultextension='.pdf',filetypes=[('Reporte individual PDF','*.pdf')])
             if path:
-                reportes.export_grades(path,self._db_path,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get(),self.insignia_exportacion(),student=students[choice-1]['ID'])
+                reportes.export_grades(path,self._db_path,self.obtener_curso_activo_id(),self.combo_grado_global.get(),self.combo_seccion_global.get(),self.insignia_exportacion(),student=students[choice-1]['ID'],presentation=getattr(self,'_grade_display','ambos'))
                 self.archivo_guardado(path)

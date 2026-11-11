@@ -61,6 +61,11 @@ class CompactTools:
             command=lambda _:self._al_cambiar_salon_global())
         self.combo_seccion_global.set('A');self.combo_seccion_global.grid(row=0,column=4,padx=3,pady=6)
         Tooltip(self.combo_seccion_global,'Sección')
+        from presentacion import MODES
+        self.display_choice=ctk.CTkComboBox(self.barra_top,values=list(MODES),state='readonly',width=130,height=34,command=self.cambiar_presentacion_notas)
+        self.display_choice.set(next(k for k,v in MODES.items() if v==getattr(self,'_grade_display','ambos')))
+        self.display_choice.grid(row=0,column=5,sticky='e',padx=5,pady=6)
+        Tooltip(self.display_choice,'Presentación de notas: números de 0 a 20, letras o ambos. Los límites se ajustan en Configuración.')
         action(6,'save','Guardar documento .registro · Ctrl+S',self.guardar_documento)
         self.btn_candado=action(7,'lock',lambda:'Bloquear edición' if self.edicion_desbloqueada else 'Desbloquear edición',self.alternar_candado)
         self._header_more=action(8,'settings','Configuración',self.abrir_configuracion)
@@ -75,7 +80,10 @@ class CompactTools:
         narrow=width<680
         if narrow:self.combo_nivel.grid_remove()
         else:self.combo_nivel.grid()
-        desired=max(140,min(300,width-(400 if narrow else 520)))
+        if hasattr(self,'display_choice'):
+            if width<800:self.display_choice.grid_remove()
+            else:self.display_choice.grid()
+        desired=max(140,min(300,width-(400 if narrow else 670)))
         if abs(self.combo_curso_global.cget('width')-desired)>3:self.combo_curso_global.configure(width=desired)
 
     def menu_cabecera(self):

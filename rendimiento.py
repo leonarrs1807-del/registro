@@ -45,6 +45,8 @@ class PerformanceTools:
 
     def al_mostrar_pagina(self,page):
         if getattr(self,'_closing_ui',False):return
+        if page!='Ingresar Calificativos' and getattr(self,'_evaluation_expanded',False):self.set_evaluation_expanded(False)
+        if page=='Biblioteca' and hasattr(self,'biblioteca_panel'):self.biblioteca_panel.refresh()
         job=getattr(self,'_page_refresh_job',None)
         if job:self.after_cancel(job)
         self._page_refresh_job=self.after(25,self._actualizar_pagina_visible)

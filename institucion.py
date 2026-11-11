@@ -84,9 +84,11 @@ def export_pdf(destination,rows,config,logo=None):
     for row in rows:
         key=(row.get('estudiante_id'),row.get('apellidos'),row.get('nombres'))
         names.setdefault(key,len(names)+1)
+        from presentacion import format_grade
+        note=format_grade(row.get('nota'),config.get('presentacion','numero'),limits=config.get('limites'))
         cells=[f'{names[key]:02}',fill(f"{row.get('apellidos','')}, {row.get('nombres','')}",25),
             fill(str(row.get('actividad','')),25),fill(str(row.get('capacidad','')),36),
-            'Pendiente' if row.get('nota') is None else f"{row['nota']:g}" if isinstance(row['nota'],(float,int)) else str(row['nota']),str(row.get('asistencia',''))]
+            note,str(row.get('asistencia',''))]
         lines=max(c.count('\n')+1 for c in cells)
         if page and used+lines+1>24:pages.append(page);page=[];used=0
         page.append((cells,lines));used+=lines+1

@@ -564,3 +564,104 @@ En una edición comercial, Configuración → Licencia permite crear la cuenta l
 
 Un archivo .registro contiene datos académicos; no traslada una activación comercial a otro equipo. Si necesita cambiar de computadora, consulte al vendedor y traslade sus documentos escolares. La aplicación no proporciona sincronización automática en la nube ni recuperación de contraseña por correo.'''
 }
+
+
+# Insert task-oriented help beside the existing sections that lead to it.
+_NEW_TOPICS = {
+'Biblioteca de rúbricas': '''DÓNDE SE GUARDAN TUS MODELOS
+
+La biblioteca es independiente de los registros de notas. En Windows se guarda en %LOCALAPPDATA%\\RegistroDocente\\biblioteca\\instrumentos.db. Es local a tu usuario de esta computadora y sirve para tus colegios y periodos. Guarda capacidades, criterios, descriptores, propósito y puntajes. Las respuestas y notas permanecen en las actividades de cada colegio.
+
+GUARDAR UNA RÚBRICA PARA MÁS ADELANTE
+
+1. Abre la actividad en Calificaciones y termina de guardar el diseño del instrumento.
+2. Pulsa Herramientas → Guardar en biblioteca, o entra en Biblioteca → Guardar actividad actual.
+3. Escribe un nombre identificable y confirma.
+4. Abre Biblioteca en la barra lateral. Verás una tarjeta con el curso, grado, tipo de instrumento y versión.
+5. Selecciona la tarjeta para revisar sus criterios y descriptores completos.
+
+Si guardas otra vez el mismo modelo sin cambios, se reconoce como el mismo. Cuando cambias su contenido y conservas su nombre, se guarda una versión nueva. Versiones anteriores permite consultar las previas.
+
+IMPORTAR DESDE UNA BASE ANTERIOR
+
+1. En Biblioteca pulsa Del registro actual para recuperar instrumentos que ya están en ese registro. También se lee su biblioteca interna antigua.
+2. Para otra base, pulsa Importar base / Excel y elige el archivo .db, .sqlite, .sqlite3, .registro o un Excel reutilizable compatible.
+3. Revisa la lista de modelos encontrados. Ctrl o Mayús permite seleccionar varios.
+4. Pulsa Importar seleccionados. Se conservan solo las definiciones de los instrumentos; la base de origen se consulta sin modificarla.
+5. Si un modelo no se pudo reconocer, revisa el aviso de adaptación. Un Excel antiguo también puede cargarse primero en una actividad y guardarse después en Biblioteca.
+
+USAR UN MODELO
+
+1. Crea o abre la actividad donde lo necesitas, en el curso y salón correctos.
+2. Abre Biblioteca y busca por nombre, competencia o tema; puedes filtrar por curso, grado y tipo.
+3. Selecciona una tarjeta y pulsa Usar en una actividad.
+4. Elige la actividad de destino y revisa la explicación. El curso y nivel deben ser compatibles; las capacidades que falten se incorporan por nombre.
+5. Pulsa Aplicar modelo. Si la actividad ya tiene evaluaciones, se crea otra para conservar sus resultados anteriores. La vista previa indica el destino.
+6. El programa vuelve a Calificaciones. Evalúa a este grupo y guarda sus notas u observaciones.
+
+Cada actividad conserva una copia del instrumento. Editar un modelo de la biblioteca no recalcula evaluaciones anteriores.
+
+COPIAS Y TRASLADO A OTRA COMPUTADORA
+
+Descargar modelo Excel guarda un instrumento reutilizable con la planilla de estudiantes vacía. Respaldar biblioteca guarda todos tus modelos y versiones en una copia .db. Para recuperarla en esta u otra computadora, usa Importar base / Excel: se combinan los modelos y se reconocen los idénticos.
+
+El documento .registro conserva los instrumentos de sus actividades. La biblioteca completa tiene su propio respaldo; guárdalo también si vas a trasladar todos tus modelos. Archivados permite recuperar modelos que retiraste de la lista habitual.''',
+'Ficha del estudiante': '''ABRIR LA FICHA
+
+1. Selecciona colegio, periodo, curso, grado y sección.
+2. En Estudiantes selecciona una fila y pulsa Ficha del estudiante. También puedes abrirla desde Calificaciones → Herramientas.
+3. Elige al estudiante en el selector superior.
+4. Comprueba el encabezado: indica colegio, periodo, curso y salón. La ficha muestra datos ya guardados.
+
+CONSULTAR EL PROGRESO
+
+Las tarjetas superiores muestran el resultado del curso, las actividades con evidencias y las asistencias registradas. Una asistencia sin registrar se mantiene separada de una ausencia.
+
+Progreso por unidad reúne los resultados calculados con las actividades de cada unidad. Evaluaciones muestra sus notas por actividad y capacidad. Asistencia y comentarios permite revisar sus observaciones en el periodo.
+
+El resultado del curso utiliza los mismos porcentajes y reglas de la matriz. Las unidades conservan su cálculo propio; una nota manual final del periodo no se aplica automáticamente a una sola unidad.
+
+Usa el selector Números / 20, Letras o Ambos para consultar el mismo resultado con otra presentación. Una celda pendiente conserva ese estado.
+
+ABRIR UNA EVALUACIÓN Y DESCARGAR
+
+En Evaluaciones selecciona una fila y pulsa Abrir evaluación seleccionada, o haz doble clic. El programa abre esa actividad en Calificaciones. Guarda las correcciones y vuelve a la ficha para revisarlas.
+
+Descargar ficha Excel incluye progreso por unidad, notas de actividades, asistencia y comentarios. Selecciona primero la presentación que deseas. Si eliges números, las celdas de resultados se descargan como valores numéricos; letras y ambos conservan su presentación.
+
+La ficha corresponde al colegio, curso y periodo abiertos. Para consultar otro periodo, ábrelo primero en Organizar.''',
+'Evaluación ampliada y doble escala': '''MÁS ESPACIO PARA EVALUAR
+
+1. Abre una actividad en Calificaciones.
+2. Pulsa Ampliar vista o Ctrl+Mayús+E.
+3. La tabla dispone del espacio de la cabecera y navegación. Los nombres permanecen fijos al desplazar criterios.
+4. Conservas Guardar notas, Herramientas, Exportar tabla y el panel de descriptores.
+5. Pulsa Volver · Esc para recuperar la ventana habitual. Si estás editando una celda, Esc cancela primero esa edición.
+
+Entrar o salir de esta vista conserva los cambios de la planilla. En Configuración → General puedes elegir filas Cómodas o Compactas y ajustar el tamaño de letra.
+
+NÚMEROS DE 0 A 20, LETRAS O AMBOS
+
+El selector de la cabecera permite elegir Números / 20, Letras o Ambos. También está en Configuración → General → Mostrar notas como. La preferencia se recuerda entre aperturas.
+
+Por ejemplo, una misma nota puede verse como 12.5, B o 12.5 (B). Su valor numérico exacto se conserva al cambiar de presentación. La escala de C, B, A y AD se configura por nivel; el programa no cambia tus límites automáticamente.
+
+En Nota directa o Nota global se edita el valor numérico de 0 a 20. En una rúbrica puedes escribir puntos manuales o C/B/A/AD según el instrumento. Una letra identifica un rango o nivel; no determina por sí sola una única nota exacta.
+
+EXPORTAR E IMPORTAR
+
+La matriz permite elegir números, letras o ambos al descargar. Los informes generales y PDF utilizan la presentación elegida en la cabecera. La ficha tiene su propio selector de presentación.
+
+Los informes Excel con letras conservan la nota numérica original en sus datos de recuperación. Si importas otra vez las mismas letras, se conserva esa precisión. Para cambiar una nota en Excel escribe su nuevo número o número (letra); una letra diferente no permite adivinar la nota exacta.
+
+Los CSV y JSON de intercambio conservan sus datos numéricos para permitir importarlos. El cotejo de orientación mantiene Sí/No y pendientes; cambiar la presentación no lo convierte en nota.'''
+}
+_ordered={}
+for _name,_body in TOPICS.items():
+    _ordered[_name]=_body
+    if _name=='Guardar y reutilizar rúbricas':_ordered['Biblioteca de rúbricas']=_NEW_TOPICS['Biblioteca de rúbricas']
+    if _name=='Calificaciones y nota global':_ordered['Evaluación ampliada y doble escala']=_NEW_TOPICS['Evaluación ampliada y doble escala']
+    if _name=='Buscar y estadísticas':_ordered['Ficha del estudiante']=_NEW_TOPICS['Ficha del estudiante']
+TOPICS=_ordered
+TOPICS['Unidades del periodo']+='\n\nORGANIZADOR VISUAL\n\nEl árbol de la izquierda permite desplegar colegio, periodos y unidades. Selecciona para consultar sus datos; Abrir seleccionado carga ese periodo y la unidad resaltada. Listo cierra el organizador conservando el contexto de trabajo.\n\nF2 o doble clic sobre un nombre permite editarlo directamente. Enter guarda y Esc cancela. Para cambiar año, esquema o fechas usa Editar en la lista de periodos.\n\nMover actividades entre unidades permite seleccionar una o varias actividades con Ctrl/Mayús, elegir la unidad de destino y confirmar el traslado. Sus notas permanecen vinculadas a la actividad.'
+TOPICS['Guardar y reutilizar rúbricas']='También puedes conservar tus modelos en Biblioteca, dentro del programa. Consulta Biblioteca de rúbricas para guardarlos, importar una base anterior, recuperar versiones y respaldarlos.\n\n'+TOPICS['Guardar y reutilizar rúbricas']

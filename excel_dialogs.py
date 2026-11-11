@@ -21,7 +21,7 @@ class GradeDisplayOptions(SafeDialog):
             if app.alcance_unidad()!='all':
                 ctk.CTkRadioButton(body,text='Descargar solo la unidad seleccionada',variable=self.scope_choice,value='actual').pack(anchor='w',padx=35,pady=5)
                 ctk.CTkRadioButton(body,text='Descargar todo el bimestre / trimestre',variable=self.scope_choice,value='all').pack(anchor='w',padx=35,pady=5)
-        self.choice=ctk.StringVar(value='numero')
+        self.choice=ctk.StringVar(value=getattr(app,'_grade_display','numero'))
         for value,title in [('numero','Solo números · 17'),('letra','Solo letras · A'),('ambos','Número y letra · 17 (A)')]:
             ctk.CTkRadioButton(body,text=title,variable=self.choice,value=value).pack(anchor='w',padx=35,pady=10)
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=20,pady=15)

@@ -88,7 +88,6 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.title=label(self,'Seleccione un criterio de la tabla.')
         self.note=label(self,'');self.note.configure(font=ctk.CTkFont(size=13));self.note.grid(row=1,column=0,columnspan=2,sticky='ew',padx=8,pady=(3,0))
         self.hint=label(self,'S: cumple · N: no cumple · Supr: pendiente · Enter: siguiente estudiante · Tab: siguiente criterio.' if self.checklist else 'Doble clic: escribir · Enter: siguiente estudiante · Tab: siguiente criterio · Supr: pendiente.')
-        Tooltip(self.table,lambda:self.hint.cget('text'))
         self.descriptors=ctk.CTkFrame(detail,fg_color='transparent');self.descriptors.grid(row=2,column=0,sticky='ew',padx=6,pady=3)
         self.level_boxes=[]
         for col in range(4):
@@ -247,7 +246,12 @@ class EvaluationMatrix(ctk.CTkFrame):
         else:
             level=achievement(grade,thresholds(self.panel.app._db_path))
             status='provisional' if key in self.pending else 'completa'
-            self.note.configure(text=f'Nota calculada {status} de esta capacidad: {number(grade)} / 20 ({level})')
+            from presentacion import format_grade
+            mode=getattr(self.panel.app,'_grade_display','ambos')
+            shown=format_grade(grade,mode,self.panel.app._db_path)
+            if mode=='ambos':shown=format_grade(grade,'numero',self.panel.app._db_path)+f' / 20 ({level})'
+            elif mode=='numero':shown+=' / 20'
+            self.note.configure(text=f'Nota calculada {status} de esta capacidad: {shown}')
         self.value.delete(0,'end');raw=self.answers.get(self.selected)
         if raw is not None:self.value.insert(0,str(raw))
         rubric=item['tipo']=='Rúbrica'
