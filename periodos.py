@@ -81,9 +81,14 @@ def identify(path,year,number,scheme='Bimestres',name='',start='',end='',root=No
 def catalog(root,current=None):
     paths=list(Path(root).glob('*.db'))
     if current and Path(current) not in paths:paths.append(Path(current))
-    result=[]
+    result=[];seen=set()
     for path in paths:
-        try:result.append(dict(path=path,**info(path)))
+        try:
+            # Windows can expose the same document through short/long names.
+            # Keep the original usable path, but compare canonical identities.
+            identity=path.resolve()
+            if identity in seen:continue
+            seen.add(identity);result.append(dict(path=path,**info(path)))
         except (sqlite3.Error,ValueError,OSError):continue
     return sorted(result,key=lambda p:(p['year'] or 0,p['scheme'],p['number'] or 0,p['path'].stem))
 

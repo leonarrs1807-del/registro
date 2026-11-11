@@ -27,6 +27,13 @@ class LegacyPeriodTests(unittest.TestCase):
         db.guardar_notas_globales_sesion(self.session,{self.student:12.5},self.path)
         return legacy_period(self.path,Path(self.temp.name)/'periodo-antiguo.db',self.course,self.session)
 
+    def test_catalog_lists_one_document_when_root_and_active_path_are_aliases(self):
+        alias=self.path.parent/'..'/self.path.parent.name
+        before=self.path.read_bytes();rows=periodos.catalog(alias,self.path.resolve())
+        self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]['path'].resolve(),self.path.resolve())
+        self.assertEqual(self.path.read_bytes(),before)
+
     def test_reading_inactive_legacy_period_does_not_modify_or_upgrade_it(self):
         path=self.old();before=path.read_bytes();rows=periodos.units(path)
         self.assertEqual([(u['id'],u['nombre']) for u in rows],[(88,'Unidad antigua')])
