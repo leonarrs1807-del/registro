@@ -12,6 +12,7 @@ from widgets import SafeDialog,scroll_area,wrap_label
 from instrument_widgets import InstrumentGrid,Multiline,label,number
 from grade_cells import PALETTE
 from interfaz import scrollbar
+from rubric_viewer import RubricTable,TopicField
 
 
 def fit(window,root,width=1150,height=760):
@@ -41,7 +42,7 @@ class InstrumentView(SafeDialog):
             criterion=cap['criterio_precisado'] or ''
             if not items and criterion and criterion!=cap['capacidad_nombre']:label(card,criterion).pack(fill='x',padx=12,pady=(0,10))
         if items:
-            page=tabs.add(items[0]['tipo']);grid=InstrumentGrid(page,items);grid.pack(fill='both',expand=True);tabs.set(items[0]['tipo'])
+            page=tabs.add(items[0]['tipo']);grid=RubricTable(page,items);grid.pack(fill='both',expand=True);tabs.set(items[0]['tipo'])
             self.instrument_grid=grid
         ctk.CTkButton(self,text='Cerrar',width=130,height=36,command=self.destroy).pack(anchor='e',padx=16,pady=(0,12))
         self.grab_set()
@@ -53,9 +54,10 @@ class InstrumentPreview(SafeDialog):
         super().__init__(app);self.title('Revisar evaluación antes de importar');fit(self,app)
         self.confirmed=False;context=activity(session,staged);items=get_indicators(session,staged)
         header(self,context)
+        self.topic=TopicField(self,context['titulo_tema']);self.topic.pack(fill='x',padx=18,pady=5)
         label(self,f"{items[0]['tipo']} · {result[0]} criterios · {result[1]} estudiantes con datos para importar").pack(fill='x',padx=18,pady=5)
         tabs=ctk.CTkTabview(self);tabs.pack(fill='both',expand=True,padx=16,pady=8)
-        page=tabs.add('Instrumento');self.instrument_grid=InstrumentGrid(page,items);self.instrument_grid.pack(fill='both',expand=True)
+        page=tabs.add('Instrumento');self.instrument_grid=RubricTable(page,items);self.instrument_grid.pack(fill='both',expand=True)
         notes=tabs.add('Cambios de notas');notes.grid_rowconfigure(1,weight=1);notes.grid_columnconfigure(0,weight=1)
         def values(path):
             with connection(path) as conn:return {(r[0],r[1]):r[2] for r in conn.execute('SELECT estudiante_id,capacidad_id,nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(session,))}
@@ -90,10 +92,14 @@ class InstrumentPreview(SafeDialog):
         sx=scrollbar(observations,'horizontal',observed.xview);sx.grid(row=1,column=0,sticky='ew');observed.configure(yscrollcommand=sy.set,xscrollcommand=sx.set)
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=16,pady=12)
         ctk.CTkButton(bar,text='Cancelar',height=38,fg_color='transparent',border_width=1,text_color=('#334155','#e2e8f0'),command=self.destroy).pack(side='left')
-        def confirm():self.confirmed=True;self.destroy()
-        ctk.CTkButton(bar,text='Confirmar importación',height=38,command=confirm).pack(side='right')
+        ctk.CTkButton(bar,text='Confirmar importación',height=38,command=self.confirm).pack(side='right')
         self.grab_set()
         self.ready=True
+
+    def confirm(self):
+        try:self.topic_name=self.topic.value()
+        except ValueError as exc:messagebox.showwarning('Tema de la actividad',str(exc),parent=self);return
+        self.confirmed=True;self.destroy()
 
 
 class InstrumentEditor(SafeDialog):

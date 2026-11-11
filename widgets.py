@@ -39,6 +39,7 @@ def polish_dialog(window,parent,width,height):
     """Consistent readable cards and centered, screen-bounded academic dialogs."""
     window.configure(fg_color=('#f0f9ff','#0f172a'))
     def visit(widget):
+        if getattr(widget,'_preserve_theme',False):return
         if isinstance(widget,ctk.CTkFrame) and widget.cget('fg_color')!='transparent':
             widget.configure(fg_color=('#ffffff','#1e293b'))
         if isinstance(widget,(ctk.CTkComboBox,ctk.CTkEntry)):

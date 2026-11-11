@@ -1,5 +1,5 @@
 """Small export choices and an explicit preview of adapted Excel tables."""
-from tkinter import ttk
+from tkinter import ttk,messagebox
 import customtkinter as ctk
 from colores import button as sky_button,tabs as sky_tabs
 from widgets import SafeDialog,wrap_label,scroll_area
@@ -7,6 +7,7 @@ from instrument_design import fit
 from interfaz import scrollbar
 from evaluacion_datos import activity,get_indicators,get_answers
 from db_safety import connection
+from rubric_viewer import TopicField,RubricTable
 
 
 class GradeDisplayOptions(SafeDialog):
@@ -37,8 +38,12 @@ class TableImportPreview(SafeDialog):
         context=activity(result.session_id,staged)
         title=ctk.CTkLabel(self,text=context['titulo_tema']+'\nCompetencia: '+context['competencia_nombre'],anchor='w',justify='left',font=ctk.CTkFont(size=17,weight='bold'))
         title.pack(fill='x',padx=18,pady=10);wrap_label(title)
+        self.topic=TopicField(self,context['titulo_tema']);self.topic.pack(fill='x',padx=18,pady=5)
         ctk.CTkLabel(self,text=f'{result[1]} estudiantes · {result[0]} criterios o capacidades · {len(result.changes)} elementos nuevos').pack(anchor='w',padx=18)
         tabs=ctk.CTkTabview(self);tabs.pack(fill='both',expand=True,padx=15,pady=8)
+        items={i['id']:i for i in get_indicators(result.session_id,staged)}
+        if items:
+            instrument=tabs.add('Instrumento');self.instrument_grid=RubricTable(instrument,list(items.values()));self.instrument_grid.pack(fill='both',expand=True)
         changes=tabs.add('Elementos que se agregarán');changes.grid_columnconfigure(0,weight=1);changes.grid_rowconfigure(0,weight=1)
         tree=ttk.Treeview(changes,columns=('detail',),show='headings');tree.heading('detail',text='Competencias, capacidades, criterios, actividades y estudiantes nuevos');tree.column('detail',width=950)
         for change in result.changes or ['No se necesitan elementos nuevos; se actualizarán las notas y observaciones.']:tree.insert('','end',values=(change,))
@@ -50,7 +55,6 @@ class TableImportPreview(SafeDialog):
         with connection(staged) as conn:
             names={r[0]:r[1]+', '+r[2] for r in conn.execute('SELECT ID,Apellidos,Nombres FROM Estudiantes')}
             notes=conn.execute('SELECT estudiante_id,capacidad_id,nota FROM Notas_Sesion_Capacidad WHERE sesion_id=?',(result.session_id,)).fetchall()
-        items={i['id']:i for i in get_indicators(result.session_id,staged)}
         for (student,identity),answer in get_answers(result.session_id,staged).items():
             item=items[identity];table.insert('','end',values=(names[student],item['capacidad_nombre'],item['criterio'],answer))
         caps={c['capacidad_id']:c['capacidad_nombre'] for c in context['capacidades']}
@@ -60,4 +64,7 @@ class TableImportPreview(SafeDialog):
         ctk.CTkButton(bar,**sky_button(),text='Cancelar',width=120,command=self.destroy).pack(side='left')
         ctk.CTkButton(bar,**sky_button(),text='Importar y agregar lo que falta',width=260,command=self.confirm).pack(side='right');self.grab_set();self.ready=True
 
-    def confirm(self):self.confirmed=True;self.destroy()
+    def confirm(self):
+        try:self.topic_name=self.topic.value()
+        except ValueError as exc:messagebox.showwarning('Tema de la actividad',str(exc),parent=self);return
+        self.confirmed=True;self.destroy()

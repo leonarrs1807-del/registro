@@ -11,7 +11,9 @@ class TeacherWorkflowTools:
     def terminar_edicion_actual(self):
         panel=getattr(self,'_global_grade_panel',None)
         if panel and panel.winfo_exists() and not panel.commit():return False
-        matrix=getattr(getattr(self,'_embedded_evaluation',None),'matrix',None)
+        embedded=getattr(self,'_embedded_evaluation',None)
+        if embedded and embedded.winfo_exists() and not embedded.commit_direct_entries():return False
+        matrix=getattr(embedded,'matrix',None)
         if matrix and matrix.winfo_exists() and matrix.editor is not None:
             matrix.commit_edit()
             if matrix.editor is not None:return False

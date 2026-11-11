@@ -263,4 +263,7 @@ class DesktopTools(TeacherViewTools,AcademicTools,InstitutionTools,TeacherWorkfl
                 if not confirmed:
                     return None
             storage.backup_database(self._db_path, 'antes-importar')
+            if function.__name__=='importar_rubrica_o_cotejo_desde_excel' and getattr(preview,'topic_name',None) is not None:
+                from temas import import_with_topic
+                return import_with_topic(function,copied_args,preview.topic_name,self._db_path)
             return function(*copied_args, db_path=self._db_path)

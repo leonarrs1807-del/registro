@@ -229,6 +229,16 @@ USAR UNA RÚBRICA
 5. Abra Descriptores si necesita leer la explicación completa. Los rangos muestran los límites de la escala, por ejemplo B · 10.5 a < 13.5. No representan una nota única obligatoria.
 6. Revise las capacidades pendientes y los resultados calculados. Pulse Guardar notas para confirmar respuestas y resultados.
 
+VISTA INDIVIDUAL SIN CASILLAS
+
+1. Cambie de Grupo a Individual y seleccione el estudiante y la capacidad.
+2. Escriba directamente en la columna Puntaje junto al criterio. Los descriptores C/B/A/AD quedan alineados en la tabla para consultarlos.
+3. Enter o Tab confirma y pasa al siguiente criterio; Mayús+Tab vuelve al anterior. Pasar a otro campo, alumno o capacidad también confirma los valores válidos.
+4. Deje vacío para mantener pendiente. Escriba 0 cuando haya valorado el criterio con cero. Puede usar decimales con coma o punto.
+5. Pulse Guardar notas. Deshacer y Rehacer permiten corregir las respuestas ingresadas.
+
+En Grupo, arrastre el borde derecho de los nombres para ampliar o reducir su zona fija. La letra conserva su tamaño y los nombres permanecen a la vista al desplazar los criterios. Pase el puntero sobre un nombre cortado para leerlo completo.
+
 Ejemplo: dos criterios de máximo 10 con respuestas 6 y 8 suman 14 de 20 para esa capacidad. Un criterio sin evaluar queda pendiente; no se inventa un cero.
 
 USAR UNA LISTA DE COTEJO
@@ -263,6 +273,7 @@ USAR UNA RÚBRICA QUE YA TENÍA
 2. Abra Herramientas → Importar instrumento Excel, o el botón Importar Excel de la actividad.
 3. Seleccione el archivo .xlsx del programa.
 4. Revise la vista previa: competencia, capacidades, criterios, elementos nuevos y notas u observaciones que contenga.
+   En Tema de la actividad que vas a usar puede escribir el nombre para esta clase antes de confirmar. El visor organiza cada criterio en una fila con sus descriptores C/B/A/AD alineados; puede deslizarlo horizontalmente.
 5. Confirme solo si el destino y los cambios son correctos. El programa crea un respaldo antes de aplicar la importación.
 6. Abra Criterios y compruebe el instrumento. Evalúe al nuevo grupo y guarde sus resultados.
 
@@ -600,6 +611,8 @@ USAR UN MODELO
 6. El programa vuelve a Calificaciones. Evalúa a este grupo y guarda sus notas u observaciones.
 
 Cada actividad conserva una copia del instrumento. Editar un modelo de la biblioteca no recalcula evaluaciones anteriores.
+
+Al pulsar Usar modelo puede cambiar Tema de la actividad que vas a usar. Ese nombre se guarda en la actividad destino; el nombre del modelo de la biblioteca se conserva. Si el destino ya tenía calificaciones, se crea otra actividad con el tema que usted eligió. Ampliar tabla abre el visor de criterios y descriptores con más espacio.
 
 COPIAS Y TRASLADO A OTRA COMPUTADORA
 

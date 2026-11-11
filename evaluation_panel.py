@@ -69,6 +69,8 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
 
     def select_student(self,student,capacity=None):
         if student not in self.by_student:return
+        if not self.commit_direct_entries():
+            self.student_choice.set(next((name for name,identity in self.student_labels.items() if identity==self.current_student),''));return
         self.current_student=student;self.roster.selection_set(str(student));self.roster.focus(str(student));self.roster.see(str(student))
         if capacity is not None:
             caption=next((name for name,identity in self.grid_view.capacities.items() if identity==capacity),None)
@@ -92,6 +94,7 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
             self.matrix.refresh(self.answers)
 
     def _change_view(self,caption):
+        if self._panel_view=='Individual' and not self.commit_direct_entries():self.mode_choice.set(self._panel_view);return
         self._panel_view=caption
         if caption=='Grupo':self.pane.grid_remove();self.matrix.grid()
         else:self.matrix.grid_remove();self.pane.grid()
@@ -117,7 +120,7 @@ class EvaluationPanel(EvaluationActions,ctk.CTkFrame):
         stage_to_grid(self,only_student=student,only_capacity=item['capacidad_id']);self._refresh()
 
     def _aplicar_calculo(self):
-        if not self.app.verificar_permiso_edicion():return
+        if not self.app.verificar_permiso_edicion() or not self.commit_direct_entries():return
         if self.tipo_inst=='Lista de Cotejo':
             from cotejo_ui import ChecklistConversion
             ChecklistConversion(self);return

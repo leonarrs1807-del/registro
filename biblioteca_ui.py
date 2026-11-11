@@ -8,6 +8,7 @@ from colores import button
 from widgets import SafeDialog,scroll_area,wrap_label,polish_dialog
 from modern_ui import card,caption,table
 from interfaz import split,pixel_scale,flow_toolbar
+from rubric_viewer import RubricTable,RubricViewer,TopicField
 
 
 def model_text(model):
@@ -44,10 +45,12 @@ class LibraryPanel(ctk.CTkFrame):
         left=card(self.pane);left.grid_columnconfigure(0,weight=1);left.grid_rowconfigure(1,weight=1)
         self.count=caption(left,'Abre la biblioteca para consultar tus modelos.',muted=True);self.count.grid(row=0,column=0,sticky='ew',padx=6,pady=4)
         self.cards=scroll_area(left,auto_hide=True);self.cards.grid(row=1,column=0,sticky='nsew');self.cards.grid_columnconfigure(0,weight=1)
-        right=card(self.pane);right.grid_columnconfigure(0,weight=1);right.grid_rowconfigure(1,weight=1)
+        right=card(self.pane);right.grid_columnconfigure(0,weight=1);right.grid_rowconfigure(2,weight=1)
         self.title=caption(right,'Elige un modelo',large=True);self.title.grid(row=0,column=0,sticky='ew',padx=16,pady=13)
-        self.detail=ctk.CTkTextbox(right,wrap='word',font=ctk.CTkFont(size=15),fg_color='transparent');self.detail.grid(row=1,column=0,sticky='nsew',padx=10,pady=4);self.detail.configure(state='disabled')
-        bottom=ctk.CTkFrame(right,fg_color='transparent');bottom.grid(row=2,column=0,sticky='ew',padx=14,pady=12)
+        ctk.CTkButton(right,text='Ampliar tabla',width=105,**button(),command=self.expand).grid(row=0,column=1,padx=(0,12),pady=10)
+        self.summary=caption(right,'',muted=True);self.summary.grid(row=1,column=0,columnspan=2,sticky='ew',padx=16,pady=(0,8))
+        self.detail=RubricTable(right);self.detail.grid(row=2,column=0,columnspan=2,sticky='nsew',padx=10,pady=4)
+        bottom=ctk.CTkFrame(right,fg_color='transparent');bottom.grid(row=3,column=0,columnspan=2,sticky='ew',padx=14,pady=12)
         self.use_button=ctk.CTkButton(bottom,text='Usar en una actividad',**button(),command=self.use,state='disabled');self.use_button.pack(fill='x',pady=4)
         self.export_button=ctk.CTkButton(bottom,text='Descargar modelo Excel',**button(),command=self.export,state='disabled');self.export_button.pack(fill='x',pady=4)
         self.archive_button=ctk.CTkButton(bottom,text='Archivar modelo',**button(),command=self.archive,state='disabled');self.archive_button.pack(fill='x',pady=4)
@@ -89,9 +92,9 @@ class LibraryPanel(ctk.CTkFrame):
         self.selected=identity;row=self.rows.get(identity)
         if row and 'modelo' not in row:row['modelo']=biblioteca.get_model(identity)
         self.title.configure(text=row['nombre'] if row else 'Elige un modelo')
-        self.detail.configure(state='normal');self.detail.delete('1.0','end')
-        self.detail.insert('1.0',model_text(row['modelo']) if row else 'Aquí podrás revisar el propósito, las capacidades y todos los descriptores antes de usar un modelo.')
-        self.detail.configure(state='disabled')
+        model=row['modelo'] if row else None
+        self.summary.configure(text=f"{model['nivel']} · {model['curso']} · {model['grado'] or 'Varios grados'}\nCompetencia: {model['competencia']}\nPropósito: {model['proposito'] or 'Por completar'}" if model else '')
+        self.detail.set_indicators([{**item,'tipo':model['tipo']} for item in model['criterios']] if model else [])
         for widget in (self.use_button,self.export_button,self.archive_button):widget.configure(state='normal' if row else 'disabled')
         self.archive_button.configure(text='Recuperar modelo' if self.archived.get() else 'Archivar modelo')
 
@@ -134,6 +137,9 @@ class LibraryPanel(ctk.CTkFrame):
     def use(self):
         if self.selected:return ApplyModelDialog(self.app,self.rows[self.selected]['modelo'])
 
+    def expand(self):
+        if self.selected:return RubricViewer(self.app,self.rows[self.selected]['modelo'])
+
 
 class ImportModelsDialog(SafeDialog):
     def __init__(self,app,models,origin,warnings):
@@ -157,22 +163,26 @@ class ImportModelsDialog(SafeDialog):
 class ApplyModelDialog(SafeDialog):
     def __init__(self,app,model):
         super().__init__(app);self.app=app;self.model=model;self.title('Usar modelo de la biblioteca');self.plan=None
-        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(3,weight=1)
+        self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(4,weight=1)
         caption(self,model['nombre'],large=True).grid(row=0,column=0,sticky='ew',padx=18,pady=14)
         self.labels={label:sid for label,sid in getattr(app,'combo_calif_etiqueta_a_id',{}).items()}
         self.target=ctk.CTkComboBox(self,values=list(self.labels) or ['Crea primero una actividad'],state='readonly',command=self.preview)
         self.target.grid(row=1,column=0,sticky='ew',padx=18,pady=8)
         self.target.set(next((k for k,v in self.labels.items() if v==app.id_actividad_calificando),next(iter(self.labels),'Crea primero una actividad')))
-        self.status=caption(self,'',muted=True);self.status.grid(row=2,column=0,sticky='ew',padx=18,pady=8)
-        detail=ctk.CTkTextbox(self,wrap='word',font=ctk.CTkFont(size=15));detail.grid(row=3,column=0,sticky='nsew',padx=18,pady=8);detail.insert('1.0',model_text(model));detail.configure(state='disabled')
-        self.apply_button=ctk.CTkButton(self,text='Aplicar modelo',**button(),command=self.apply);self.apply_button.grid(row=4,column=0,sticky='e',padx=18,pady=14)
-        self.preview();polish_dialog(self,app,850,680)
+        self.topic=TopicField(self);self.topic.grid(row=2,column=0,sticky='ew',padx=18,pady=7);self._suggested_topic=None
+        self.status=caption(self,'',muted=True);self.status.grid(row=3,column=0,sticky='ew',padx=18,pady=8)
+        self.detail=RubricTable(self,[{**item,'tipo':model['tipo']} for item in model['criterios']]);self.detail.grid(row=4,column=0,sticky='nsew',padx=18,pady=8)
+        self.apply_button=ctk.CTkButton(self,text='Aplicar modelo',**button(),command=self.apply);self.apply_button.grid(row=5,column=0,sticky='e',padx=18,pady=14)
+        self.preview();polish_dialog(self,app,1300,780)
 
     def preview(self,value=None):
         self.plan=None;session=self.labels.get(self.target.get())
         try:
             if not session:raise ValueError('Crea una actividad en el colegio, periodo, curso y salón donde vas a evaluar.')
             self.plan=biblioteca.preview_model(self.model,session,self.app._db_path)
+            context=self.plan['context'];suggested=context['titulo_tema']+(' · '+self.model['nombre'] if self.plan['new_activity'] else '')
+            if self.topic.get() in ('',self._suggested_topic):self.topic.set(suggested)
+            self._suggested_topic=suggested
             self.status.configure(text=f"{len(self.model['criterios'])} criterios · {len(self.plan['capacities'])} capacidades. "+
                 ('Se creará una actividad nueva para conservar la evaluación anterior.' if self.plan['new_activity'] else 'Se copiará la estructura a esta actividad.')+
                 (f" Se incorporarán {len(self.plan['missing'])} capacidades del modelo." if self.plan['missing'] else ''))
@@ -182,7 +192,7 @@ class ApplyModelDialog(SafeDialog):
     def apply(self):
         if not self.plan or not self.app.verificar_permiso_edicion() or not self.app.confirmar_descartar(include_points=True):return
         try:
-            target=biblioteca.apply_model(self.model,self.labels[self.target.get()],self.app._db_path)
+            target=biblioteca.apply_model(self.model,self.labels[self.target.get()],self.app._db_path,topic=self.topic.value())
             self.app.refrescar_curriculo_importado();self.app.recargar_tabla_actividades_creadas()
             self.destroy();self.app.abrir_actividad_en_pestana_calificar(target)
             self.app.lbl_estado.configure(text='Modelo aplicado · Listo para evaluar al grupo')

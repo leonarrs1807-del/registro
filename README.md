@@ -1,3 +1,11 @@
+## Full personal 2.2.1
+
+- Tema editable al importar un instrumento Excel o reutilizarlo desde la biblioteca; el modelo original conserva su nombre.
+- Visor de rúbricas en tablas con criterios por fila y descriptores C/B/A/AD alineados, también en la biblioteca y las vistas previas.
+- Zona fija de N° y nombres más ajustable, sin hueco sobrante ni cambios de tamaño de letra al reducirla.
+- Puntajes individuales directos, sin casillas de nivel ni botón Aplicar: Enter, Tab o pasar de campo confirma la entrada.
+- Validación de puntajes, pendientes y cero, cambios de alumno, guardado y Deshacer/Rehacer conservados.
+
 ## Full personal 2.2.0
 
 - Organizador visual de colegio → periodo → unidad, edición con F2 y traslado de actividades conservando sus notas.

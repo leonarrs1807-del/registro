@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 2.2.0 - FULL PERSONAL PARA LEONARDO ROQUE
+REGISTRO DOCENTE 2.2.1 - FULL PERSONAL PARA LEONARDO ROQUE
 
 Incluye todos los cursos y módulos, sin activación comercial.
 No requiere clave privada. El candado protege la edición de sus datos.
@@ -71,7 +71,7 @@ FULL PERSONAL 2.1.1
 - Ayuda / F1 con búsqueda y 23 apartados detallados, ejemplos y pasos de cada sección.
 - GUIA-USO.txt contiene el mismo manual que la ayuda del programa.
 
-FULL PERSONAL 2.2.0
+FULL PERSONAL 2.2.1
 - Organizador visual con edición directa de nombres y traslado de actividades.
 - Ampliar vista en Calificaciones; volver con Esc sin perder cambios pendientes.
 - Ficha individual del estudiante con progreso por unidad y descarga Excel.
@@ -80,3 +80,11 @@ FULL PERSONAL 2.2.0
 - Respaldar biblioteca guarda una copia de todos los modelos y versiones. Los documentos .registro conservan sus propios instrumentos; la biblioteca tiene un respaldo aparte.
 - Selector de notas en números / 20, letras o ambos. La escala es configurable y la nota exacta se conserva.
 - Los modelos no contienen estudiantes ni calificaciones. El alumnado de una instalación nueva permanece vacío.
+
+FULL PERSONAL 2.2.1
+- Cambie el tema antes de confirmar la importación Excel o Usar modelo.
+- La biblioteca conserva el nombre y contenido del modelo original.
+- Visores en tabla: criterio por fila y descriptores C/B/A/AD alineados.
+- Arrastre el borde de nombres para reducirlo sin dejar huecos ni achicar la letra.
+- Vista individual: escriba el puntaje directamente; Enter o Tab confirma.
+  Vacío es pendiente; 0 es cero. Guarde las notas para conservarlas.

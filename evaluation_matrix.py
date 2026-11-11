@@ -24,11 +24,16 @@ class EvaluationMatrix(ctk.CTkFrame):
         self.grid_columnconfigure(0,weight=1);self.grid_rowconfigure(0,weight=1)
         body=ctk.CTkFrame(self,fg_color='transparent');body.grid(row=0,column=0,sticky='nsew');body.grid_columnconfigure(2,weight=1);body.grid_rowconfigure(1,weight=1)
         scale=pixel_scale(self)
-        self.identity=ttk.Treeview(body,columns=('code','name'),show='',selectmode='browse',height=8)
+        self.identity_host=ctk.CTkFrame(body,fg_color='transparent',corner_radius=0)
+        self.identity_host.grid(row=1,column=0,sticky='nsew');self.identity_host.grid_propagate(False)
+        self.identity_host.grid_columnconfigure(0,weight=1);self.identity_host.grid_rowconfigure(0,weight=1)
+        self.identity=ttk.Treeview(self.identity_host,columns=('code','name'),show='',selectmode='browse',height=8)
         prefs=panel.app._preferencias()
-        for col,text,width,minimum in [('code','N°',prefs.get('criteria_number_width',38),28),('name','Apellidos y nombres',prefs.get('criteria_name_width',300),160)]:
+        for col,text,width,minimum in [('code','N°',prefs.get('criteria_number_width',38),28),('name','Apellidos y nombres',prefs.get('criteria_name_width',300),110)]:
             self.identity.heading(col,text=text);self.identity.column(col,width=round(width*scale),minwidth=round(minimum*scale),stretch=False)
-        self.identity.grid(row=1,column=0,sticky='nsw')
+        self.identity.grid(row=0,column=0,sticky='nsew')
+        self.identity_host.configure(width=sum(self.identity.column(c,'width') for c in ('code','name'))/scale)
+        Tooltip(self.identity,lambda:self.identity.set(self.identity.identify_row(self.identity.winfo_pointery()-self.identity.winfo_rooty()),'name') if self.identity.identify_row(self.identity.winfo_pointery()-self.identity.winfo_rooty()) else '')
         self.table=CriterionTreeview(body,columns=(*self.columns,'progress',*(['pending'] if self.checklist else [])),show='',selectmode='browse',height=8)
         self.table.set_grade_columns(self.columns);self.table.on_double_click=self._double
         caps=list(dict.fromkeys(i['capacidad_id'] for i in self.items));counts={}
@@ -112,7 +117,7 @@ class EvaluationMatrix(ctk.CTkFrame):
     def _resize_identity(self,event):
         if not self._resizing:return
         column,x,width=self._resizing;scale=pixel_scale(self)
-        minimum,maximum=(28,80) if column=='code' else (160,max(200,self.winfo_width()/scale*.62))
+        minimum,maximum=(28,80) if column=='code' else (110,max(200,self.winfo_width()/scale*.62))
         self.identity.column(column,width=round(min(maximum*scale,max(minimum*scale,width+event.x_root-x))))
         self._draw_headers()
 
@@ -143,11 +148,13 @@ class EvaluationMatrix(ctk.CTkFrame):
     def _draw_headers(self,event=None):
         if getattr(self,'_destroying',False):return
         scale=pixel_scale(self);height=round(88*scale);font=('Segoe UI',-round(12*scale));bold=(*font,'bold')
+        name_font=('Segoe UI',getattr(self.panel.app,'_native_table_font_size',-round(16*scale)),'bold')
         self.name_header.delete('all');offset=0
         for col,text in [('code','N°'),('name','Apellidos y nombres')]:
             width=self.identity.column(col,'width');self.name_header.create_rectangle(offset,0,offset+width,height,outline=BORDER,fill=HEADER)
-            self.name_header.create_text(offset+width/2,height/2,text=text,fill=HEADER_TEXT,font=bold,width=width-8);offset+=width
-        self.name_header.configure(width=offset)
+            self.name_header.create_text(offset+width/2,height/2,text=text,fill=HEADER_TEXT,font=name_font,width=width-8);offset+=width
+        if getattr(self,'_identity_width',None)!=offset:
+            self._identity_width=offset;self.name_header.configure(width=offset);self.identity_host.configure(width=offset/scale)
         self.criteria_header.delete('all');offset=0
         for col in self.table['columns']:
             width=self.table.column(col,'width');self.criteria_header.create_rectangle(offset,0,offset+width,height,outline=BORDER,fill=HEADER)

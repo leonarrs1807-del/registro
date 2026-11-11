@@ -39,13 +39,23 @@ def stage_to_grid(self,only_student=None,only_capacity=None):
 
 
 class EvaluationActions:
+    def commit_direct_entries(self):
+        return self.grid_view.commit_entries()
+
     def _student_changed(self,event=None):
         selected=self.roster.selection()
-        if selected:self.current_student=int(selected[0]);self._refresh()
+        if not selected or int(selected[0])==self.current_student:return
+        if not self.commit_direct_entries():
+            if self.current_student is not None:self.roster.selection_set(str(self.current_student))
+            return
+        self.current_student=int(selected[0]);self._refresh()
 
-    def _capacity_changed(self):self.grid_view.render();self._refresh()
+    def _capacity_changed(self):
+        if not self.commit_direct_entries():self.grid_view.choice.set(self.grid_view.rendered_capacity);return
+        self.grid_view.render();self._refresh()
 
     def _move(self,delta):
+        if not self.commit_direct_entries():return
         ids=list(self.by_student)
         if self.current_student not in ids:return
         index=max(0,min(len(ids)-1,ids.index(self.current_student)+delta))
@@ -96,7 +106,7 @@ class EvaluationActions:
             self.roster.set(str(identity),'avance',f'{count}/{len(self.by_id)}')
 
     def abrir_editor(self):
-        if not self.app.verificar_permiso_edicion():return
+        if not self.app.verificar_permiso_edicion() or not self.commit_direct_entries():return
         previous=list(self.indicadores_db);retained=dict(self.answers)
         def reload(origins):
             new=get_indicators(self.sesion['id'],self.app._db_path);answers={}
@@ -111,12 +121,12 @@ class EvaluationActions:
         InstrumentEditor(self,self.sesion['id'],self.indicadores_db,reload,kind=self.tipo_inst)
 
     def _aplicar_calculo(self):
-        if not self.app.verificar_permiso_edicion():return
+        if not self.app.verificar_permiso_edicion() or not self.commit_direct_entries():return
         if self.app.id_actividad_calificando!=self.sesion['id']:
             messagebox.showwarning('Actividad diferente','Abra esta actividad en Calificaciones antes de aplicar.',parent=self);return
         filled=any(v is not None and str(v).strip() for v in self.answers.values())
         if not filled and self.answers==self.original:
-            messagebox.showwarning('Evaluación pendiente','Seleccione un nivel o Sí/No antes de aplicar.',parent=self);return
+            messagebox.showwarning('Evaluación pendiente','Ingrese un puntaje o una observación de cotejo antes de aplicar.',parent=self);return
         if self.draft:
             rows=[{k:v for k,v in item.items() if k!='id'} for item in self.indicadores_db]
             ids=db.guardar_indicadores_instrumento_sesion(self.sesion['id'],self.tipo_inst,rows,self.app._db_path)
@@ -130,6 +140,7 @@ class EvaluationActions:
         self._applied=True;self.destroy()
 
     def _close_requested(self):
+        if not self.commit_direct_entries():return
         if self.answers!=self.initial and not self._applied:
             choice=messagebox.askyesnocancel('Evaluación sin aplicar','¿Desea aplicar sus cambios a la planilla antes de cerrar?',parent=self)
             if choice is None:return
@@ -162,7 +173,7 @@ class InstrumentEvaluator(EvaluationActions,SafeDialog):
         self.current_student=next(iter(self.by_student),None)
         header(self,self.context)
         bar=ctk.CTkFrame(self,fg_color='transparent');bar.pack(fill='x',padx=16,pady=6)
-        label(bar,'Seleccione un estudiante y marque la evidencia observada. Pendiente y cero se conservan como valores distintos.').pack(side='left',fill='x',expand=True)
+        label(bar,'Escribe el puntaje directamente. Enter o Tab: confirmar y continuar. Vacío: pendiente; cero: sin evidencia.' if kind=='Rúbrica' else 'Seleccione un estudiante y marque la evidencia observada. Pendiente y cero se conservan como valores distintos.').pack(side='left',fill='x',expand=True)
         ctk.CTkButton(bar,text='Editar instrumento',height=36,command=self.abrir_editor).pack(side='right',padx=(12,0))
         pane=split(self,'evaluar_instrumento');pane.pack(fill='both',expand=True,padx=16,pady=8)
         left=ctk.CTkFrame(pane);left.grid_rowconfigure(0,weight=1);left.grid_columnconfigure(0,weight=1)

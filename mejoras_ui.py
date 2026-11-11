@@ -253,6 +253,7 @@ class ClassroomTools:
 
     def deshacer_planilla(self,redo=False):
         if not self.verificar_permiso_edicion():return 'break'
+        if not self.terminar_edicion_actual():return 'break'
         origin,target=(self._redo,self._undo) if redo else (self._undo,self._redo)
         if origin:
             target.append(self._estado_planilla());state=origin.pop()

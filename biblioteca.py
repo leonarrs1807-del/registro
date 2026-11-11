@@ -230,11 +230,13 @@ def preview_model(model,session,db_path):
 
 @backed_up
 @atomic
-def apply_model(model,session,db_path):
+def apply_model(model,session,db_path,topic=None):
     """Copy definitions into a ledger; an evaluated activity always stays intact."""
     import db
     from evaluacion_datos import save_indicators
     plan=preview_model(model,session,db_path);model=plan['model'];ctx=plan['context']
+    from temas import topic_name
+    title=topic_name(topic) if topic is not None else ctx['titulo_tema']+(' · '+model['nombre'] if plan['new_activity'] else '')
     with connection(db_path) as conn:
         comps={normalized(r[1]):r[0] for r in conn.execute('SELECT id,nombre FROM Competencias WHERE curso_id=?',(ctx['curso_id'],))}
         competency=comps.get(normalized(model['competencia']))
@@ -245,7 +247,6 @@ def apply_model(model,session,db_path):
             identity=existing.get(normalized(name))
             if identity is None:identity=db.crear_capacidad(competency,name,db_path);existing[normalized(name)]=identity
             capacity_ids[name]=identity
-        title=ctx['titulo_tema']+(' · '+model['nombre'] if plan['new_activity'] else '')
         target=db.crear_o_actualizar_sesion_clase(None if plan['new_activity'] else session,ctx['curso_id'],competency,
             ctx['grado'],ctx['seccion'],title,ctx.get('proposito') or model['proposito'],ctx['peso_clase'],
             [(identity,'') for identity in capacity_ids.values()],categoria=ctx['categoria'],db_path=db_path,

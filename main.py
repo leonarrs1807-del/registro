@@ -2581,6 +2581,7 @@ class VentanaPrincipal(DesktopTools, ctk.CTk):
         if global_panel and global_panel.winfo_exists() and global_panel.editor is not None:
             if not global_panel.commit():return
         embedded=getattr(self,'_embedded_evaluation',None)
+        if embedded and embedded.winfo_exists() and not embedded.commit_direct_entries():return
         if embedded and embedded.winfo_exists() and embedded.matrix.editor is not None:
             embedded.matrix.commit_edit()
             if embedded.matrix.editor is not None:return
