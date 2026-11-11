@@ -9,3 +9,6 @@ backups/
 license_public_key.pem
 *.pem
 .pytest_cache/
+.env
+.env.*
+!.env.example

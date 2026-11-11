@@ -26,10 +26,14 @@ if public_key:
 # Deleting a loose PEM file must not turn a commercial build into a free build.
 license_hook = root / 'build' / 'registro_license_hook.py'
 license_hook.parent.mkdir(parents=True, exist_ok=True)
-license_hook.write_text('import sys\nsys._registro_license_public_key = '+repr(public_key)+'\nsys._registro_edition = '+repr(edition)+'\n',encoding='utf-8')
+update_url=os.environ.get('REGISTRO_UPDATE_URL','') if edition=='comercial' else ''
+if update_url:
+    from actualizaciones import https_url
+    https_url(update_url)
+license_hook.write_text('import sys\nsys._registro_license_public_key = '+repr(public_key)+'\nsys._registro_edition = '+repr(edition)+'\nsys._registro_update_url = '+repr(update_url)+'\n',encoding='utf-8')
 a = Analysis([str(root / 'launcher.py')], pathex=[str(root)], binaries=binaries, datas=datas,
              hiddenimports=['matplotlib.backends.backend_tkagg', 'cryptography.hazmat.primitives.asymmetric.ed25519'],
-             hookspath=[], hooksconfig={}, runtime_hooks=[str(license_hook)], excludes=['pytest', 'tests'], noarchive=False)
+             hookspath=[], hooksconfig={}, runtime_hooks=[str(license_hook)], excludes=['pytest', 'tests', 'license_api', 'fastapi', 'uvicorn'], noarchive=False)
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='RegistroDocente',
           debug=False, bootloader_ignore_signals=False, strip=False, upx=False,

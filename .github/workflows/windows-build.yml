@@ -27,6 +27,7 @@ jobs:
     env:
       REGISTRO_EDITION: ${{ inputs.edition || 'comercial' }}
       PYTHONUTF8: '1'
+      REGISTRO_UPDATE_URL: ${{ vars.REGISTRO_UPDATE_URL }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -46,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           $info = (Get-Item dist/RegistroDocente/RegistroDocente.exe).VersionInfo
-          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '2.2.1') { throw 'Propietario o versión incorrectos.' }
+          if ($info.CompanyName -ne 'Leonardo Roque' -or $info.ProductVersion -ne '2.3.0') { throw 'Propietario o versión incorrectos.' }
           Copy-Item docs/GUIA-USO.txt dist/RegistroDocente/GUIA-USO.txt
       - name: Identify owner review package
         if: inputs.review
@@ -55,6 +56,14 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\windows.iss'
+      - name: Verify installation update preserves user data
+        run: python tools/smoke_windows_update.py dist/installer/RegistroDocente-Setup.exe ${{ inputs.edition == 'comercial' && '--commercial' || '' }}
+      - name: Package headless license API
+        run: python tools/package_license_api.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GeneradorLicencias-API
+          path: dist/GeneradorLicencias-API.zip
       - name: Build separate seller tool
         if: ${{ !inputs.review }}
         run: python -m PyInstaller --noconfirm RegistroLicencias.spec
@@ -63,7 +72,7 @@ jobs:
         run: python tools/smoke_windows.py --seller dist/RegistroLicencias/RegistroLicencias.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.review && 'RegistroDocente-Full-2.2.1-Windows' || inputs.edition == 'comercial' && 'RegistroDocente-Comercial-Windows' || 'RegistroDocente-Windows' }}
+          name: ${{ inputs.review && 'RegistroDocente-Full-2.3.0-Windows' || inputs.edition == 'comercial' && 'RegistroDocente-Comercial-2.3.0-Windows' || 'RegistroDocente-Windows' }}
           path: |
             dist/installer/*.exe
             dist/RegistroDocente/**

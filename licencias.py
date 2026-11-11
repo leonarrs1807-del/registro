@@ -127,6 +127,9 @@ def verify_activation(document, public_key, account, device, now):
     from cryptography.hazmat.primitives.serialization import load_pem_public_key
     if not public_key:
         raise ValueError('Este instalador todavía necesita la clave pública del vendedor. Solicite el instalador comercial definitivo.')
+    if isinstance(document,str) or (isinstance(document,dict) and 'licencia_key' in document):
+        from license_tokens import verify_token
+        return verify_token(document if isinstance(document,str) else document['licencia_key'],public_key,PRODUCT,device,now)
     try:
         payload = document['payload']
         key = load_pem_public_key(public_key)
@@ -276,6 +279,8 @@ class OfflineLicensing:
         if not self.state:
             raise ValueError('Cree primero su cuenta en esta computadora.')
         payload = verify_activation(document, self.public_key, self.state, self.device, self.clock())
+        if isinstance(document,str) or 'licencia_key' in document:
+            document={'payload':payload,'licencia_key':document if isinstance(document,str) else document['licencia_key']}
         current = [d for d in self.state['licenses'] if d['payload']['license_id'] != payload['license_id']]
         self.state['licenses'] = current + [document]
         self._save()

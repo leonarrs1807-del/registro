@@ -90,3 +90,11 @@ QUE NO ENTREGAR
 - RegistroLicencias.exe (uso del vendedor).
 - registro_privada.pem ni su contraseña.
 - Bases de datos con alumnado o sus propios documentos personales.
+
+API DE VENTAS Y ACTUALIZACIONES — 2.3.0
+La API FastAPI no tiene interfaz gráfica. Consulte license_api/README.md en el
+código fuente o el paquete GeneradorLicencias-API para configurar Render,
+Supabase y las llamadas privadas de FlutterFlow o Make/n8n.
+Use siempre la clave privada original, correspondiente a la pública del instalador.
+Los secretos pertenecen al servidor, nunca al instalador del cliente.
+Las actualizaciones conservan datos y activación; comprueban firma y SHA-256.

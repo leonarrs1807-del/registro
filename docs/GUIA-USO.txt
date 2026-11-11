@@ -1,4 +1,4 @@
-REGISTRO DOCENTE 2.2.1 - GUÍA PASO A PASO
+REGISTRO DOCENTE 2.3.0 - GUÍA PASO A PASO
 
 Abra Ayuda o pulse F1. Puede buscar por palabras, seleccionar un apartado y usar Anterior / Siguiente.
 
@@ -29,6 +29,7 @@ Abra Ayuda o pulse F1. Puede buscar por palabras, seleccionar un apartado y usar
 24. Años, niveles y seguridad
 25. Solución de problemas
 26. Cuenta, demo y compras
+27. Compras en línea y actualizaciones
 
 EMPEZAR Y GUARDAR
 
@@ -757,3 +758,27 @@ En una edición comercial, Configuración → Licencia permite crear la cuenta l
 5. Respalde por separado sus documentos escolares y la cuenta con las opciones disponibles.
 
 Un archivo .registro contiene datos académicos; no traslada una activación comercial a otro equipo. Si necesita cambiar de computadora, consulte al vendedor y traslade sus documentos escolares. La aplicación no proporciona sincronización automática en la nube ni recuperación de contraseña por correo.
+
+COMPRAS EN LÍNEA Y ACTUALIZACIONES
+
+ACTIVAR UNA COMPRA EN LÍNEA
+
+1. Abra Licencia y cuenta en la edición comercial. Cree su cuenta local si aún no la tiene.
+2. Si la compra se vincula a una computadora, copie el identificador Equipo y proporciónelo al vendedor.
+3. Después de la compra recibirá una licencia_key. Pulse Pegar clave recibida por compra en línea y pegue el texto completo.
+4. Pulse Activar licencia. También puede importar un archivo .licencia con esa clave o una licencia anterior del vendedor.
+5. Compruebe los cursos habilitados. La firma se verifica en su computadora; nunca necesita la clave privada del vendedor.
+
+La licencia mensual o anual vence en el instante indicado por la compra. Perpetua no tiene vencimiento. La licencia corresponde al producto comprado y, si así se emitió, al equipo indicado. Una actualización del programa no cambia el inicio de la demo ni elimina su cuenta o sus notas.
+
+ACTUALIZAR EL PROGRAMA
+
+1. El vendedor configura un servidor público de actualizaciones. Si aún no aparece en su instalación, use Actualizaciones → Configurar servidor de actualizaciones e introduzca la dirección que le proporcione el vendedor. No introduzca contraseñas ni la clave de la API.
+2. El programa comprueba las novedades en segundo plano al iniciar. También puede usar Actualizaciones → Buscar actualizaciones.
+3. Revise la versión y sus novedades; pulse Descargar actualización.
+4. Al terminar la verificación, pulse Instalar y reiniciar. Guarde las notas cuando se lo solicite. Los formularios pendientes deben guardarse antes de continuar.
+5. El programa crea un respaldo de registros, biblioteca y cuenta; después abre el instalador y se reinicia con la versión nueva.
+
+Los datos se guardan fuera de la carpeta del programa. Actualizar conserva alumnado, colegios, periodos, unidades, notas y modelos. Los respaldos previos quedan en backups/antes-actualizar-VERSION-FECHA, dentro de la carpeta de datos. También puede instalar manualmente el EXE nuevo sobre la instalación anterior sin desinstalar primero.
+
+Si la firma o la descarga no coincide con lo publicado, el instalador no se ejecuta. Si el servidor está suspendido o no hay conexión, puede continuar trabajando y buscar actualizaciones más adelante.

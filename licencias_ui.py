@@ -42,6 +42,7 @@ class AccountDialog(SafeDialog):
             paragraph(body, 'Para comprar: exporte una solicitud y envíela al vendedor. Después del pago recibirá un archivo .licencia para importar aquí. Cada compra puede habilitar uno o varios cursos, o el paquete completo.')
             ctk.CTkButton(body, text='1. Guardar solicitud para el vendedor…', command=self.export_request, height=40).pack(fill='x', padx=16, pady=8)
             ctk.CTkButton(body, text='2. Importar licencia comprada…', command=self.activate, height=40).pack(fill='x', padx=16, pady=8)
+            ctk.CTkButton(body,text='Pegar clave recibida por compra en línea…',command=self.activate_key,height=40).pack(fill='x',padx=16,pady=8)
             ctk.CTkButton(body, text='Respaldar mi cuenta en otra carpeta…', command=self.backup, height=40).pack(fill='x', padx=16, pady=8)
             status = service.status()
             labels = {i['key']: i['label'] for i in app.catalogo_licencias()}
@@ -109,7 +110,9 @@ class AccountDialog(SafeDialog):
         if not path:
             return
         try:
-            document = json.loads(Path(path).read_text(encoding='utf-8'))
+            if Path(path).stat().st_size>50000:raise ValueError('El archivo de licencia es demasiado grande.')
+            text=Path(path).read_text(encoding='utf-8').strip()
+            document = json.loads(text) if text.startswith(('{','"')) else text
             self.service.import_license(document)
         except Exception as exc:
             messagebox.showerror('No se activó la licencia', str(exc), parent=self)
@@ -117,6 +120,18 @@ class AccountDialog(SafeDialog):
         self.app.actualizar_licencia()
         messagebox.showinfo('Licencia activada', 'Se habilitaron los cursos comprados para esta cuenta y computadora. Sus notas y documentos se conservan.', parent=self)
         self.destroy()
+
+    def activate_key(self):
+        from instrument_widgets import Multiline
+        dialog=SafeDialog(self);dialog.title('Activar licencia de compra en línea');dialog.geometry('650x340')
+        paragraph(dialog,'Pega la licencia_key recibida. La firma se verifica localmente con la clave pública del vendedor.')
+        entry=Multiline(dialog,height=160);entry.pack(fill='both',expand=True,padx=16,pady=8)
+        def confirm():
+            try:self.service.import_license(entry.get().strip())
+            except ValueError as exc:messagebox.showerror('Licencia no válida',str(exc),parent=dialog);return
+            self.app.actualizar_licencia();dialog.destroy();self.destroy()
+            messagebox.showinfo('Licencia activada','Se activó la compra y se conservaron sus registros.',parent=self.app)
+        ctk.CTkButton(dialog,text='Activar licencia',command=confirm,height=38).pack(padx=16,pady=12);dialog.grab_set()
 
     def backup(self):
         path = self.app.elegir_destino(title='Dónde guardar el respaldo de mi cuenta', initialfile='Mi_cuenta.activacion', defaultextension='.activacion', filetypes=[('Cuenta protegida de Registro', '*.activacion')])

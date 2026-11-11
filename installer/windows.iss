@@ -1,6 +1,6 @@
 ; Build with Inno Setup 6 after PyInstaller, from the repository root.
 #define AppName "Registro Docente"
-#define AppVersion "2.2.1"
+#define AppVersion "2.3.0"
 [Setup]
 AppId={{B248D8D2-1C74-4E8B-A107-43F49F9CC8B2}
 AppName={#AppName}
@@ -35,6 +35,13 @@ Name: "{group}\{#AppName}"; Filename: "{app}\RegistroDocente.exe"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\RegistroDocente.exe"; Tasks: desktopicon
 [Run]
 Filename: "{app}\RegistroDocente.exe"; Description: "Abrir Registro Docente"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\RegistroDocente.exe"; Flags: nowait; Check: ShouldRestartRegistro
+
+[Code]
+function ShouldRestartRegistro(): Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:REINICIAR|0}') = '1');
+end;
 ; User data in LOCALAPPDATA\RegistroDocente is deliberately retained on uninstall.
 
 [Registry]

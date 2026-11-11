@@ -23,10 +23,11 @@ from periodos_ui import AcademicTools
 from institucion_ui import InstitutionTools
 from flujo_docente_ui import TeacherWorkflowTools
 from docente_ui import TeacherViewTools
+from actualizaciones_ui import UpdateTools
 from app_version import VERSION
 
 
-class DesktopTools(TeacherViewTools,AcademicTools,InstitutionTools,TeacherWorkflowTools,ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
+class DesktopTools(UpdateTools,TeacherViewTools,AcademicTools,InstitutionTools,TeacherWorkflowTools,ConfigurationTools,PerformanceTools,EvaluationTools,CompactTools,ViewTools,LicenseTools,ClassroomTools):
     def iniciar_herramientas(self):
         self.protocol('WM_DELETE_WINDOW', self.cerrar_aplicacion)
         self.bind('<KeyRelease>', self._registrar_edicion, add='+')
@@ -50,6 +51,7 @@ class DesktopTools(TeacherViewTools,AcademicTools,InstitutionTools,TeacherWorkfl
         self.iniciar_mejoras(menu)
         self.barra_acciones()
         self.iniciar_licencia_ui(menu)
+        self.iniciar_actualizaciones(menu)
         self.fuentes_menu(menu)
         self.actualizar_configuracion()
         self.instalar_accesos_docentes()

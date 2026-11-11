@@ -5,7 +5,7 @@ import ctypes,os,sqlite3,subprocess,sys,tempfile,time
 from ctypes import wintypes
 
 
-def visible_application(pid,prefix='Registro Docente 2.2.1'):
+def visible_application(pid,prefix='Registro Docente 2.3.0'):
     user32=ctypes.windll.user32
     found=[]
     callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
@@ -25,7 +25,7 @@ def visible_application(pid,prefix='Registro Docente 2.2.1'):
     return bool(found)
 
 
-def run_case(executable,database,folder,expected_note=None,commercial=False):
+def run_case(executable,database,folder,expected_note=None,commercial=False,expect_activation=True):
     env={**os.environ,'REGISTRO_DATA_DIR':str(folder),'REGISTRO_DB_PATH':str(database)}
     # The customer's environment must not disable a commercial executable.
     if commercial:env['REGISTRO_EDITION']='personal'
@@ -38,7 +38,7 @@ def run_case(executable,database,folder,expected_note=None,commercial=False):
             while time.monotonic()<deadline:
                 if process.poll() is not None:raise RuntimeError('El ejecutable terminó al iniciar: '+log.read_text(errors='replace')[-3000:])
                 if visible_application(process.pid):
-                    if commercial and not visible_application(process.pid,'Registro Docente — Licencia y cuenta'):
+                    if commercial and expect_activation and not visible_application(process.pid,'Registro Docente — Licencia y cuenta'):
                         time.sleep(.2);continue
                     with closing(sqlite3.connect(database)) as conn:
                         assert conn.execute('PRAGMA integrity_check').fetchone()[0]=='ok'

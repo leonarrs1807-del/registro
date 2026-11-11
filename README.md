@@ -1,3 +1,12 @@
+## Comercial 2.3.0 — API de licencias y actualizaciones
+
+- Generador FastAPI sin interfaz gráfica: `POST /generar-licencia`, JWT Ed25519, mensual/anual/perpetua y HWID opcional.
+- Autenticación por API_KEY/Bearer, Supabase opcional y reintentos de pedidos con Idempotency-Key.
+- Integración de las nuevas claves con la aplicación comercial y conservación de las licencias anteriores.
+- Actualizaciones firmadas: comprobación en segundo plano, descarga verificada y respaldo antes de instalar sobre el programa existente.
+- Prueba Windows que instala dos veces y comprueba notas, biblioteca, configuración, cuenta y demo conservadas.
+- Código, dependencias, Supabase, FlutterFlow, Make/n8n y despliegue: [Guía de la API](license_api/README.md). Render gratuito puede suspender la instancia; no garantiza ejecución continua.
+
 ## Full personal 2.2.1
 
 - Tema editable al importar un instrumento Excel o reutilizarlo desde la biblioteca; el modelo original conserva su nombre.

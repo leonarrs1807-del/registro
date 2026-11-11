@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: registro-licencias-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r license_api/requirements.txt
+    startCommand: uvicorn license_api.main:app --host 0.0.0.0 --port $PORT --no-access-log
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: API_KEY
+        generateValue: true
+      - key: LICENSE_PRIVATE_KEY_B64
+        sync: false
+      - key: LICENSE_PRIVATE_KEY_PASSWORD
+        sync: false
+      - key: APPS_JSON
+        value: '{"registro":{"product":"registro","courses":["*"]}}'
+      - key: UPDATES_JSON
+        value: '{}'
